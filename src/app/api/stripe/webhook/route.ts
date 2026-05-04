@@ -40,7 +40,7 @@ export async function POST(req: Request) {
           break;
         }
 
-        // Try update first
+        // Update org if it exists
         const updateResult = await db
           .update(organizationSchema)
           .set({
@@ -50,15 +50,15 @@ export async function POST(req: Request) {
           })
           .where(eq(organizationSchema.stripeCustomerId, customerId));
 
-        // Drizzle doesn't always expose rowCount consistently,
-        // so we do a follow-up check instead of trusting logs
+        console.log('♻️ Update attempt completed:', updateResult);
+
+        // Verify if anything exists after update
         const existing = await db
           .select()
           .from(organizationSchema)
           .where(eq(organizationSchema.stripeCustomerId, customerId))
           .limit(1);
 
-        // If nothing exists, insert
         if (existing.length === 0) {
           await db.insert(organizationSchema).values({
             id: crypto.randomUUID(),
@@ -71,7 +71,7 @@ export async function POST(req: Request) {
 
           console.log('🆕 Organization created from Stripe checkout');
         } else {
-          console.log('♻️ Organization updated from Stripe checkout');
+          console.log('✅ Organization confirmed in DB');
         }
 
         break;
