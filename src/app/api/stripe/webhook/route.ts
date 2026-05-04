@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
-import { db } from '@/models/db'; // adjust if your path differs
+import { db } from '@/models/db';
 import { organizationSchema } from '@/models/Schema';
 import { eq } from 'drizzle-orm';
 
@@ -27,48 +27,91 @@ export async function POST(req: Request) {
 
   console.log('🔥 Stripe event:', event.type);
 
-  switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session;
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session;
 
-      const customerId = session.customer as string;
-      const subscriptionId = session.subscription as string;
+        const customerId = session.customer as string | null;
+        const subscriptionId = session.subscription as string | null;
 
-      await db
-        .update(organizationSchema)
-        .set({
-          stripeCustomerId: customerId,
-          stripeSubscriptionId: subscriptionId,
-          stripeSubscriptionStatus: 'active',
-        })
-        .where(eq(organizationSchema.stripeCustomerId, customerId));
+        if (!customerId) {
+          console.error('❌ Missing Stripe customerId');
+          break;
+        }
 
-      console.log('✅ Checkout completed + DB updated');
-      break;
+        // Try update first
+        const updateResult = await db
+          .update(organizationSchema)
+          .set({
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId ?? null,
+            stripeSubscriptionStatus: 'active',
+          })
+          .where(eq(organizationSchema.stripeCustomerId, customerId));
+
+        // Drizzle doesn't always expose rowCount consistently,
+        // so we do a follow-up check instead of trusting logs
+        const existing = await db
+          .select()
+          .from(organizationSchema)
+          .where(eq(organizationSchema.stripeCustomerId, customerId))
+          .limit(1);
+
+        // If nothing exists, insert
+        if (existing.length === 0) {
+          await db.insert(organizationSchema).values({
+            id: crypto.randomUUID(),
+            stripeCustomerId: customerId,
+            stripeSubscriptionId: subscriptionId ?? null,
+            stripeSubscriptionStatus: 'active',
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+
+          console.log('🆕 Organization created from Stripe checkout');
+        } else {
+          console.log('♻️ Organization updated from Stripe checkout');
+        }
+
+        break;
+      }
+
+      case 'customer.subscription.updated': {
+        const sub = event.data.object as Stripe.Subscription;
+
+        const customerId = sub.customer as string;
+
+        await db
+          .update(organizationSchema)
+          .set({
+            stripeSubscriptionStatus: sub.status,
+            stripeSubscriptionPriceId: sub.items.data[0]?.price.id ?? null,
+            stripeSubscriptionCurrentPeriodEnd: sub.current_period_end,
+          })
+          .where(eq(organizationSchema.stripeCustomerId, customerId));
+
+        console.log('🔄 Subscription updated');
+        break;
+      }
+
+      case 'invoice.paid': {
+        console.log('💰 Invoice paid');
+        break;
+      }
+
+      case 'invoice.payment_failed': {
+        console.log('⚠️ Invoice payment failed');
+        break;
+      }
+
+      default:
+        console.log(`ℹ️ Unhandled event: ${event.type}`);
     }
 
-    case 'customer.subscription.updated': {
-      const sub = event.data.object as Stripe.Subscription;
-
-      await db
-        .update(organizationSchema)
-        .set({
-          stripeSubscriptionStatus: sub.status,
-          stripeSubscriptionPriceId: sub.items.data[0]?.price.id,
-          stripeSubscriptionCurrentPeriodEnd:
-            sub.current_period_end,
-        })
-        .where(eq(organizationSchema.stripeSubscriptionId, sub.id));
-
-      console.log('🔄 Subscription updated in DB');
-      break;
-    }
-
-    case 'invoice.paid': {
-      console.log('💰 Invoice paid');
-      break;
-    }
+    return NextResponse.json({ received: true });
+  } catch (err) {
+    console.error('❌ Webhook handler error:', err);
+    return new NextResponse('Webhook handler failed', { status: 500 });
   }
-
-  return NextResponse.json({ received: true });
 }
