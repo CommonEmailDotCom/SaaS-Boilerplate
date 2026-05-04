@@ -69,24 +69,22 @@ export const Pricing = () => {
             className: 'mt-5 w-full',
           })}
           onClick={async () => {
-            try {
-              const res = await fetch('/api/stripe/checkout', {
-                method: 'POST',
-              });
+  alert('CLICKED');
 
-              const data = await res.json();
+  try {
+    const res = await fetch('/api/stripe/checkout', {
+      method: 'POST',
+    });
 
-              if (data.url) {
-                window.location.href = data.url;
-              } else {
-                console.error('No checkout URL returned', data);
-                alert('Stripe checkout failed');
-              }
-            } catch (err) {
-              console.error(err);
-              alert('Something went wrong');
-            }
-          }}
+    alert('STATUS: ' + res.status);
+
+    const text = await res.text();
+    alert('RESPONSE: ' + text);
+
+  } catch (err) {
+    alert('ERROR: ' + String(err));
+  }
+}}
         >
           {t('button_text')}
         </button>
