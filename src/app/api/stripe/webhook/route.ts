@@ -28,90 +28,53 @@ export async function POST(req: Request) {
   console.log('🔥 Stripe event:', event.type);
 
   try {
-    switch (event.type) {
-      case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.Checkout.Session;
+    if (event.type === 'checkout.session.completed') {
+      const session = event.data.object as Stripe.Checkout.Session;
 
-        const customerId = session.customer as string | null;
-        const subscriptionId = session.subscription as string | null;
+      const customerId = session.customer as string | null;
+      const subscriptionId = session.subscription as string | null;
 
-        if (!customerId) {
-          console.error('❌ Missing Stripe customerId');
-          break;
-        }
-
-        // Update org if it exists
-        const updateResult = await db
-          .update(organizationSchema)
-          .set({
-            stripeCustomerId: customerId,
-            stripeSubscriptionId: subscriptionId ?? null,
-            stripeSubscriptionStatus: 'active',
-          })
-          .where(eq(organizationSchema.stripeCustomerId, customerId));
-
-        console.log('♻️ Update attempt completed:', updateResult);
-
-        // Verify if anything exists after update
-        const existing = await db
-          .select()
-          .from(organizationSchema)
-          .where(eq(organizationSchema.stripeCustomerId, customerId))
-          .limit(1);
-
-        if (existing.length === 0) {
-          await db.insert(organizationSchema).values({
-            id: crypto.randomUUID(),
-            stripeCustomerId: customerId,
-            stripeSubscriptionId: subscriptionId ?? null,
-            stripeSubscriptionStatus: 'active',
-            createdAt: new Date(),
-            updatedAt: new Date(),
-          });
-
-          console.log('🆕 Organization created from Stripe checkout');
-        } else {
-          console.log('✅ Organization confirmed in DB');
-        }
-
-        break;
+      if (!customerId) {
+        console.error('❌ Missing customerId');
+        return NextResponse.json({ received: true });
       }
 
-      case 'customer.subscription.updated': {
-        const sub = event.data.object as Stripe.Subscription;
+      // UPDATE
+      await db
+        .update(organizationSchema)
+        .set({
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId ?? null,
+          stripeSubscriptionStatus: 'active',
+        })
+        .where(eq(organizationSchema.stripeCustomerId, customerId));
 
-        const customerId = sub.customer as string;
+      // VERIFY
+      const existing = await db
+        .select()
+        .from(organizationSchema)
+        .where(eq(organizationSchema.stripeCustomerId, customerId))
+        .limit(1);
 
-        await db
-          .update(organizationSchema)
-          .set({
-            stripeSubscriptionStatus: sub.status,
-            stripeSubscriptionPriceId: sub.items.data[0]?.price.id ?? null,
-            stripeSubscriptionCurrentPeriodEnd: sub.current_period_end,
-          })
-          .where(eq(organizationSchema.stripeCustomerId, customerId));
+      if (existing.length === 0) {
+        await db.insert(organizationSchema).values({
+          id: crypto.randomUUID(),
+          stripeCustomerId: customerId,
+          stripeSubscriptionId: subscriptionId ?? null,
+          stripeSubscriptionStatus: 'active',
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        });
 
-        console.log('🔄 Subscription updated');
-        break;
+        console.log('🆕 Org created');
+      } else {
+        console.log('✅ Org updated');
       }
-
-      case 'invoice.paid': {
-        console.log('💰 Invoice paid');
-        break;
-      }
-
-      case 'invoice.payment_failed': {
-        console.log('⚠️ Invoice payment failed');
-        break;
-      }
-
-      default:
-        console.log(`ℹ️ Unhandled event: ${event.type}`);
     }
 
     return NextResponse.json({ received: true });
   } catch (err) {
     console.error('❌ Webhook handler error:', err);
-    return new NextResponse('Webhook handler failed', { status: 500 });
+    return new NextResponse('Webhook failed', { status: 500 });
   }
 }
