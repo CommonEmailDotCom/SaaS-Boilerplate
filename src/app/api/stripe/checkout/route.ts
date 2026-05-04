@@ -1,63 +1,63 @@
-import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
-import Stripe from 'stripe';
+import Stripe from "stripe";
+import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2025-01-27.acacia',
+  apiVersion: "2024-06-20",
 });
 
 export async function POST(req: Request) {
   try {
-    // ✅ FIX: auth() is async in App Router Clerk SDK
-    const { userId, orgId: existingOrgId } = await auth();
+    const { userId, orgId } = await auth();
 
     if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 },
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 
-    const body = await req.json();
-    const { priceId, successUrl, cancelUrl } = body;
+    const body = await req.json().catch(() => ({}));
+    const { priceId } = body;
 
     if (!priceId) {
       return NextResponse.json(
-        { error: 'Missing priceId' },
-        { status: 400 },
+        { error: "Missing priceId" },
+        { status: 400 }
       );
     }
 
-    const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
+    // Auto-org fallback if user has no org
+    const resolvedOrgId = orgId ?? `org_${userId}`;
 
+    const session = await stripe.checkout.sessions.create({
+      mode: "subscription",
+      payment_method_types: ["card"],
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=1`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=1`,
 
-      success_url: successUrl,
-      cancel_url: cancelUrl,
-
-      // ✅ Critical fix: org auto-attach support
+      // 🔥 KEY FIX: attach identity metadata
       metadata: {
         userId,
-        orgId: existingOrgId ?? '',
+        orgId: resolvedOrgId,
       },
 
       client_reference_id: userId,
     });
 
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    console.error('Stripe checkout error:', error);
+  } catch (err: any) {
+    console.error("Stripe checkout error:", err);
 
     return NextResponse.json(
-      { error: error.message ?? 'Internal Server Error' },
-      { status: 500 },
+      { error: "Internal server error" },
+      { status: 500 }
     );
   }
 }
