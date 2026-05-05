@@ -33,3 +33,9 @@ jobs:
           git add .env.production
           git diff --staged --quiet || git commit -m "ci: update commit sha to $(echo "${{ github.sha }}" | cut -c1-7)"
           git push
+
+      - name: Trigger Coolify deployment via API
+        run: |
+          curl -s -X GET \
+            "https://joefuentes.me/api/v1/deploy?uuid=tuk1rcjj16vlk33jrbx3c9d3&force=false" \
+            -H "Authorization: Bearer ${{ secrets.COOLIFY_API_TOKEN }}"
