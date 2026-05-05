@@ -27,11 +27,6 @@ export default withSentryConfig(
       experimental: {
         serverComponentsExternalPackages: ['@electric-sql/pglite'],
       },
-      env: {
-        // Injected by Coolify as a build arg: NEXT_PUBLIC_COMMIT_SHA=$NIXPACKS_GIT_COMMIT_SHA
-        // Falls back to 'unknown' if not set
-        NEXT_PUBLIC_COMMIT_SHA: process.env.NEXT_PUBLIC_COMMIT_SHA ?? 'unknown',
-      },
     }),
   ),
   {
