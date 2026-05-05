@@ -1,3 +1,10 @@
+# [1.9.0](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.8.0...v1.9.0) (2026-05-05)
+
+
+### Features
+
+* redirect unauthenticated users to sign-up before checkout, add checkout redirect page ([d6d7c85](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/d6d7c85bbefdb6f791d244aace97cb551ff2de5a))
+
 # [1.8.0](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.7.7...v1.8.0) (2026-05-05)
 
 
