@@ -1,55 +1,20 @@
-import { getTranslations } from 'next-intl/server';
 import { auth } from '@clerk/nextjs/server';
-import { eq } from 'drizzle-orm';
+import { getTranslations } from 'next-intl/server';
 
-import { db } from '@/libs/DB';
-import { organizationSchema } from '@/models/Schema';
-
+import { getOrganization, getPlanId } from '@/libs/organization';
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 
 const DashboardIndexPage = async () => {
   const t = await getTranslations('DashboardIndex');
-
   const { userId, orgId } = await auth();
 
-  if (!userId) return null;
+  if (!userId || !orgId) return null;
 
-  // =========================
-  // DEBUG OVERRIDE (IMPORTANT)
-  // =========================
-  // We hardcode a known-good DB row so we bypass Clerk org mapping issues
-  const TEST_ORG_ID = 'f1bf4764-ad6e-410e-b69b-f5d6885619c7';
-
-  // You can toggle between real vs test easily:
-  const resolvedOrgId = TEST_ORG_ID;
-
-  // =========================
-  // DB QUERY (DRIZZLE)
-  // =========================
-  const org = await db
-    .select()
-    .from(organizationSchema)
-    .where(eq(organizationSchema.id, resolvedOrgId))
-    .limit(1)
-    .then((rows) => rows[0]);
-
-  // =========================
-  // DERIVED STATE
-  // =========================
-  const subscriptionStatus =
-    org?.stripeSubscriptionStatus ?? 'free';
-
-  // =========================
-  // DEBUG OUTPUT (SERVER LOG)
-  // =========================
-  console.log('[DASHBOARD DEBUG]', {
-    userId,
-    clerkOrgId: orgId,
-    resolvedOrgId,
-    orgFromDb: org,
-    subscriptionStatus,
-  });
+  // Look up billing state for this org from DB.
+  // Returns null if the org has never checked out (free plan).
+  const org = await getOrganization(orgId);
+  const planId = getPlanId(org);
 
   return (
     <>
@@ -58,39 +23,34 @@ const DashboardIndexPage = async () => {
         description={t('title_bar_description')}
       />
 
-      {/* DEBUG PANEL */}
       <div className="mx-6 mt-4 rounded-lg border bg-card p-4 text-sm">
         <div className="flex flex-col gap-1">
           <p>
             <span className="font-medium">User:</span> {userId}
           </p>
-
           <p>
-            <span className="font-medium">Clerk Org ID:</span>{' '}
-            {orgId ?? 'null'}
+            <span className="font-medium">Org:</span> {orgId}
           </p>
-
           <p>
-            <span className="font-medium">Resolved Org ID:</span>{' '}
-            {resolvedOrgId}
+            <span className="font-medium">Plan:</span>{' '}
+            {planId === 'free'
+              ? (
+                  <span className="text-yellow-500">Free</span>
+                )
+              : (
+                  <span className="text-green-500 capitalize">{planId}</span>
+                )}
           </p>
-
           <p>
-            <span className="font-medium">Subscription:</span>{' '}
-            {subscriptionStatus === 'free' ? (
-              <span className="text-yellow-500">Free Plan</span>
-            ) : (
-              <span className="text-green-500">Active Plan</span>
-            )}
+            <span className="font-medium">Subscription status:</span>{' '}
+            {org?.stripeSubscriptionStatus ?? 'none'}
           </p>
-        </div>
-
-        {/* RAW DB OUTPUT (VERY IMPORTANT FOR DEBUGGING) */}
-        <div className="mt-4">
-          <p className="font-medium mb-2">Raw DB Record:</p>
-          <pre className="text-xs overflow-auto bg-muted p-2 rounded">
-            {JSON.stringify(org, null, 2)}
-          </pre>
+          {org?.stripeSubscriptionCurrentPeriodEnd && (
+            <p>
+              <span className="font-medium">Renews:</span>{' '}
+              {new Date(org.stripeSubscriptionCurrentPeriodEnd * 1000).toLocaleDateString()}
+            </p>
+          )}
         </div>
       </div>
 
