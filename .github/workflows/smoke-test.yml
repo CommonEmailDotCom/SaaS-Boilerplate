@@ -83,6 +83,8 @@ jobs:
             "${{ steps.playwright.outputs.exit_code }}" \
             "/tmp/playwright-output.txt" \
             "$RUN_URL"
+          # Move status file out of repo dir so git pull doesn't conflict
+          mv smoke-status.json /tmp/smoke-status.json
 
       - name: Commit smoke-status.json
         if: always()
@@ -90,6 +92,7 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git pull --rebase origin main
+          cp /tmp/smoke-status.json smoke-status.json
           git add smoke-status.json
           git diff --staged --quiet || git commit -m "ci: update smoke-status.json [skip ci]"
           git push
