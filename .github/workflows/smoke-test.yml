@@ -10,6 +10,9 @@ jobs:
   smoke-test:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      statuses: write
 
     steps:
       - uses: actions/checkout@v4
