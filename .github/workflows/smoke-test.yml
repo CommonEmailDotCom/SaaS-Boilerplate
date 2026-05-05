@@ -17,16 +17,17 @@ jobs:
       - name: Get deployed SHA
         id: sha
         run: |
-          # Extract the SHA that set-version committed to .env.production
           SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
           echo "Waiting for SHA: ${SHORT_SHA}"
 
       - name: Wait for deployment
+        id: deploy_wait
         run: |
           SHORT_SHA="${{ steps.sha.outputs.sha }}"
           MAX_ATTEMPTS=15
           ATTEMPT=0
+          START_TIME=$(date +%s)
 
           echo "Polling https://saas.joefuentes.me/api/version for SHA ${SHORT_SHA}..."
 
@@ -37,7 +38,10 @@ jobs:
             echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: live=${LIVE_SHA} expected=${SHORT_SHA}"
 
             if [ "$LIVE_SHA" = "$SHORT_SHA" ]; then
-              echo "Deployment confirmed live!"
+              END_TIME=$(date +%s)
+              ELAPSED=$(( END_TIME - START_TIME ))
+              echo "deploy_time=${ELAPSED}" >> $GITHUB_OUTPUT
+              echo "Deployment confirmed live in ${ELAPSED}s!"
               exit 0
             fi
 
@@ -61,7 +65,43 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Run smoke tests
-        run: npx playwright test
+        id: playwright
+        run: npx playwright test 2>&1 | tee /tmp/playwright-output.txt; echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
+        continue-on-error: true
+
+      - name: Generate job summary
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+        run: |
+          node scripts/smoke-summary.js \
+            "${{ steps.sha.outputs.sha }}" \
+            "${{ steps.deploy_wait.outputs.deploy_time }}" \
+            "${{ steps.playwright.outputs.exit_code }}" \
+            "/tmp/playwright-output.txt"
+
+      - name: Set commit status
+        if: always()
+        run: |
+          SHA="${{ github.event.workflow_run.head_sha }}"
+          EXIT_CODE="${{ steps.playwright.outputs.exit_code }}"
+
+          if [ "$EXIT_CODE" = "0" ]; then
+            STATE="success"
+            DESCRIPTION="Smoke test passed"
+          else
+            STATE="failure"
+            DESCRIPTION="Smoke test failed"
+          fi
+
+          curl -s -X POST \
+            "https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/statuses/${SHA}" \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"state\":\"${STATE}\",\"description\":\"${DESCRIPTION}\",\"context\":\"smoke-test\"}"
+
+      - name: Fail if tests failed
+        if: steps.playwright.outputs.exit_code != '0'
+        run: exit 1
 
       - name: Upload test results
         if: failure()
