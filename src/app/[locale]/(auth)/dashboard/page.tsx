@@ -1,5 +1,6 @@
 import { getTranslations } from 'next-intl/server';
-import { auth } from '@clerk/nextjs/server';
+import { auth, clerkClient } from '@clerk/nextjs/server';
+import { prisma } from '@/lib/prisma';
 
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
@@ -11,8 +12,18 @@ const DashboardIndexPage = async () => {
 
   if (!userId) return null;
 
-  const resolvedOrgId = orgId ?? `org_${userId}`;
-  const subscriptionStatus = 'free';
+  // 1. Resolve org properly
+  const resolvedOrgId = orgId;
+
+  // 2. Get DB record (REAL SOURCE OF TRUTH)
+  const org = resolvedOrgId
+    ? await prisma.organization.findUnique({
+        where: { clerkOrgId: resolvedOrgId },
+      })
+    : null;
+
+  // 3. Fallback if not yet created
+  const subscriptionStatus = org?.plan ?? 'free';
 
   return (
     <>
@@ -24,7 +35,7 @@ const DashboardIndexPage = async () => {
       <div className="mx-6 mt-4 rounded-lg border bg-card p-4 text-sm">
         <div className="flex flex-col gap-1">
           <p><span className="font-medium">User:</span> {userId}</p>
-          <p><span className="font-medium">Org:</span> {resolvedOrgId}</p>
+          <p><span className="font-medium">Org:</span> {resolvedOrgId ?? 'No org'}</p>
           <p>
             <span className="font-medium">Subscription:</span>{' '}
             {subscriptionStatus === 'free' ? (
@@ -45,11 +56,11 @@ const DashboardIndexPage = async () => {
         )}
         title={t('message_state_title')}
         description={t('message_state_description')}
-        button={(
+        button={
           <div className="mt-2 text-sm text-muted-foreground">
             {t('message_state_alternative')}
           </div>
-        )}
+        }
       />
     </>
   );
