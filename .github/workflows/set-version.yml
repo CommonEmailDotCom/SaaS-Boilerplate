@@ -6,7 +6,10 @@ on:
 
 jobs:
   set-version:
-    if: "!contains(github.event.head_commit.message, 'ci: update commit sha')"
+    # Skip bot commits to avoid loops
+    if: |
+      !contains(github.event.head_commit.message, 'ci: update commit sha') &&
+      !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     permissions:
       contents: write
