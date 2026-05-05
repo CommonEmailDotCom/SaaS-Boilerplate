@@ -6,7 +6,8 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-RUN npm ci
+# HUSKY=0 skips the prepare script (husky install) which fails in CI/Docker
+RUN HUSKY=0 npm ci
 
 # ── Builder stage ─────────────────────────────────────────────────────────────
 FROM base AS builder
