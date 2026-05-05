@@ -12,85 +12,98 @@ export const Pricing = () => {
 
   return (
     <Section
-  subtitle={t('section_subtitle')}
-  title={t('section_title')}
-  description={t('section_description')}
->
-  <PricingInformation
-    buttonList={{
-      [PLAN_ID.FREE]: (
-        <Link
-          className={buttonVariants({
-            size: 'sm',
-            className: 'mt-5 w-full',
-          })}
-          href="/sign-up"
-        >
-          {t('button_text')}
-        </Link>
-      ),
+      subtitle={t('section_subtitle')}
+      title={t('section_title')}
+      description={t('section_description')}
+    >
+      <PricingInformation
+        buttonList={{
+          [PLAN_ID.FREE]: (
+            <Link
+              className={buttonVariants({
+                size: 'sm',
+                className: 'mt-5 w-full',
+              })}
+              href="/sign-up"
+            >
+              {t('button_text')}
+            </Link>
+          ),
 
-      [PLAN_ID.PREMIUM]: (
-        <button
-          className={buttonVariants({
-            size: 'sm',
-            className: 'mt-5 w-full',
-          })}
-          onClick={async () => {
-  try {
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-    });
+          [PLAN_ID.PREMIUM]: (
+            <button
+              className={buttonVariants({
+                size: 'sm',
+                className: 'mt-5 w-full',
+              })}
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/stripe/checkout', {
+                    method: 'POST',
+                  });
 
-    const text = await res.text();
-    console.log('RAW RESPONSE:', text);
+                  const text = await res.text();
 
-    const data = JSON.parse(text);
+                  console.log('STATUS:', res.status);
+                  console.log('RAW RESPONSE:', text);
 
-    if (data.url) {
-      window.location.href = data.url;
-    } else {
-      alert('No URL returned');
-    }
-  } catch (err) {
-    console.error(err);
-    alert('Something went wrong');
-  }
-}}
-        >
-          {t('button_text')}
-        </button>
-      ),
+                  let data: any = null;
 
-      [PLAN_ID.ENTERPRISE]: (
-        <button
-          className={buttonVariants({
-            size: 'sm',
-            className: 'mt-5 w-full',
-          })}
-          onClick={async () => {
-  alert('CLICKED');
+                  try {
+                    data = JSON.parse(text);
+                  } catch {
+                    alert('Invalid JSON response:\n' + text);
+                    return;
+                  }
 
-  try {
-    const res = await fetch('/api/stripe/checkout', {
-      method: 'POST',
-    });
+                  if (!res.ok) {
+                    alert(data?.error || 'Checkout failed');
+                    return;
+                  }
 
-    alert('STATUS: ' + res.status);
+                  if (data?.url) {
+                    window.location.href = data.url;
+                  } else {
+                    alert('No checkout URL returned:\n' + JSON.stringify(data));
+                  }
+                } catch (err) {
+                  console.error(err);
+                  alert('Something went wrong');
+                }
+              }}
+            >
+              {t('button_text')}
+            </button>
+          ),
 
-    const text = await res.text();
-    alert('RESPONSE: ' + text);
+          [PLAN_ID.ENTERPRISE]: (
+            <button
+              className={buttonVariants({
+                size: 'sm',
+                className: 'mt-5 w-full',
+              })}
+              onClick={async () => {
+                alert('CLICKED');
 
-  } catch (err) {
-    alert('ERROR: ' + String(err));
-  }
-}}
-        >
-          {t('button_text')}
-        </button>
-      ),
-    }}
-  />
-</Section>
+                try {
+                  const res = await fetch('/api/stripe/checkout', {
+                    method: 'POST',
+                  });
+
+                  const text = await res.text();
+
+                  alert('STATUS: ' + res.status);
+                  alert('RESPONSE: ' + text);
+                } catch (err) {
+                  alert('ERROR: ' + String(err));
+                }
+              }}
+            >
+              {t('button_text')}
+            </button>
+          ),
+        }}
+      />
+    </Section>
   );
 };
