@@ -1,9 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import {
-  type NextFetchEvent,
-  type NextRequest,
-  NextResponse,
-} from 'next/server';
+import { type NextFetchEvent, type NextRequest, NextResponse } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 
 import { AllLocales, AppConfig } from './utils/AppConfig';
@@ -19,57 +15,58 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/dashboard(.*)',
   '/onboarding(.*)',
   '/:locale/onboarding(.*)',
-  // ❌ API ROUTES REMOVED — must NOT be protected or localized
 ]);
 
-export default function middleware(
-  request: NextRequest,
-  event: NextFetchEvent,
-) {
-  const { pathname } = request.nextUrl;
+export default clerkMiddleware(async (auth, req) => {
+  const { pathname } = req.nextUrl;
 
-  // ❗ ALWAYS bypass middleware for API routes (Stripe, webhooks, etc.)
-  if (pathname.startsWith('/api')) {
-    return NextResponse.next();
+  // -----------------------------
+  // 1. Protect UI routes only
+  // -----------------------------
+  if (isProtectedRoute(req)) {
+    const locale =
+      req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
+
+    const signInUrl = new URL(`${locale}/sign-in`, req.url);
+
+    await auth.protect({
+      unauthenticatedUrl: signInUrl.toString(),
+    });
   }
 
-  return clerkMiddleware(async (auth, req) => {
-    // Only protect non-API protected pages
-    if (isProtectedRoute(req)) {
-      const locale =
-        req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
+  // -----------------------------
+  // 2. Read auth context safely
+  // -----------------------------
+  const authObj = await auth();
 
-      const signInUrl = new URL(`${locale}/sign-in`, req.url);
+  if (
+    authObj.userId &&
+    !authObj.orgId &&
+    req.nextUrl.pathname.includes('/dashboard') &&
+    !req.nextUrl.pathname.endsWith('/organization-selection')
+  ) {
+    const orgSelection = new URL(
+      '/onboarding/organization-selection',
+      req.url,
+    );
 
-      await auth.protect({
-        unauthenticatedUrl: signInUrl.toString(),
-      });
-    }
+    return NextResponse.redirect(orgSelection);
+  }
 
-    const authObj = await auth();
-
-    if (
-      authObj.userId &&
-      !authObj.orgId &&
-      req.nextUrl.pathname.includes('/dashboard') &&
-      !req.nextUrl.pathname.endsWith('/organization-selection')
-    ) {
-      const orgSelection = new URL(
-        '/onboarding/organization-selection',
-        req.url,
-      );
-
-      return NextResponse.redirect(orgSelection);
-    }
-
+  // -----------------------------
+  // 3. Apply i18n only to non-API routes
+  // -----------------------------
+  if (!pathname.startsWith('/api')) {
     return intlMiddleware(req);
-  })(request, event);
-}
+  }
+
+  return NextResponse.next();
+});
 
 export const config = {
   matcher: [
-    // ❗ IMPORTANT: exclude api routes from middleware entirely
-    '/((?!.+\\.[\\w]+$|_next|monitoring|api).*)',
+    // IMPORTANT: DO NOT exclude /api
+    '/((?!.+\\.[\\w]+$|_next|monitoring).*)',
     '/',
   ],
 };
