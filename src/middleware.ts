@@ -17,7 +17,7 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/onboarding(.*)',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware((auth, req) => {
   const { pathname } = req.nextUrl;
 
   // ✅ Always bypass API routes
@@ -25,12 +25,13 @@ export default clerkMiddleware(async (auth, req) => {
     return NextResponse.next();
   }
 
-  // ✅ Protect routes (Clerk handles redirect internally)
+  // ✅ Protect routes
   if (isProtectedRoute(req)) {
-    await auth.protect();
+    auth.protect(); // ✅ FIXED (NO await, NO parentheses on auth)
   }
 
-  const { userId, orgId } = await auth();
+  // ❌ DO NOT call auth() anymore
+  const { userId, orgId } = auth;
 
   // Redirect users without org to onboarding flow
   if (
