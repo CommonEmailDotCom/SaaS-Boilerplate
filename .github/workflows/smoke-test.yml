@@ -91,6 +91,7 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          git checkout -- .
           git pull --rebase origin main
           cp /tmp/smoke-status.json smoke-status.json
           git add smoke-status.json
