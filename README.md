@@ -1,6 +1,6 @@
 # Cutting Edge Chat
 
-[![Smoke Test](https://mcp.joefuentes.me/badge/smoke)](https://mcp.joefuentes.me/smoke-latest)
+[![Smoke Test](https://mcp.joefuentes.me/badge/smoke?v=2)](https://mcp.joefuentes.me/smoke-latest)
 [![Coolify](https://mcp.joefuentes.me/badge/coolify)](https://joefuentes.me/project/s8rwdhdza1xx5l9a6ju4yqqb/environment/d9wxurw0vd0tmr5vkspch2ho/application/tuk1rcjj16vlk33jrbx3c9d3)
 [![Live](https://img.shields.io/website?url=https%3A%2F%2Fsaas.joefuentes.me&label=live&style=flat-square)](https://saas.joefuentes.me)
 
