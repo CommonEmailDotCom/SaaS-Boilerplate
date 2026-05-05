@@ -52,13 +52,17 @@ ${playwrightOutput}`,
     summary = `## ${icon} Smoke Test ${status} — \`${sha}\`\n\n**Deploy time:** ${deployStr}\n\n\`\`\`\n${playwrightOutput}\n\`\`\``;
   }
 
-  // Write to GitHub Step Summary
+  // Write to GitHub Step Summary (renders in UI)
   const summaryFile = process.env.GITHUB_STEP_SUMMARY;
   if (summaryFile) {
     fs.appendFileSync(summaryFile, summary + '\n');
-  } else {
-    console.log(summary);
   }
+
+  // Write to file so it can be uploaded as artifact and read via API
+  fs.writeFileSync('/tmp/smoke-summary.md', summary + '\n');
+
+  // Print to stdout so it appears in the job log too
+  console.log(summary);
 }
 
 main();

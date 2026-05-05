@@ -70,6 +70,7 @@ jobs:
         continue-on-error: true
 
       - name: Generate job summary
+        if: always()
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
@@ -78,6 +79,14 @@ jobs:
             "${{ steps.deploy_wait.outputs.deploy_time }}" \
             "${{ steps.playwright.outputs.exit_code }}" \
             "/tmp/playwright-output.txt"
+
+      - name: Upload smoke summary artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-summary
+          path: /tmp/smoke-summary.md
+          retention-days: 30
 
       - name: Set commit status
         if: always()
@@ -103,7 +112,7 @@ jobs:
         if: steps.playwright.outputs.exit_code != '0'
         run: exit 1
 
-      - name: Upload test results
+      - name: Upload test results on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
