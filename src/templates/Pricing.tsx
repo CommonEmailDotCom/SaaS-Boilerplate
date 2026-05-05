@@ -18,36 +18,18 @@ export const Pricing = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          priceId, // optional (backend can fallback to env)
-        }),
+        body: JSON.stringify({ priceId }),
       });
 
-      const text = await res.text();
+      const data = await res.json();
 
-      console.log('STATUS:', res.status);
-      console.log('RAW RESPONSE:', text);
+      console.log('CHECKOUT RESPONSE:', data);
 
-      let data: any;
-
-      try {
-        data = JSON.parse(text);
-      } catch {
-        alert('Invalid server response:\n' + text);
-        return;
-      }
-
-      if (!res.ok) {
-        alert(data?.error || 'Checkout failed');
-        return;
-      }
-
-      if (data?.url) {
+      if (data.url) {
         window.location.href = data.url;
-        return;
+      } else {
+        alert(data.error || 'No URL returned');
       }
-
-      alert('No checkout URL returned:\n' + JSON.stringify(data));
     } catch (err) {
       console.error(err);
       alert('Something went wrong');
@@ -80,7 +62,7 @@ export const Pricing = () => {
                 size: 'sm',
                 className: 'mt-5 w-full',
               })}
-              onClick={() => handleCheckout()}
+              onClick={() => handleCheckout(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID)}
             >
               {t('button_text')}
             </button>
@@ -92,7 +74,7 @@ export const Pricing = () => {
                 size: 'sm',
                 className: 'mt-5 w-full',
               })}
-              onClick={() => handleCheckout()}
+              onClick={() => handleCheckout(process.env.NEXT_PUBLIC_STRIPE_PRICE_ID)}
             >
               {t('button_text')}
             </button>
