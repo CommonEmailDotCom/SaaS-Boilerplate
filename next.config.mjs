@@ -1,5 +1,4 @@
 import { fileURLToPath } from 'node:url';
-import { execSync } from 'node:child_process';
 
 import withBundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs';
@@ -16,14 +15,6 @@ const bundleAnalyzer = withBundleAnalyzer({
   enabled: process.env.ANALYZE === 'true',
 });
 
-// Inject git commit SHA at build time so we can verify which version is live
-let commitSha = 'unknown';
-try {
-  commitSha = execSync('git rev-parse --short HEAD').toString().trim();
-} catch {
-  // Not a git repo or git not available (e.g. some CI environments)
-}
-
 /** @type {import('next').NextConfig} */
 export default withSentryConfig(
   bundleAnalyzer(
@@ -37,7 +28,9 @@ export default withSentryConfig(
         serverComponentsExternalPackages: ['@electric-sql/pglite'],
       },
       env: {
-        NEXT_PUBLIC_COMMIT_SHA: commitSha,
+        // Injected by Coolify as a build arg: NEXT_PUBLIC_COMMIT_SHA=$NIXPACKS_GIT_COMMIT_SHA
+        // Falls back to 'unknown' if not set
+        NEXT_PUBLIC_COMMIT_SHA: process.env.NEXT_PUBLIC_COMMIT_SHA ?? 'unknown',
       },
     }),
   ),
