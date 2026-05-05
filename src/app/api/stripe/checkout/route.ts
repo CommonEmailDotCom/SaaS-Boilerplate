@@ -1,37 +1,30 @@
-import { NextResponse } from 'next/server';
-import { auth, clerkClient } from '@clerk/nextjs/server';
-import Stripe from 'stripe';
+import { NextResponse } from "next/server";
+import Stripe from "stripe";
+import { auth, clerkClient } from "@clerk/nextjs/server";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: "2024-06-20",
 });
 
 export async function POST(req: Request) {
   try {
-    // ✅ Clerk auth is async in your version
+    // ✅ Clerk auth (FIX: must await in newer versions)
     const { userId, orgId: existingOrgId } = await auth();
 
     if (!userId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    // ✅ allow priceId from request OR env fallback
-    const body = await req.json().catch(() => ({}));
-    const priceId =
-      body?.priceId || process.env.STRIPE_PRICE_ID;
-
-    if (!priceId) {
       return NextResponse.json(
-        { error: 'Missing STRIPE_PRICE_ID or priceId in request' },
-        { status: 500 }
+        { redirect: "/sign-in" },
+        { status: 401 }
       );
     }
 
     let orgId = existingOrgId;
 
-    // (optional but keeps your earlier SaaS logic intact)
+    // ✅ Create org if missing (FIX: clerkClient is async factory now)
     if (!orgId) {
-      const org = await clerkClient.organizations.createOrganization({
+      const client = await clerkClient();
+
+      const org = await client.organizations.createOrganization({
         name: `Workspace-${userId.slice(0, 6)}`,
         createdBy: userId,
       });
@@ -39,18 +32,22 @@ export async function POST(req: Request) {
       orgId = org.id;
     }
 
-    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
+    // ✅ Get Stripe Price ID from frontend
+    const body = await req.json();
+    const priceId: string | undefined = body?.priceId;
 
-    if (!appUrl) {
+    if (!priceId) {
       return NextResponse.json(
-        { error: 'Missing NEXT_PUBLIC_APP_URL' },
-        { status: 500 }
+        { error: "Missing STRIPE_PRICE_ID (priceId)" },
+        { status: 400 }
       );
     }
 
+    // ✅ Create Stripe checkout session
     const session = await stripe.checkout.sessions.create({
-      mode: 'subscription',
-      payment_method_types: ['card'],
+      mode: "subscription",
+
+      payment_method_types: ["card"],
 
       line_items: [
         {
@@ -59,35 +56,29 @@ export async function POST(req: Request) {
         },
       ],
 
-      success_url: `${appUrl}/dashboard?success=1`,
-      cancel_url: `${appUrl}/pricing?canceled=1`,
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=1`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
 
+      // ✅ SaaS linking layer (critical for webhook reconciliation)
       metadata: {
-        userId,
         orgId,
+        userId,
       },
 
       subscription_data: {
         metadata: {
-          userId,
           orgId,
+          userId,
         },
       },
     });
 
-    if (!session.url) {
-      return NextResponse.json(
-        { error: 'Stripe session missing URL' },
-        { status: 500 }
-      );
-    }
-
     return NextResponse.json({ url: session.url });
-  } catch (error: any) {
-    console.error('Stripe checkout error:', error);
+  } catch (error) {
+    console.error("Stripe checkout error:", error);
 
     return NextResponse.json(
-      { error: error.message ?? 'Checkout failed' },
+      { error: "Checkout session failed" },
       { status: 500 }
     );
   }
