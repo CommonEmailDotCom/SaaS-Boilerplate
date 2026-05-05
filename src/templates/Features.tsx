@@ -53,33 +53,35 @@ export const Features = () => {
   const t = useTranslations('Features');
 
   return (
-    <Background id="features">
-      <Section
-        subtitle={t('section_subtitle')}
-        title={t('section_title')}
-        description={t('section_description')}
-      >
-        <div className="grid grid-cols-1 gap-x-3 gap-y-8 md:grid-cols-3">
-          <FeatureCard icon={<ModelIcon />} title={t('feature1_title')}>
-            Choose from GPT-4o, Claude, Gemini, and more. Switch models any time without rebuilding your chatbot.
-          </FeatureCard>
-          <FeatureCard icon={<BotIcon />} title={t('feature2_title')}>
-            Match your brand with custom colours, logos, and a personality that speaks in your voice.
-          </FeatureCard>
-          <FeatureCard icon={<EmbedIcon />} title={t('feature3_title')}>
-            One line of code to add your chatbot to any website — no developer required.
-          </FeatureCard>
-          <FeatureCard icon={<HistoryIcon />} title={t('feature4_title')}>
-            Every conversation is stored so you can review chats, spot trends, and improve your bot over time.
-          </FeatureCard>
-          <FeatureCard icon={<KnowledgeIcon />} title={t('feature5_title')}>
-            Upload documents or point to URLs and your chatbot will answer questions from your own content.
-          </FeatureCard>
-          <FeatureCard icon={<AnalyticsIcon />} title={t('feature6_title')}>
-            See how many visitors are chatting, what they're asking, and how your bot is performing.
-          </FeatureCard>
-        </div>
-      </Section>
-    </Background>
+    <div id="features">
+      <Background>
+        <Section
+          subtitle={t('section_subtitle')}
+          title={t('section_title')}
+          description={t('section_description')}
+        >
+          <div className="grid grid-cols-1 gap-x-3 gap-y-8 md:grid-cols-3">
+            <FeatureCard icon={<ModelIcon />} title={t('feature1_title')}>
+              Choose from GPT-4o, Claude, Gemini, and more. Switch models any time without rebuilding your chatbot.
+            </FeatureCard>
+            <FeatureCard icon={<BotIcon />} title={t('feature2_title')}>
+              Match your brand with custom colours, logos, and a personality that speaks in your voice.
+            </FeatureCard>
+            <FeatureCard icon={<EmbedIcon />} title={t('feature3_title')}>
+              One line of code to add your chatbot to any website — no developer required.
+            </FeatureCard>
+            <FeatureCard icon={<HistoryIcon />} title={t('feature4_title')}>
+              Every conversation is stored so you can review chats, spot trends, and improve your bot over time.
+            </FeatureCard>
+            <FeatureCard icon={<KnowledgeIcon />} title={t('feature5_title')}>
+              Upload documents or point to URLs and your chatbot will answer questions from your own content.
+            </FeatureCard>
+            <FeatureCard icon={<AnalyticsIcon />} title={t('feature6_title')}>
+              See how many visitors are chatting, what they are asking, and how your bot is performing.
+            </FeatureCard>
+          </div>
+        </Section>
+      </Background>
+    </div>
   );
 };
