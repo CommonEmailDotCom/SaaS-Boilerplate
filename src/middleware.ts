@@ -15,8 +15,6 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/dashboard(.*)',
   '/onboarding(.*)',
   '/:locale/onboarding(.*)',
-  '/api(.*)',
-  '/:locale/api(.*)',
 ]);
 
 export default function middleware(
@@ -25,12 +23,13 @@ export default function middleware(
 ) {
   const { pathname } = request.nextUrl;
 
-  // Let public API routes bypass Clerk entirely
-  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
-    return NextResponse.next();
-  }
-
   return clerkMiddleware(async (auth, req) => {
+    // ✅ API routes STILL go through clerkMiddleware (important fix)
+    // but we do NOT redirect or protect them
+    if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+      return NextResponse.next();
+    }
+
     if (isProtectedRoute(req)) {
       const locale =
         req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
@@ -50,12 +49,9 @@ export default function middleware(
       req.nextUrl.pathname.includes('/dashboard') &&
       !req.nextUrl.pathname.endsWith('/organization-selection')
     ) {
-      const orgSelection = new URL(
-        '/onboarding/organization-selection',
-        req.url
+      return NextResponse.redirect(
+        new URL('/onboarding/organization-selection', req.url)
       );
-
-      return NextResponse.redirect(orgSelection);
     }
 
     return intlMiddleware(req);
