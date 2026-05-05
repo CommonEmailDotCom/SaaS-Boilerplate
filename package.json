@@ -1,5 +1,5 @@
 {
-  "name": "saas-boilerplate",
+  "name": "cutting-edge-chat",
   "version": "1.9.1",
   "scripts": {
     "dev:spotlight": "spotlight-sidecar",

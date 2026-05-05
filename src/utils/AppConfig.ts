@@ -5,13 +5,12 @@ import { BILLING_INTERVAL, type PricingPlan } from '@/types/Subscription';
 const localePrefix: LocalePrefix = 'as-needed';
 
 export const AppConfig = {
-  name: 'SaaS Template',
+  name: 'Cutting Edge Chat',
   locales: [
     {
       id: 'en',
       name: 'English',
     },
-    { id: 'fr', name: 'Français' },
   ],
   defaultLocale: 'en',
   localePrefix,
@@ -34,10 +33,10 @@ export const PricingPlanList: Record<string, PricingPlan> = {
     devPriceId: '',
     prodPriceId: '',
     features: {
-      teamMember: 2,
-      website: 2,
-      storage: 2,
-      transfer: 2,
+      teamMember: 1,
+      website: 1,
+      storage: 1,
+      transfer: 1,
     },
   },
   [PLAN_ID.PREMIUM]: {

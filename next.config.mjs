@@ -30,8 +30,8 @@ export default withSentryConfig(
     }),
   ),
   {
-    org: 'nextjs-boilerplate-org',
-    project: 'nextjs-boilerplate',
+    org: 'cutting-edge-chat',
+    project: 'cutting-edge-chat',
     silent: !process.env.CI,
     widenClientFileUpload: true,
     tunnelRoute: '/monitoring',
