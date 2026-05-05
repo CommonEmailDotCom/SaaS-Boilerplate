@@ -1,7 +1,7 @@
 {
-  "status": "unknown",
-  "sha": "pending",
-  "deployTime": "pending",
-  "runUrl": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/smoke-test.yml",
-  "timestamp": "2026-05-05T00:00:00.000Z"
+  "status": "passing",
+  "sha": "18a65db",
+  "deployTime": "5 min 2s",
+  "runUrl": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25397685806",
+  "timestamp": "2026-05-05T19:36:19.281Z"
 }
