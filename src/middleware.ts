@@ -1,9 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import {
-  type NextFetchEvent,
-  type NextRequest,
-  NextResponse,
-} from 'next/server';
+import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 
 import { AllLocales, AppConfig } from './utils/AppConfig';
@@ -25,57 +21,47 @@ const isProtectedRoute = createRouteMatcher([
 
 export default function middleware(
   request: NextRequest,
-  event: NextFetchEvent,
+  event: NextFetchEvent
 ) {
-  const pathname = request.nextUrl.pathname;
+  const { pathname } = request.nextUrl;
 
-  // ✅ CRITICAL FIX: bypass middleware for API routes (Stripe, webhooks, etc.)
+  // Let public API routes bypass Clerk entirely
   if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
-    return clerkMiddleware(async (_auth, req) => {
-      return NextResponse.next();
-    })(request, event);
+    return NextResponse.next();
   }
 
-  if (
-    pathname.includes('/sign-in') ||
-    pathname.includes('/sign-up') ||
-    isProtectedRoute(request)
-  ) {
-    return clerkMiddleware(async (auth, req) => {
-      if (isProtectedRoute(req)) {
-        const locale =
-          req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
+  return clerkMiddleware(async (auth, req) => {
+    if (isProtectedRoute(req)) {
+      const locale =
+        req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
 
-        const signInUrl = new URL(`${locale}/sign-in`, req.url);
+      const signInUrl = new URL(`${locale}/sign-in`, req.url);
 
-        await auth.protect({
-          unauthenticatedUrl: signInUrl.toString(),
-        });
-      }
+      await auth.protect({
+        unauthenticatedUrl: signInUrl.toString(),
+      });
+    }
 
-      const authObj = await auth();
+    const authObj = await auth();
 
-      if (
-        authObj.userId &&
-        !authObj.orgId &&
-        req.nextUrl.pathname.includes('/dashboard') &&
-        !req.nextUrl.pathname.endsWith('/organization-selection')
-      ) {
-        const orgSelection = new URL(
-          '/onboarding/organization-selection',
-          req.url,
-        );
+    if (
+      authObj.userId &&
+      !authObj.orgId &&
+      req.nextUrl.pathname.includes('/dashboard') &&
+      !req.nextUrl.pathname.endsWith('/organization-selection')
+    ) {
+      const orgSelection = new URL(
+        '/onboarding/organization-selection',
+        req.url
+      );
 
-        return NextResponse.redirect(orgSelection);
-      }
+      return NextResponse.redirect(orgSelection);
+    }
 
-      return intlMiddleware(req);
-    })(request, event);
-  }
-
-  return intlMiddleware(request);
+    return intlMiddleware(req);
+  })(request, event);
 }
 
 export const config = {
-  matcher: ['/((?!.*\\.[\\w]+$|_next|monitoring).*)', '/', '/(api|trpc)(.*)'],
+  matcher: ['/((?!.+\\.[\\w]+$|_next|monitoring).*)', '/', '/(api|trpc)(.*)'],
 };
