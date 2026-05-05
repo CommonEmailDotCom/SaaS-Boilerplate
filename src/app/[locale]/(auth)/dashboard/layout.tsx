@@ -17,6 +17,7 @@ export async function generateMetadata(props: { params: { locale: string } }) {
 
 export default function DashboardLayout(props: { children: React.ReactNode }) {
   const t = useTranslations('DashboardLayout');
+  const sha = process.env.NEXT_PUBLIC_COMMIT_SHA ?? 'unknown';
 
   return (
     <>
@@ -28,7 +29,6 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
                 href: '/dashboard',
                 label: t('home'),
               },
-              // PRO: Link to the /dashboard/todos page
               {
                 href: '/dashboard/organization-profile/organization-members',
                 label: t('members'),
@@ -37,7 +37,6 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
                 href: '/dashboard/organization-profile',
                 label: t('settings'),
               },
-              // PRO: Link to the /dashboard/billing page
             ]}
           />
         </div>
@@ -47,6 +46,11 @@ export default function DashboardLayout(props: { children: React.ReactNode }) {
         <div className="mx-auto max-w-screen-xl px-3 pb-16 pt-6">
           {props.children}
         </div>
+      </div>
+
+      <div className="border-t bg-background py-2 text-center text-xs text-muted-foreground">
+        v
+        {sha}
       </div>
     </>
   );

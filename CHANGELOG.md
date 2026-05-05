@@ -1,3 +1,33 @@
+## [1.9.1](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.9.0...v1.9.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* move ClerkProvider to root layout so useAuth works on landing page ([f8a3a55](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/f8a3a55676523236dfce6a46575432e73f2108a9))
+
+# [1.9.0](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.8.0...v1.9.0) (2026-05-05)
+
+
+### Features
+
+* redirect unauthenticated users to sign-up before checkout, add checkout redirect page ([d6d7c85](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/d6d7c85bbefdb6f791d244aace97cb551ff2de5a))
+
+# [1.8.0](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.7.7...v1.8.0) (2026-05-05)
+
+
+### Bug Fixes
+
+* inject git SHA via nixpacks.toml build phase, clean up version route and next.config ([5a800fb](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/5a800fb3f3b290a6f229d116a0a35c696cfbca6c))
+* normalize Clerk orgId as org primary key, implement full Stripe webhook and checkout flow ([9d17b7f](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/9d17b7fc1dc0e15398923f8e14d7f9185df22d26))
+* read NEXT_PUBLIC_COMMIT_SHA from env var instead of git command (Nixpacks has no .git) ([fb9cb45](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/fb9cb4546bd3b1b6aa8a92547fdb12a22afdb359))
+* replace require() with proper import in organization.ts, drop unused PLAN_ID ([cd11250](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/cd112509f07d4a669912edd2bf3567540ba624f9))
+
+
+### Features
+
+* inject git SHA at build time, add /api/version endpoint, show version in dashboard footer ([06d1d34](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/06d1d3432d391a61b5d5e32e07fb987c6500fd76))
+* use GitHub Actions to write commit SHA into .env.production before Coolify build ([e9c49a8](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/e9c49a81772db0c7c2658a4db2c2f402de41e330))
+
 ## [1.7.7](https://github.com/ixartz/SaaS-Boilerplate/compare/v1.7.6...v1.7.7) (2025-12-12)
 
 
