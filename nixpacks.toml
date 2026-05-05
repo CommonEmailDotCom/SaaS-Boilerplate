@@ -1,5 +1,0 @@
-[phases.build]
-cmds = [
-  "echo NEXT_PUBLIC_COMMIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo 'unknown') >> .env.production",
-  "npm run build"
-]
