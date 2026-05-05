@@ -78,6 +78,7 @@ jobs:
         if: always()
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RUN_URL="https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/${{ github.run_id }}"
           node scripts/smoke-summary.js \

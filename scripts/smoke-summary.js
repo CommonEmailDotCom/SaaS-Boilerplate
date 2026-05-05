@@ -12,7 +12,30 @@ const minutes = Math.floor(deploySeconds / 60);
 const seconds = deploySeconds % 60;
 const deployStr = minutes > 0 ? `${minutes} min ${seconds}s` : `${seconds}s`;
 
+const REPO = 'CommonEmailDotCom/SaaS-Boilerplate';
+const commitUrl = `https://github.com/${REPO}/commit/${sha}`;
+
+async function getCommitMessage(sha) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${REPO}/commits/${sha}`, {
+      headers: {
+        'Authorization': 'Bearer ' + process.env.GITHUB_TOKEN,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    });
+    const data = await res.json();
+    // First line of commit message only
+    return data.commit?.message?.split('\n')[0] || '';
+  } catch (err) {
+    return '';
+  }
+}
+
 async function main() {
+  const commitMessage = await getCommitMessage(sha);
+  const shaLink = `[\`${sha}\`](${commitUrl})`;
+  const commitInfo = commitMessage ? `${shaLink} — ${commitMessage}` : shaLink;
+
   let summary;
 
   try {
@@ -31,7 +54,7 @@ async function main() {
           content: `Analyze this Playwright smoke test output and generate a GitHub Actions job summary in markdown.
 
 Include:
-- A header with pass/fail status emoji (🟢 or 🔴), the SHA (${sha}), and deploy time (${deployStr})
+- A header with pass/fail status emoji (🟢 or 🔴), then this exact markdown for the commit (do not modify it): ${commitInfo}, and deploy time (${deployStr})
 - A table of each test.step() result with ✅ or ❌
 - If there are failures: a brief plain-english explanation of what broke and whether it looks like a real regression or an infrastructure flap
 
@@ -48,7 +71,7 @@ ${playwrightOutput}`,
   } catch (err) {
     const icon = passed ? '🟢' : '🔴';
     const status = passed ? 'Passed' : 'Failed';
-    summary = `## ${icon} Smoke Test ${status} — \`${sha}\`\n\n**Deploy time:** ${deployStr}\n\n\`\`\`\n${playwrightOutput}\n\`\`\``;
+    summary = `## ${icon} Smoke Test ${status} — ${commitInfo}\n\n**Deploy time:** ${deployStr}\n\n\`\`\`\n${playwrightOutput}\n\`\`\``;
   }
 
   // Write to GitHub Step Summary (renders in UI)
