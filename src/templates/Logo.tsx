@@ -5,7 +5,7 @@ export const Logo = (props: {
 }) => (
   <div className="flex items-center text-xl font-semibold">
     <svg
-      className="mr-1 size-8 stroke-current stroke-2"
+      className="mr-1.5 size-8 stroke-current stroke-2"
       xmlns="http://www.w3.org/2000/svg"
       viewBox="0 0 24 24"
       fill="none"
@@ -13,10 +13,7 @@ export const Logo = (props: {
       strokeLinejoin="round"
     >
       <path d="M0 0h24v24H0z" stroke="none" />
-      <rect x="3" y="12" width="6" height="8" rx="1" />
-      <rect x="9" y="8" width="6" height="12" rx="1" />
-      <rect x="15" y="4" width="6" height="16" rx="1" />
-      <path d="M4 20h14" />
+      <path d="M3 20l1.3-3.9C1.976 14.663 2.1 11.065 4.222 8.55 6.346 6.035 9.89 4.865 13.37 5.315 16.851 5.765 19.794 7.773 21.043 10.62c1.249 2.848.665 6.139-1.478 8.43-2.144 2.29-5.5 3.27-8.758 2.54L3 20" />
     </svg>
     {!props.isTextHidden && AppConfig.name}
   </div>
