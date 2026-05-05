@@ -1,83 +1,78 @@
 import { NextResponse } from 'next/server';
-import { auth } from '@clerk/nextjs/server';
 import Stripe from 'stripe';
+import { auth, clerkClient } from '@clerk/nextjs/server';
 
-const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
-const priceId = process.env.STRIPE_PRICE_ID;
-const appUrl = process.env.NEXT_PUBLIC_APP_URL;
-
-if (!stripeSecretKey) {
-  throw new Error('Missing STRIPE_SECRET_KEY');
-}
-
-const stripe = new Stripe(stripeSecretKey, {
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
 
-export async function POST() {
+export async function POST(req: Request) {
   try {
-    const { userId } = await auth();
+    const { userId, orgId: existingOrgId } = auth();
 
     if (!userId) {
       return NextResponse.json(
-        { error: 'Unauthorized' },
+        { redirect: '/sign-in' },
         { status: 401 }
       );
     }
 
-    if (!priceId) {
-      return NextResponse.json(
-        { error: 'Missing STRIPE_PRICE_ID' },
-        { status: 500 }
-      );
+    let orgId = existingOrgId;
+
+    // Create org if missing
+    if (!orgId) {
+      const org = await clerkClient.organizations.createOrganization({
+        name: `Workspace-${userId.slice(0, 6)}`,
+        createdBy: userId,
+      });
+
+      orgId = org.id;
     }
 
-    if (!appUrl) {
+    const body = await req.json().catch(() => ({}));
+    const priceId =
+      body.priceId || process.env.STRIPE_PRICE_ID;
+
+    if (!priceId) {
       return NextResponse.json(
-        { error: 'Missing NEXT_PUBLIC_APP_URL' },
-        { status: 500 }
+        { error: 'Missing priceId' },
+        { status: 400 }
       );
     }
 
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       payment_method_types: ['card'],
+
       line_items: [
         {
           price: priceId,
           quantity: 1,
         },
       ],
-      success_url: `${appUrl}/dashboard?success=true`,
-      cancel_url: `${appUrl}/dashboard?canceled=true`,
+
+      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=1`,
+      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+
       metadata: {
+        orgId,
         userId,
+      },
+
+      subscription_data: {
+        metadata: {
+          orgId,
+          userId,
+        },
       },
     });
 
-    // IMPORTANT: Stripe sometimes returns null in edge misconfig cases
-    if (!session?.url) {
-      console.error('Stripe session missing URL:', session);
-
-      return NextResponse.json(
-        {
-          error: 'Stripe did not return a checkout URL',
-          sessionId: session?.id ?? null,
-        },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      url: session.url,
-    });
+    return NextResponse.json({ url: session.url });
   } catch (error: any) {
     console.error('Stripe checkout error:', error);
 
     return NextResponse.json(
-      {
-        error: error?.message ?? 'Checkout failed',
-      },
+      { error: error.message ?? 'Checkout failed' },
       { status: 500 }
     );
   }
