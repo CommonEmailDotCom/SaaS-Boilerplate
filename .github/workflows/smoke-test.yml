@@ -1,0 +1,72 @@
+name: Smoke test
+
+on:
+  workflow_run:
+    workflows: ["Set commit SHA for build"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  smoke-test:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Get deployed SHA
+        id: sha
+        run: |
+          # Extract the SHA that set-version committed to .env.production
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+          echo "Waiting for SHA: ${SHORT_SHA}"
+
+      - name: Wait for deployment
+        run: |
+          SHORT_SHA="${{ steps.sha.outputs.sha }}"
+          MAX_ATTEMPTS=15
+          ATTEMPT=0
+
+          echo "Polling https://saas.joefuentes.me/api/version for SHA ${SHORT_SHA}..."
+
+          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
+            ATTEMPT=$((ATTEMPT + 1))
+            LIVE_SHA=$(curl -sf https://saas.joefuentes.me/api/version | jq -r '.sha' 2>/dev/null || echo "")
+
+            echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: live=${LIVE_SHA} expected=${SHORT_SHA}"
+
+            if [ "$LIVE_SHA" = "$SHORT_SHA" ]; then
+              echo "Deployment confirmed live!"
+              exit 0
+            fi
+
+            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
+              sleep 60
+            fi
+          done
+
+          echo "Deployment did not go live within 15 minutes"
+          exit 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20.x
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run smoke tests
+        run: npx playwright test
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: playwright-report/
+          retention-days: 7
