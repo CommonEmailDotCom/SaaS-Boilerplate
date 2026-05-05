@@ -6,7 +6,6 @@ on:
 
 jobs:
   set-version:
-    # Skip bot commits to avoid loops
     if: |
       !contains(github.event.head_commit.message, 'ci: update commit sha') &&
       !contains(github.event.head_commit.message, 'chore(release):')
@@ -34,13 +33,13 @@ jobs:
           git diff --staged --quiet || git commit -m "ci: update commit sha to $(echo "${{ github.sha }}" | cut -c1-7)"
           git push
 
-      - name: Trigger Coolify via MCP server
+      - name: Trigger Coolify deployment
         run: |
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
-            "https://mcp.joefuentes.me/mcp" \
+            "https://mcp.joefuentes.me/trigger-deploy?uuid=tuk1rcjj16vlk33jrbx3c9d3" \
             -H "Authorization: Bearer ${{ secrets.MCP_BEARER_TOKEN }}" \
             -H "Content-Type: application/json" \
-            -d '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"coolify_trigger_deploy","arguments":{"app_uuid":"tuk1rcjj16vlk33jrbx3c9d3"}}}')
+            -d '{}')
           echo "Response: $RESPONSE"
           HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
           if [ "$HTTP_STATUS" != "200" ]; then
