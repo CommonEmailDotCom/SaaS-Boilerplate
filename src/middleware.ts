@@ -1,6 +1,33 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import createMiddleware from 'next-intl/middleware'
 import { NextResponse } from 'next/server'
 
+import { AllLocales, AppConfig } from './utils/AppConfig'
+
+/**
+ * next-intl middleware (REQUIRED for your routing)
+ */
+const intlMiddleware = createMiddleware({
+  locales: AllLocales,
+  localePrefix: AppConfig.localePrefix,
+  defaultLocale: AppConfig.defaultLocale,
+})
+
+/**
+ * Routes that require auth (matches upstream behavior)
+ */
+const isProtectedRoute = createRouteMatcher([
+  '/dashboard(.*)',
+  '/:locale/dashboard(.*)',
+  '/onboarding(.*)',
+  '/:locale/onboarding(.*)',
+  '/api(.*)',
+  '/:locale/api(.*)',
+])
+
+/**
+ * Public routes (safe to bypass auth)
+ */
 const isPublicRoute = createRouteMatcher([
   '/',
   '/sign-in(.*)',
@@ -9,30 +36,57 @@ const isPublicRoute = createRouteMatcher([
 ])
 
 export default clerkMiddleware(async (auth, req) => {
-  const { userId, orgId, redirectToSignIn } = await auth()
+  /**
+   * IMPORTANT:
+   * auth() is synchronous in v6 middleware context
+   */
+  const { userId, orgId } = auth()
 
-  // Allow public routes
-  if (isPublicRoute(req)) {
-    return NextResponse.next()
+  const path = req.nextUrl.pathname
+
+  /**
+   * Always run intl FIRST for non-protected routes
+   */
+  if (!isProtectedRoute(req) && isPublicRoute(req)) {
+    return intlMiddleware(req)
   }
 
-  // If not authenticated, redirect
-  if (!userId) {
-    return redirectToSignIn()
+  /**
+   * Protect sensitive routes
+   */
+  if (isProtectedRoute(req)) {
+    if (!userId) {
+      return auth().redirectToSignIn()
+    }
+
+    /**
+     * Onboarding gate (RESTORED from upstream)
+     */
+    if (
+      userId &&
+      !orgId &&
+      path.includes('/dashboard') &&
+      !path.endsWith('/organization-selection')
+    ) {
+      const orgSelection = new URL(
+        '/onboarding/organization-selection',
+        req.url
+      )
+
+      return NextResponse.redirect(orgSelection)
+    }
   }
 
-  // Optional: org-based gating (only if you actually use orgs)
-  if (!orgId) {
-    // you can decide whether to block or allow here
-  }
-
-  return NextResponse.next()
+  /**
+   * Default: continue intl routing
+   */
+  return intlMiddleware(req)
 })
 
 export const config = {
   matcher: [
-    '/((?!_next|.*\\..*).*)',
     '/',
     '/(api|trpc)(.*)',
+    '/((?!_next|.*\\..*).*)',
   ],
 }
