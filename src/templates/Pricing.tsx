@@ -69,7 +69,7 @@ export const Pricing = () => {
           className={buttonVariants({ size: 'sm', className: 'mt-5 w-full' })}
           onClick={() => handleCheckout(planId)}
         >
-          Manage Billing
+          {t('manage_billing_button')}
         </button>
       );
     }

@@ -38,7 +38,8 @@
     "section_subtitle": "简单透明的定价",
     "section_title": "选择适合您业务的方案",
     "section_description": "免费开始，随业务增长按需扩展。每个方案都包含一个随时可部署的完全定制聊天机器人。",
-    "button_text": "开始使用"
+    "button_text": "开始使用",
+    "manage_billing_button": "管理账单"
   },
   "PricingPlan": {
     "free_plan_name": "免费版",

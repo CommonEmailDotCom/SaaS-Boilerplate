@@ -38,7 +38,8 @@
     "section_subtitle": "सरल और पारदर्शी मूल्य निर्धारण",
     "section_title": "अपने व्यवसाय के लिए उपयुक्त प्लान चुनें",
     "section_description": "मुफ्त शुरू करें और जरूरत के अनुसार बढ़ें। हर प्लान में एक पूरी तरह से कस्टम चैटबॉट शामिल है।",
-    "button_text": "शुरू करें"
+    "button_text": "शुरू करें",
+    "manage_billing_button": "बिलिंग प्रबंधित करें"
   },
   "PricingPlan": {
     "free_plan_name": "मुफ्त",

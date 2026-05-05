@@ -38,7 +38,8 @@
     "section_subtitle": "Prezzi semplici e trasparenti",
     "section_title": "Scegli il piano adatto alla tua azienda",
     "section_description": "Inizia gratis e scala con la tua crescita. Ogni piano include un chatbot completamente personalizzato pronto per essere distribuito.",
-    "button_text": "Inizia"
+    "button_text": "Inizia",
+    "manage_billing_button": "Gestisci fatturazione"
   },
   "PricingPlan": {
     "free_plan_name": "Gratuito",

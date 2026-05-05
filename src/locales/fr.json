@@ -38,7 +38,8 @@
     "section_subtitle": "Tarification simple et transparente",
     "section_title": "Choisissez le plan adapté à votre entreprise",
     "section_description": "Commencez gratuitement et évoluez selon vos besoins. Chaque plan inclut un chatbot entièrement personnalisé prêt à être déployé.",
-    "button_text": "Commencer"
+    "button_text": "Commencer",
+    "manage_billing_button": "Gérer la facturation"
   },
   "PricingPlan": {
     "free_plan_name": "Gratuit",

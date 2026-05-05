@@ -38,7 +38,8 @@
     "section_subtitle": "Simple, transparent pricing",
     "section_title": "Choose the plan that fits your business",
     "section_description": "Start free and scale as you grow. Every plan includes a fully branded chatbot ready to deploy on your website.",
-    "button_text": "Get Started"
+    "button_text": "Get Started",
+    "manage_billing_button": "Manage Billing"
   },
   "PricingPlan": {
     "free_plan_name": "Free",

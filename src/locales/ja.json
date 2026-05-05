@@ -38,7 +38,8 @@
     "section_subtitle": "シンプルで透明な料金体系",
     "section_title": "ビジネスに合ったプランを選択",
     "section_description": "無料から始めて、成長に合わせてスケールアップ。すべてのプランにデプロイ準備済みの完全カスタムチャットボットが含まれます。",
-    "button_text": "始める"
+    "button_text": "始める",
+    "manage_billing_button": "請求を管理"
   },
   "PricingPlan": {
     "free_plan_name": "無料",
