@@ -1,7 +1,7 @@
 # Cutting Edge Chat
 
 [![Smoke Test](https://mcp.joefuentes.me/badge/smoke?v=2)](https://mcp.joefuentes.me/smoke-latest)
-[![Coolify](https://mcp.joefuentes.me/badge/coolify?v=2)](https://joefuentes.me/project/s8rwdhdza1xx5l9a6ju4yqqb/environment/d9wxurw0vd0tmr5vkspch2ho/application/tuk1rcjj16vlk33jrbx3c9d3/deployments)
+[![Coolify](https://mcp.joefuentes.me/badge/coolify?v=2)](https://joefuentes.me/project/s8rwdhdza1xx5l9a6ju4yqqb/environment/d9wxurw0vd0tmr5vkspch2ho/application/tuk1rcjj16vlk33jrbx3c9d3/deployment)
 [![Live](https://img.shields.io/website?url=https%3A%2F%2Fsaas.joefuentes.me&label=live&style=flat-square&v=2)](https://saas.joefuentes.me)
 
 AI-powered custom chatbots for your website. This repository is the **business layer** — authentication, subscriptions, billing, and the customer dashboard. The chatbot product itself is a separate service.
