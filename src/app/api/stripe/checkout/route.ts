@@ -8,6 +8,17 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
 });
 
+// Map our app locales to Stripe's supported locale values
+// https://stripe.com/docs/api/checkout/sessions/create#create_checkout_session-locale
+const stripeLocaleMap: Record<string, Stripe.Checkout.SessionCreateParams.Locale> = {
+  fr: 'fr',
+  es: 'es',
+  it: 'it',
+  ja: 'ja',
+  zh: 'zh',
+  // hi: not supported by Stripe, falls back to auto
+};
+
 export async function POST(req: Request) {
   try {
     const { userId, orgId } = await auth();
@@ -18,6 +29,8 @@ export async function POST(req: Request) {
 
     const body = await req.json();
     const priceId: string | undefined = body.priceId;
+    const stripeLocale: Stripe.Checkout.SessionCreateParams.Locale
+      = stripeLocaleMap[body.locale] ?? 'auto';
 
     if (!priceId) {
       return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
@@ -27,17 +40,11 @@ export async function POST(req: Request) {
     let finalOrgId = orgId;
 
     if (!finalOrgId) {
-      // Check if user already belongs to an org with an active subscription
-      // to prevent creating duplicate orgs on repeated checkout attempts
-      const memberships = await clerk.users.getOrganizationMembershipList({
-        userId,
-      });
+      const memberships = await clerk.users.getOrganizationMembershipList({ userId });
 
       if (memberships.data.length > 0) {
-        // Use the first existing org
         finalOrgId = memberships.data[0]!.organization.id;
       } else {
-        // No existing org — create one
         const org = await clerk.organizations.createOrganization({
           name: `Workspace-${userId.slice(0, 6)}`,
           createdBy: userId,
@@ -46,18 +53,17 @@ export async function POST(req: Request) {
       }
     }
 
-    // If org already has an active subscription, redirect to Stripe portal instead
     const existingOrg = await getOrganization(finalOrgId);
 
     if (existingOrg?.stripeSubscriptionStatus === 'active' && existingOrg?.stripeCustomerId) {
       const portalSession = await stripe.billingPortal.sessions.create({
         customer: existingOrg.stripeCustomerId,
         return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+        locale: stripeLocale === 'auto' ? 'auto' : stripeLocale,
       });
       return NextResponse.json({ url: portalSession.url });
     }
 
-    // ── Get or create Stripe Customer ─────────────────────────────────────────
     let stripeCustomerId: string | undefined;
 
     if (existingOrg?.stripeCustomerId) {
@@ -73,16 +79,15 @@ export async function POST(req: Request) {
       });
 
       stripeCustomerId = customer.id;
-
       await upsertOrganization(finalOrgId, { stripeCustomerId });
     }
 
-    // ── Create Stripe Checkout Session ────────────────────────────────────────
     const session = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: stripeCustomerId,
       payment_method_types: ['card'],
       line_items: [{ price: priceId, quantity: 1 }],
+      locale: stripeLocale,
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
       metadata: { userId, orgId: finalOrgId },

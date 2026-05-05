@@ -18,7 +18,6 @@ export const Pricing = () => {
   const locale = useLocale();
   const [isSubscribed, setIsSubscribed] = useState(false);
 
-  // Check if current org already has an active subscription
   useEffect(() => {
     if (!isSignedIn) return;
     fetch('/api/billing/status')
@@ -47,7 +46,7 @@ export const Pricing = () => {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ priceId }),
+        body: JSON.stringify({ priceId, locale }),
       });
 
       const data = await res.json();
@@ -63,7 +62,6 @@ export const Pricing = () => {
     }
   };
 
-  // Paid plan button — shows "Manage Billing" if already subscribed
   const paidPlanButton = (planId: string) => {
     if (isSubscribed) {
       return (
