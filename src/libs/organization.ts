@@ -2,6 +2,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '@/libs/DB';
 import { organizationSchema } from '@/models/Schema';
+import { PricingPlanList } from '@/utils/AppConfig';
 
 export type OrgBillingState = typeof organizationSchema.$inferSelect;
 
@@ -67,11 +68,9 @@ export async function getOrganizationByStripeCustomerId(
 export function getPlanId(org: OrgBillingState | null): 'free' | 'premium' | 'enterprise' {
   if (!org || org.stripeSubscriptionStatus !== 'active') return 'free';
 
-  // Map Stripe price ID back to plan — falls through to 'premium' if unknown
-  const { PLAN_ID, PricingPlanList } = require('@/utils/AppConfig');
   const billingEnv = process.env.BILLING_PLAN_ENV ?? 'dev';
 
-  for (const plan of Object.values(PricingPlanList) as any[]) {
+  for (const plan of Object.values(PricingPlanList)) {
     const priceId
       = billingEnv === 'prod'
         ? plan.prodPriceId
@@ -80,7 +79,7 @@ export function getPlanId(org: OrgBillingState | null): 'free' | 'premium' | 'en
           : plan.devPriceId;
 
     if (priceId && priceId === org.stripeSubscriptionPriceId) {
-      return plan.id;
+      return plan.id as 'free' | 'premium' | 'enterprise';
     }
   }
 
