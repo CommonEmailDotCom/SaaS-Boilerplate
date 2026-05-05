@@ -1,0 +1,49 @@
+name: Set commit SHA for build
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  set-version:
+    if: |
+      !contains(github.event.head_commit.message, 'ci: update commit sha') &&
+      !contains(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Write SHA to .env.production
+        run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          grep -v "NEXT_PUBLIC_COMMIT_SHA" .env.production 2>/dev/null > .env.production.tmp || true
+          echo "NEXT_PUBLIC_COMMIT_SHA=${SHORT_SHA}" >> .env.production.tmp
+          mv .env.production.tmp .env.production
+
+      - name: Commit updated .env.production
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .env.production
+          git diff --staged --quiet || git commit -m "ci: update commit sha to $(echo "${{ github.sha }}" | cut -c1-7)"
+          git push
+
+      - name: Trigger Coolify deployment
+        run: |
+          RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
+            "https://mcp.joefuentes.me/trigger-deploy?uuid=tuk1rcjj16vlk33jrbx3c9d3" \
+            -H "Authorization: Bearer ${{ secrets.MCP_BEARER_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            -d '{}')
+          echo "Response: $RESPONSE"
+          HTTP_STATUS=$(echo "$RESPONSE" | grep "HTTP_STATUS" | cut -d: -f2)
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Failed to trigger Coolify deploy, status: $HTTP_STATUS"
+            exit 1
+          fi
+          echo "Coolify deployment triggered successfully"
