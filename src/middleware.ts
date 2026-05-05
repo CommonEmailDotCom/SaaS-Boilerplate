@@ -1,4 +1,5 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 
 import { AllLocales, AppConfig } from './utils/AppConfig';
@@ -16,33 +17,33 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/onboarding(.*)',
 ]);
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   const { pathname } = req.nextUrl;
 
-  // Always bypass API routes (Stripe, webhooks, etc.)
+  // ✅ Always bypass API routes
   if (pathname.startsWith('/api')) {
-    return intlMiddleware(req);
+    return NextResponse.next();
   }
 
-  // Protect routes
+  // ✅ Protect routes (Clerk handles redirect internally)
   if (isProtectedRoute(req)) {
-    auth().protect();
+    await auth.protect();
   }
 
-  const { userId, orgId } = auth();
+  const { userId, orgId } = await auth();
 
-  // Redirect onboarding if user has no org
+  // Redirect users without org to onboarding flow
   if (
     userId &&
     !orgId &&
     pathname.includes('/dashboard') &&
     !pathname.endsWith('/organization-selection')
   ) {
-    const url = new URL('/onboarding/organization-selection', req.url);
-    return Response.redirect(url);
+    return NextResponse.redirect(
+      new URL('/onboarding/organization-selection', req.url),
+    );
   }
 
-  // Run i18n middleware last
   return intlMiddleware(req);
 });
 
