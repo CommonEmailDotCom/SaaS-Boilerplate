@@ -1,5 +1,4 @@
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
-import { type NextFetchEvent, type NextRequest, NextResponse } from 'next/server';
 import createMiddleware from 'next-intl/middleware';
 
 import { AllLocales, AppConfig } from './utils/AppConfig';
@@ -17,56 +16,39 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/onboarding(.*)',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware((auth, req) => {
   const { pathname } = req.nextUrl;
 
-  // -----------------------------
-  // 1. Protect UI routes only
-  // -----------------------------
-  if (isProtectedRoute(req)) {
-    const locale =
-      req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
-
-    const signInUrl = new URL(`${locale}/sign-in`, req.url);
-
-    await auth.protect({
-      unauthenticatedUrl: signInUrl.toString(),
-    });
-  }
-
-  // -----------------------------
-  // 2. Read auth context safely
-  // -----------------------------
-  const authObj = await auth();
-
-  if (
-    authObj.userId &&
-    !authObj.orgId &&
-    req.nextUrl.pathname.includes('/dashboard') &&
-    !req.nextUrl.pathname.endsWith('/organization-selection')
-  ) {
-    const orgSelection = new URL(
-      '/onboarding/organization-selection',
-      req.url,
-    );
-
-    return NextResponse.redirect(orgSelection);
-  }
-
-  // -----------------------------
-  // 3. Apply i18n only to non-API routes
-  // -----------------------------
-  if (!pathname.startsWith('/api')) {
+  // Always bypass API routes (Stripe, webhooks, etc.)
+  if (pathname.startsWith('/api')) {
     return intlMiddleware(req);
   }
 
-  return NextResponse.next();
+  // Protect routes
+  if (isProtectedRoute(req)) {
+    auth().protect();
+  }
+
+  const { userId, orgId } = auth();
+
+  // Redirect onboarding if user has no org
+  if (
+    userId &&
+    !orgId &&
+    pathname.includes('/dashboard') &&
+    !pathname.endsWith('/organization-selection')
+  ) {
+    const url = new URL('/onboarding/organization-selection', req.url);
+    return Response.redirect(url);
+  }
+
+  // Run i18n middleware last
+  return intlMiddleware(req);
 });
 
 export const config = {
   matcher: [
-    // IMPORTANT: DO NOT exclude /api
-    '/((?!.+\\.[\\w]+$|_next|monitoring).*)',
+    '/((?!.+\\.[\\w]+$|_next|monitoring|api).*)',
     '/',
   ],
 };
