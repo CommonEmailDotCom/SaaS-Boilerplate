@@ -1,7 +1,7 @@
 import '@/styles/global.css';
 
 import type { Metadata } from 'next';
-import { enUS, frFR, esES, itIT, jaJP, zhCN, hiIN } from '@clerk/localizations';
+import { enUS, frFR, esES, itIT, jaJP, zhCN } from '@clerk/localizations';
 import { ClerkProvider } from '@clerk/nextjs';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
@@ -29,7 +29,7 @@ const clerkLocalizationMap: Record<string, any> = {
   it: itIT,
   ja: jaJP,
   zh: zhCN,
-  hi: hiIN,
+  // hi: hiIN — requires @clerk/localizations >= 4.x, add after upgrade
 };
 
 export default function RootLayout(props: {
