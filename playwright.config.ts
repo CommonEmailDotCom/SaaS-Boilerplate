@@ -7,7 +7,7 @@ export default defineConfig({
   testMatch: '*.spec.ts',
   timeout: 30 * 1000,
   forbidOnly: !!process.env.CI,
-  reporter: process.env.CI ? 'github' : 'list',
+  reporter: process.env.CI ? [['github'], ['verbose']] : 'list',
 
   expect: {
     timeout: 10 * 1000,
