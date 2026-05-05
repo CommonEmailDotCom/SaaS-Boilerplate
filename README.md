@@ -1,5 +1,8 @@
 # Cutting Edge Chat
 
+[![Smoke Test](https://mcp.joefuentes.me/badge/smoke)](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/smoke-test.yml)
+[![Deploy](https://img.shields.io/website?url=https%3A%2F%2Fsaas.joefuentes.me&label=live&style=flat-square)](https://saas.joefuentes.me)
+
 AI-powered custom chatbots for your website. This repository is the **business layer** — authentication, subscriptions, billing, and the customer dashboard. The chatbot product itself is a separate service.
 
 ## Stack

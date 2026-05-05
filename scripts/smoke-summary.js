@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Called by smoke-test.yml to generate a GitHub Actions job summary via Claude API
-// Usage: node scripts/smoke-summary.js <sha> <deploy_seconds> <exit_code> <playwright_output_file>
+// Usage: node scripts/smoke-summary.js <sha> <deploy_seconds> <exit_code> <playwright_output_file> <run_url>
 
 const fs = require('fs');
 
-const [,, sha, deploySeconds, exitCode, outputFile] = process.argv;
+const [,, sha, deploySeconds, exitCode, outputFile, runUrl] = process.argv;
 const passed = exitCode === '0';
 const playwrightOutput = fs.readFileSync(outputFile, 'utf8');
 
@@ -46,7 +46,6 @@ ${playwrightOutput}`,
     const data = await response.json();
     summary = data.content[0].text;
   } catch (err) {
-    // Fallback if Claude API fails
     const icon = passed ? '🟢' : '🔴';
     const status = passed ? 'Passed' : 'Failed';
     summary = `## ${icon} Smoke Test ${status} — \`${sha}\`\n\n**Deploy time:** ${deployStr}\n\n\`\`\`\n${playwrightOutput}\n\`\`\``;
@@ -61,7 +60,17 @@ ${playwrightOutput}`,
   // Write to file so it can be uploaded as artifact and read via API
   fs.writeFileSync('/tmp/smoke-summary.md', summary + '\n');
 
-  // Print to stdout so it appears in the job log too
+  // Write smoke-status.json for the badge endpoint
+  const status = {
+    status: passed ? 'passing' : 'failing',
+    sha,
+    deployTime: deployStr,
+    runUrl: runUrl || '',
+    timestamp: new Date().toISOString(),
+  };
+  fs.writeFileSync('smoke-status.json', JSON.stringify(status, null, 2) + '\n');
+
+  // Print to stdout so it appears in the job log
   console.log(summary);
 }
 

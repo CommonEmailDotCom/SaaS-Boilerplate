@@ -13,6 +13,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Get deployed SHA
         id: sha
@@ -74,11 +76,23 @@ jobs:
         env:
           ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
         run: |
+          RUN_URL="https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/${{ github.run_id }}"
           node scripts/smoke-summary.js \
             "${{ steps.sha.outputs.sha }}" \
             "${{ steps.deploy_wait.outputs.deploy_time }}" \
             "${{ steps.playwright.outputs.exit_code }}" \
-            "/tmp/playwright-output.txt"
+            "/tmp/playwright-output.txt" \
+            "$RUN_URL"
+
+      - name: Commit smoke-status.json
+        if: always()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          git add smoke-status.json
+          git diff --staged --quiet || git commit -m "ci: update smoke-status.json [skip ci]"
+          git push
 
       - name: Upload smoke summary artifact
         if: always()
