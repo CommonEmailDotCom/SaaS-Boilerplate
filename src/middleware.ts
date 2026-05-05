@@ -17,23 +17,21 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/onboarding(.*)',
 ]);
 
-export default clerkMiddleware(async (auth, req) => {
+export default clerkMiddleware((auth, req) => {
   const { pathname } = req.nextUrl;
 
-  // Allow API routes
-  if (pathname.startsWith('/api')) {
-    return NextResponse.next();
-  }
+  // 1. Let next-intl handle routing FIRST for non-protected routes
+  const intlResponse = intlMiddleware(req);
+  if (intlResponse) return intlResponse;
 
-  // ✅ FIX: auth() must be called
-  const { userId, orgId } = await auth();
-
-  // Protect routes
+  // 2. Protect routes
   if (isProtectedRoute(req)) {
-    await auth.protect();
+    auth().protect();
   }
 
-  // Redirect users without org
+  const { userId, orgId } = auth();
+
+  // 3. Redirect onboarding if no org
   if (
     userId &&
     !orgId &&
@@ -45,12 +43,13 @@ export default clerkMiddleware(async (auth, req) => {
     );
   }
 
-  return intlMiddleware(req);
+  return NextResponse.next();
 });
 
 export const config = {
   matcher: [
-    '/((?!.*\\.[\\w]+$|_next|monitoring|api).*)',
+    '/((?!.*\\.[\\w]+$|_next|monitoring).*)',
     '/',
+    '/api/:path*',
   ],
 };
