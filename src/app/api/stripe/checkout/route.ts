@@ -23,48 +23,58 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
     }
 
-    // ── Ensure org exists in Clerk ────────────────────────────────────────────
     const clerk = await clerkClient();
     let finalOrgId = orgId;
 
     if (!finalOrgId) {
-      const org = await clerk.organizations.createOrganization({
-        name: `Workspace-${userId.slice(0, 6)}`,
-        createdBy: userId,
+      // Check if user already belongs to an org with an active subscription
+      // to prevent creating duplicate orgs on repeated checkout attempts
+      const memberships = await clerk.users.getOrganizationMembershipList({
+        userId,
       });
-      finalOrgId = org.id;
+
+      if (memberships.data.length > 0) {
+        // Use the first existing org
+        finalOrgId = memberships.data[0]!.organization.id;
+      } else {
+        // No existing org — create one
+        const org = await clerk.organizations.createOrganization({
+          name: `Workspace-${userId.slice(0, 6)}`,
+          createdBy: userId,
+        });
+        finalOrgId = org.id;
+      }
+    }
+
+    // If org already has an active subscription, redirect to Stripe portal instead
+    const existingOrg = await getOrganization(finalOrgId);
+
+    if (existingOrg?.stripeSubscriptionStatus === 'active' && existingOrg?.stripeCustomerId) {
+      const portalSession = await stripe.billingPortal.sessions.create({
+        customer: existingOrg.stripeCustomerId,
+        return_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard`,
+      });
+      return NextResponse.json({ url: portalSession.url });
     }
 
     // ── Get or create Stripe Customer ─────────────────────────────────────────
-    // Always reuse the same Stripe customer across checkouts for this org.
     let stripeCustomerId: string | undefined;
 
-    const existingOrg = await getOrganization(finalOrgId);
-
     if (existingOrg?.stripeCustomerId) {
-      // Reuse existing customer
       stripeCustomerId = existingOrg.stripeCustomerId;
     } else {
-      // Create a new Stripe customer linked to this org
       const clerkOrg = await clerk.organizations.getOrganization({
         organizationId: finalOrgId,
       });
 
       const customer = await stripe.customers.create({
         name: clerkOrg.name,
-        metadata: {
-          orgId: finalOrgId,
-          userId,
-        },
+        metadata: { orgId: finalOrgId, userId },
       });
 
       stripeCustomerId = customer.id;
 
-      // Persist customer ID immediately — before checkout completes —
-      // so we have a record even if the user abandons the checkout.
-      await upsertOrganization(finalOrgId, {
-        stripeCustomerId,
-      });
+      await upsertOrganization(finalOrgId, { stripeCustomerId });
     }
 
     // ── Create Stripe Checkout Session ────────────────────────────────────────
@@ -75,15 +85,9 @@ export async function POST(req: Request) {
       line_items: [{ price: priceId, quantity: 1 }],
       success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=true`,
       cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing?canceled=true`,
-      metadata: {
-        userId,
-        orgId: finalOrgId,
-      },
+      metadata: { userId, orgId: finalOrgId },
       subscription_data: {
-        metadata: {
-          userId,
-          orgId: finalOrgId,
-        },
+        metadata: { userId, orgId: finalOrgId },
       },
     });
 
