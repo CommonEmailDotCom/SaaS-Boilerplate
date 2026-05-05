@@ -1,3 +1,10 @@
+## [1.9.1](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.9.0...v1.9.1) (2026-05-05)
+
+
+### Bug Fixes
+
+* move ClerkProvider to root layout so useAuth works on landing page ([f8a3a55](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/commit/f8a3a55676523236dfce6a46575432e73f2108a9))
+
 # [1.9.0](https://github.com/CommonEmailDotCom/SaaS-Boilerplate/compare/v1.8.0...v1.9.0) (2026-05-05)
 
 
