@@ -22,27 +22,27 @@ export async function getOrganization(orgId: string): Promise<OrgBillingState | 
 
 /**
  * Upsert org row keyed by Clerk orgId.
- * Safe to call multiple times — will create or update.
+ * Uses onConflictDoUpdate for atomic upsert — safe under concurrent requests.
  */
 export async function upsertOrganization(
   orgId: string,
   data: Partial<Omit<OrgBillingState, 'id' | 'createdAt' | 'updatedAt'>>,
 ): Promise<void> {
-  const existing = await getOrganization(orgId);
-
-  if (existing) {
-    await db
-      .update(organizationSchema)
-      .set({ ...data, updatedAt: new Date() })
-      .where(eq(organizationSchema.id, orgId));
-  } else {
-    await db.insert(organizationSchema).values({
+  await db
+    .insert(organizationSchema)
+    .values({
       id: orgId,
       ...data,
       createdAt: new Date(),
       updatedAt: new Date(),
+    })
+    .onConflictDoUpdate({
+      target: organizationSchema.id,
+      set: {
+        ...data,
+        updatedAt: new Date(),
+      },
     });
-  }
 }
 
 /**
@@ -83,6 +83,5 @@ export function getPlanId(org: OrgBillingState | null): 'free' | 'premium' | 'en
     }
   }
 
-  // Has active subscription but price ID not matched — treat as premium
   return 'premium';
 }

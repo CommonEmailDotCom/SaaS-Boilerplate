@@ -156,6 +156,5 @@
       "@semantic-release/git",
       "@semantic-release/github"
     ]
-  },
-  "_dockerCacheBust": "2026-05-05"
+  }
 }
