@@ -16,21 +16,17 @@ export const Pricing = () => {
   const router = useRouter();
   const locale = useLocale();
 
-  const billingEnv = process.env.NEXT_PUBLIC_BILLING_ENV ?? 'dev';
-
+  // Use BILLING_PLAN_ENV on server, fall back to devPriceId on client.
+  // When you have separate prod price IDs, add NEXT_PUBLIC_BILLING_ENV=prod to Coolify.
   function getPriceId(planId: string): string {
     const plan = PricingPlanList[planId];
     if (!plan) return '';
-    if (billingEnv === 'prod') return plan.prodPriceId;
-    if (billingEnv === 'test') return plan.testPriceId;
-    return plan.devPriceId;
+    return plan.devPriceId || plan.prodPriceId || '';
   }
 
   const handleCheckout = async (planId: string) => {
     const priceId = getPriceId(planId);
 
-    // If not signed in, redirect to sign-up with a return URL
-    // so after sign-up they land on /dashboard/checkout?priceId=xxx
     if (!isSignedIn) {
       const signUpUrl = locale !== 'en' ? `/${locale}/sign-up` : '/sign-up';
       const returnUrl = `/dashboard/checkout?priceId=${priceId}`;
@@ -38,7 +34,6 @@ export const Pricing = () => {
       return;
     }
 
-    // Already signed in — go straight to checkout
     try {
       const res = await fetch('/api/stripe/checkout', {
         method: 'POST',
