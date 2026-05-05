@@ -1,42 +1,38 @@
-import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+import { NextResponse } from 'next/server'
 
-/**
- * Define which routes require authentication
- * Adjust these patterns to match your SaaS structure
- */
 const isPublicRoute = createRouteMatcher([
-  "/",
-  "/sign-in(.*)",
-  "/sign-up(.*)",
-  "/api/webhooks(.*)",
-]);
+  '/',
+  '/sign-in(.*)',
+  '/sign-up(.*)',
+  '/api/webhooks(.*)',
+])
 
-export default clerkMiddleware((auth, req) => {
-  const { userId, orgId, redirectToSignIn } = auth();
+export default clerkMiddleware(async (auth, req) => {
+  const { userId, orgId, redirectToSignIn } = await auth()
 
   // Allow public routes
   if (isPublicRoute(req)) {
-    return;
+    return NextResponse.next()
   }
 
-  // Protect all other routes
+  // If not authenticated, redirect
   if (!userId) {
-    return redirectToSignIn();
+    return redirectToSignIn()
   }
 
-  // Optional: org-based SaaS gating (if you use organizations)
-  // if (!orgId) {
-  //   return new Response("Organization required", { status: 403 });
-  // }
+  // Optional: org-based gating (only if you actually use orgs)
+  if (!orgId) {
+    // you can decide whether to block or allow here
+  }
 
-  return;
-});
+  return NextResponse.next()
+})
 
 export const config = {
   matcher: [
-    // Skip Next internals + static files
-    "/((?!_next|.*\\..*).*)",
-    // Always run for API routes
-    "/(api|trpc)(.*)",
+    '/((?!_next|.*\\..*).*)',
+    '/',
+    '/(api|trpc)(.*)',
   ],
-};
+}
