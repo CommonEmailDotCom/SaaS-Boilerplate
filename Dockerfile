@@ -6,7 +6,8 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 COPY package.json package-lock.json ./
-# Install ALL deps (including devDependencies) needed for the build
+# NODE_ENV=development forces npm to install devDependencies needed for the build
+ENV NODE_ENV=development
 RUN npm ci
 
 # ── Builder stage ─────────────────────────────────────────────────────────────
