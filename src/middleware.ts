@@ -1,21 +1,19 @@
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
-import createMiddleware from 'next-intl/middleware'
-import { NextResponse } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+import {
+  type NextFetchEvent,
+  type NextRequest,
+  NextResponse,
+} from 'next/server';
+import createMiddleware from 'next-intl/middleware';
 
-import { AllLocales, AppConfig } from './utils/AppConfig'
+import { AllLocales, AppConfig } from './utils/AppConfig';
 
-/**
- * next-intl middleware (REQUIRED for your routing)
- */
 const intlMiddleware = createMiddleware({
   locales: AllLocales,
   localePrefix: AppConfig.localePrefix,
   defaultLocale: AppConfig.defaultLocale,
-})
+});
 
-/**
- * Routes that require auth (matches upstream behavior)
- */
 const isProtectedRoute = createRouteMatcher([
   '/dashboard(.*)',
   '/:locale/dashboard(.*)',
@@ -23,70 +21,53 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/onboarding(.*)',
   '/api(.*)',
   '/:locale/api(.*)',
-])
+]);
 
-/**
- * Public routes (safe to bypass auth)
- */
-const isPublicRoute = createRouteMatcher([
-  '/',
-  '/sign-in(.*)',
-  '/sign-up(.*)',
-  '/api/webhooks(.*)',
-])
+export default function middleware(
+  request: NextRequest,
+  event: NextFetchEvent,
+) {
+  if (
+    request.nextUrl.pathname.includes('/sign-in')
+    || request.nextUrl.pathname.includes('/sign-up')
+    || isProtectedRoute(request)
+  ) {
+    return clerkMiddleware(async (auth, req) => {
+      if (isProtectedRoute(req)) {
+        const locale
+          = req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
 
-export default clerkMiddleware(async (auth, req) => {
-  /**
-   * IMPORTANT:
-   * auth() is synchronous in v6 middleware context
-   */
-  const { userId, orgId } = auth()
+        const signInUrl = new URL(`${locale}/sign-in`, req.url);
 
-  const path = req.nextUrl.pathname
+        await auth.protect({
+          // `unauthenticatedUrl` is needed to avoid error: "Unable to find `next-intl` locale because the middleware didn't run on this request"
+          unauthenticatedUrl: signInUrl.toString(),
+        });
+      }
 
-  /**
-   * Always run intl FIRST for non-protected routes
-   */
-  if (!isProtectedRoute(req) && isPublicRoute(req)) {
-    return intlMiddleware(req)
+      const authObj = await auth();
+
+      if (
+        authObj.userId
+        && !authObj.orgId
+        && req.nextUrl.pathname.includes('/dashboard')
+        && !req.nextUrl.pathname.endsWith('/organization-selection')
+      ) {
+        const orgSelection = new URL(
+          '/onboarding/organization-selection',
+          req.url,
+        );
+
+        return NextResponse.redirect(orgSelection);
+      }
+
+      return intlMiddleware(req);
+    })(request, event);
   }
 
-  /**
-   * Protect sensitive routes
-   */
-  if (isProtectedRoute(req)) {
-    if (!userId) {
-      return auth().redirectToSignIn()
-    }
-
-    /**
-     * Onboarding gate (RESTORED from upstream)
-     */
-    if (
-      userId &&
-      !orgId &&
-      path.includes('/dashboard') &&
-      !path.endsWith('/organization-selection')
-    ) {
-      const orgSelection = new URL(
-        '/onboarding/organization-selection',
-        req.url
-      )
-
-      return NextResponse.redirect(orgSelection)
-    }
-  }
-
-  /**
-   * Default: continue intl routing
-   */
-  return intlMiddleware(req)
-})
+  return intlMiddleware(request);
+}
 
 export const config = {
-  matcher: [
-    '/',
-    '/(api|trpc)(.*)',
-    '/((?!_next|.*\\..*).*)',
-  ],
-}
+  matcher: ['/((?!.+\\.[\\w]+$|_next|monitoring).*)', '/', '/(api|trpc)(.*)'], // Also exclude tunnelRoute used in Sentry from the matcher
+};
