@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import Stripe from 'stripe';
 import { auth, clerkClient } from '@clerk/nextjs/server';
+import Stripe from 'stripe';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
   apiVersion: '2024-06-20',
@@ -8,18 +8,28 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
 
 export async function POST(req: Request) {
   try {
-    const { userId, orgId: existingOrgId } = auth();
+    // ✅ Clerk auth is async in your version
+    const { userId, orgId: existingOrgId } = await auth();
 
     if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    // ✅ allow priceId from request OR env fallback
+    const body = await req.json().catch(() => ({}));
+    const priceId =
+      body?.priceId || process.env.STRIPE_PRICE_ID;
+
+    if (!priceId) {
       return NextResponse.json(
-        { redirect: '/sign-in' },
-        { status: 401 }
+        { error: 'Missing STRIPE_PRICE_ID or priceId in request' },
+        { status: 500 }
       );
     }
 
     let orgId = existingOrgId;
 
-    // Create org if missing
+    // (optional but keeps your earlier SaaS logic intact)
     if (!orgId) {
       const org = await clerkClient.organizations.createOrganization({
         name: `Workspace-${userId.slice(0, 6)}`,
@@ -29,14 +39,12 @@ export async function POST(req: Request) {
       orgId = org.id;
     }
 
-    const body = await req.json().catch(() => ({}));
-    const priceId =
-      body.priceId || process.env.STRIPE_PRICE_ID;
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL;
 
-    if (!priceId) {
+    if (!appUrl) {
       return NextResponse.json(
-        { error: 'Missing priceId' },
-        { status: 400 }
+        { error: 'Missing NEXT_PUBLIC_APP_URL' },
+        { status: 500 }
       );
     }
 
@@ -51,21 +59,28 @@ export async function POST(req: Request) {
         },
       ],
 
-      success_url: `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?success=1`,
-      cancel_url: `${process.env.NEXT_PUBLIC_APP_URL}/pricing`,
+      success_url: `${appUrl}/dashboard?success=1`,
+      cancel_url: `${appUrl}/pricing?canceled=1`,
 
       metadata: {
-        orgId,
         userId,
+        orgId,
       },
 
       subscription_data: {
         metadata: {
-          orgId,
           userId,
+          orgId,
         },
       },
     });
+
+    if (!session.url) {
+      return NextResponse.json(
+        { error: 'Stripe session missing URL' },
+        { status: 500 }
+      );
+    }
 
     return NextResponse.json({ url: session.url });
   } catch (error: any) {
