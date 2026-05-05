@@ -1,5 +1,9 @@
 import { getTranslations } from 'next-intl/server';
 import { auth } from '@clerk/nextjs/server';
+import { eq } from 'drizzle-orm';
+
+import { db } from '@/libs/DB';
+import { organizationSchema } from '@/models/Schema';
 
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
@@ -12,7 +16,16 @@ const DashboardIndexPage = async () => {
   if (!userId) return null;
 
   const resolvedOrgId = orgId ?? `org_${userId}`;
-  const subscriptionStatus = 'free';
+
+  // IMPORTANT: Drizzle query (not Prisma)
+  const org = await db
+    .select()
+    .from(organizationSchema)
+    .where(eq(organizationSchema.id, resolvedOrgId))
+    .limit(1)
+    .then((rows) => rows[0]);
+
+  const subscriptionStatus = org?.stripeSubscriptionStatus ?? 'free';
 
   return (
     <>
