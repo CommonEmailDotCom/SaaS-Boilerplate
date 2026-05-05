@@ -1,11 +1,22 @@
 import { useTranslations } from 'next-intl';
+import { auth } from '@clerk/nextjs/server';
 
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
-import { SponsorLogos } from '@/features/sponsors/SponsorLogos';
 
-const DashboardIndexPage = () => {
+const DashboardIndexPage = async () => {
   const t = useTranslations('DashboardIndex');
+
+  const { userId, orgId } = await auth();
+
+  if (!userId) {
+    return null;
+  }
+
+  const resolvedOrgId = orgId ?? `org_${userId}`;
+
+  // Temporary subscription state (no backend yet)
+  const subscriptionStatus = 'free';
 
   return (
     <>
@@ -13,6 +24,28 @@ const DashboardIndexPage = () => {
         title={t('title_bar')}
         description={t('title_bar_description')}
       />
+
+      {/* Dashboard status block */}
+      <div className="mx-6 mt-4 rounded-lg border bg-card p-4 text-sm">
+        <div className="flex flex-col gap-1">
+          <p>
+            <span className="font-medium">User:</span> {userId}
+          </p>
+
+          <p>
+            <span className="font-medium">Org:</span> {resolvedOrgId}
+          </p>
+
+          <p>
+            <span className="font-medium">Subscription:</span>{' '}
+            {subscriptionStatus === 'free' ? (
+              <span className="text-yellow-500">Free Plan</span>
+            ) : (
+              <span className="text-green-500">Active Plan</span>
+            )}
+          </p>
+        </div>
+      </div>
 
       <MessageState
         icon={(
@@ -36,37 +69,31 @@ const DashboardIndexPage = () => {
           ),
         })}
         button={(
-          <>
-            <div className="mt-2 whitespace-pre text-sm font-light text-muted-foreground">
-              {t.rich('message_state_alternative', {
+          <div className="mt-2 whitespace-pre text-sm font-light text-muted-foreground">
+            {t.rich('message_state_alternative', {
+              url: () => (
+                <a
+                  className="text-blue-500 hover:text-blue-600"
+                  href="https://nextjs-boilerplate.com/pro-saas-starter-kit"
+                >
+                  Next.js Boilerplate SaaS
+                </a>
+              ),
+            })}
+
+            <p>
+              {t.rich('max_message', {
                 url: () => (
                   <a
                     className="text-blue-500 hover:text-blue-600"
-                    href="https://nextjs-boilerplate.com/pro-saas-starter-kit"
+                    href="https://nextjs-boilerplate.com/nextjs-multi-tenant-saas-boilerplate"
                   >
-                    Next.js Boilerplate SaaS
+                    Next.js Boilerplate Max
                   </a>
                 ),
               })}
-
-              <p>
-                {t.rich('max_message', {
-                  url: () => (
-                    <a
-                      className="text-blue-500 hover:text-blue-600"
-                      href="https://nextjs-boilerplate.com/nextjs-multi-tenant-saas-boilerplate"
-                    >
-                      Next.js Boilerplate Max
-                    </a>
-                  ),
-                })}
-              </p>
-            </div>
-
-            <div className="mt-7">
-              <SponsorLogos />
-            </div>
-          </>
+            </p>
+          </div>
         )}
       />
     </>
