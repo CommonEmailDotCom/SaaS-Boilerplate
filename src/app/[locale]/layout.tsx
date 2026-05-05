@@ -1,7 +1,7 @@
 import '@/styles/global.css';
 
 import type { Metadata } from 'next';
-import { enUS, frFR } from '@clerk/localizations';
+import { enUS, frFR, esES, itIT, jaJP, zhCN, hiIN } from '@clerk/localizations';
 import { ClerkProvider } from '@clerk/nextjs';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
@@ -22,6 +22,16 @@ export function generateStaticParams() {
   return AllLocales.map(locale => ({ locale }));
 }
 
+const clerkLocalizationMap: Record<string, any> = {
+  en: enUS,
+  fr: frFR,
+  es: esES,
+  it: itIT,
+  ja: jaJP,
+  zh: zhCN,
+  hi: hiIN,
+};
+
 export default function RootLayout(props: {
   children: React.ReactNode;
   params: { locale: string };
@@ -30,7 +40,7 @@ export default function RootLayout(props: {
 
   const messages = useMessages();
 
-  const clerkLocale = props.params.locale === 'fr' ? frFR : enUS;
+  const clerkLocale = clerkLocalizationMap[props.params.locale] ?? enUS;
   const localePrefix = props.params.locale !== AppConfig.defaultLocale
     ? `/${props.params.locale}`
     : '';

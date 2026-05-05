@@ -1,0 +1,167 @@
+{
+  "Index": {
+    "meta_title": "Cutting Edge Chat - Chatbot IA personalizzati per il tuo sito web.",
+    "meta_description": "Cutting Edge Chat crea chatbot IA di alto livello per la tua azienda. Coinvolgi i tuoi visitatori con conversazioni intelligenti e in linea con il tuo brand."
+  },
+  "Navbar": {
+    "sign_in": "Accedi",
+    "sign_up": "Registrati",
+    "product": "Prodotto",
+    "docs": "Docs",
+    "blog": "Blog",
+    "community": "Community",
+    "company": "Azienda"
+  },
+  "Hero": {
+    "follow_twitter": "Seguici su Twitter",
+    "title": "Chatbot IA che <important>trasformano i visitatori in clienti.</important>",
+    "description": "Distribuisci un chatbot intelligente e completamente personalizzato sul tuo sito in pochi minuti. Alimentato dai più recenti modelli IA — senza bisogno di codice.",
+    "primary_button": "Inizia gratis",
+    "secondary_button": "Guarda una demo"
+  },
+  "Sponsors": {
+    "title": "Sviluppato con"
+  },
+  "Features": {
+    "section_subtitle": "Perché Cutting Edge Chat",
+    "section_title": "Tutto ciò di cui hai bisogno per il chatbot perfetto",
+    "section_description": "Progettato per aziende che vogliono interagire con i visitatori in modo più intelligente e trasformare le conversazioni in entrate.",
+    "feature1_title": "Più modelli IA",
+    "feature2_title": "Brand personalizzato",
+    "feature3_title": "Integrazione semplice",
+    "feature4_title": "Cronologia conversazioni",
+    "feature5_title": "Base di conoscenza",
+    "feature6_title": "Analisi",
+    "feature_description": "Flessibile, potente e facile da usare — così puoi concentrarti sul tuo business."
+  },
+  "Pricing": {
+    "section_subtitle": "Prezzi semplici e trasparenti",
+    "section_title": "Scegli il piano adatto alla tua azienda",
+    "section_description": "Inizia gratis e scala con la tua crescita. Ogni piano include un chatbot completamente personalizzato pronto per essere distribuito.",
+    "button_text": "Inizia"
+  },
+  "PricingPlan": {
+    "free_plan_name": "Gratuito",
+    "premium_plan_name": "Premium",
+    "enterprise_plan_name": "Enterprise",
+    "free_plan_description": "Per provare",
+    "premium_plan_description": "Per le aziende in crescita",
+    "enterprise_plan_description": "Per le grandi organizzazioni",
+    "feature_team_member": "{number} membri",
+    "feature_website": "{number} chatbot",
+    "feature_storage": "{number} GB di spazio",
+    "feature_transfer": "{number} TB di trasferimento",
+    "feature_email_support": "Supporto via email",
+    "plan_interval_month": "mese",
+    "plan_interval_year": "anno",
+    "next_renew_date": "Il tuo abbonamento si rinnova il {date}"
+  },
+  "FAQ": {
+    "question": "In quanto tempo posso avere un chatbot attivo sul mio sito?",
+    "answer": "La maggior parte dei clienti è operativa in meno di 10 minuti. Dopo la registrazione e la scelta del piano, riceverai un semplice snippet da incollare nel tuo sito. Nessuno sviluppatore necessario."
+  },
+  "CTA": {
+    "title": "Pronto a coinvolgere i tuoi visitatori?",
+    "description": "Unisciti alle aziende che usano già Cutting Edge Chat per trasformare i visitatori in clienti.",
+    "button_text": "Inizia gratis"
+  },
+  "Footer": {
+    "product": "Prodotto",
+    "docs": "Docs",
+    "blog": "Blog",
+    "community": "Community",
+    "company": "Azienda",
+    "terms_of_service": "Termini di servizio",
+    "privacy_policy": "Informativa sulla privacy",
+    "footer_text": "© {year} {name}. Tutti i diritti riservati."
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "Non hai i permessi necessari per eseguire questa azione"
+  },
+  "SignIn": {
+    "meta_title": "Accedi",
+    "meta_description": "Accedi al tuo account Cutting Edge Chat."
+  },
+  "SignUp": {
+    "meta_title": "Registrati",
+    "meta_description": "Crea il tuo account Cutting Edge Chat e distribuisci il tuo primo chatbot oggi."
+  },
+  "DashboardLayout": {
+    "home": "Home",
+    "todos": "Chatbot",
+    "members": "Membri",
+    "billing": "Fatturazione",
+    "settings": "Impostazioni"
+  },
+  "Dashboard": {
+    "meta_title": "Dashboard Cutting Edge Chat",
+    "meta_description": "Gestisci i tuoi chatbot, la fatturazione e le impostazioni dell'account."
+  },
+  "DashboardIndex": {
+    "title_bar": "Dashboard",
+    "title_bar_description": "Benvenuto nella tua dashboard",
+    "message_state_title": "Il tuo chatbot è quasi pronto",
+    "message_state_description": "Completa la configurazione per mettere online il tuo chatbot.",
+    "message_state_button": "Inizia",
+    "message_state_alternative": "Hai bisogno di aiuto? Contattaci a support@cuttingedgechat.com",
+    "max_message": "Aggiorna il piano per sbloccare più chatbot e funzioni avanzate."
+  },
+  "UserProfile": {
+    "title_bar": "Profilo utente",
+    "title_bar_description": "Visualizza e gestisci il tuo profilo utente"
+  },
+  "OrganizationProfile": {
+    "title_bar": "Gestione organizzazione",
+    "title_bar_description": "Gestisci la tua organizzazione"
+  },
+  "Billing": {
+    "title_bar": "Fatturazione",
+    "title_bar_description": "Gestisci la tua fatturazione e abbonamento",
+    "current_section_title": "Piano attuale",
+    "current_section_description": "Adatta il tuo piano di pagamento alle tue esigenze",
+    "manage_subscription_button": "Gestisci abbonamento"
+  },
+  "BillingOptions": {
+    "current_plan": "Piano attuale",
+    "upgrade_plan": "Inizia"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "Conferma pagamento",
+    "message_state_title": "Pagamento riuscito",
+    "message_state_description": "Il tuo pagamento è stato elaborato con successo. Grazie per il tuo acquisto!",
+    "message_state_button": "Torna alla fatturazione"
+  },
+  "DataTable": {
+    "no_results": "Nessun risultato."
+  },
+  "Todos": {
+    "title_bar": "Chatbot",
+    "title_bar_description": "Visualizza e gestisci i tuoi chatbot",
+    "add_todo_button": "Nuovo chatbot"
+  },
+  "TodoTableColumns": {
+    "open_menu": "Apri menu",
+    "edit": "Modifica",
+    "delete": "Elimina",
+    "title_header": "Nome",
+    "message_header": "Descrizione",
+    "created_at_header": "Creato il"
+  },
+  "AddTodo": {
+    "title_bar": "Aggiungi chatbot",
+    "add_todo_section_title": "Crea un nuovo chatbot",
+    "add_todo_section_description": "Compila il modulo per creare un nuovo chatbot"
+  },
+  "EditTodo": {
+    "title_bar": "Modifica chatbot",
+    "edit_todo_section_title": "Modifica chatbot",
+    "edit_todo_section_description": "Compila il modulo per modificare il chatbot"
+  },
+  "TodoForm": {
+    "title_label": "Nome",
+    "title_description": "Inserisci un nome per il tuo chatbot.",
+    "message_title": "Descrizione",
+    "message_description": "Descrivi cosa fa questo chatbot.",
+    "submit_button": "Invia"
+  }
+}

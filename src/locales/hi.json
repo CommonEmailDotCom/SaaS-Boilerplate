@@ -1,0 +1,167 @@
+{
+  "Index": {
+    "meta_title": "Cutting Edge Chat - आपकी वेबसाइट के लिए कस्टम AI चैटबॉट।",
+    "meta_description": "Cutting Edge Chat आपके व्यवसाय के लिए उच्च-गुणवत्ता वाले कस्टम AI चैटबॉट बनाता है। बुद्धिमान और ब्रांड-अनुरूप बातचीत से अपने विज़िटर्स को जोड़ें।"
+  },
+  "Navbar": {
+    "sign_in": "साइन इन",
+    "sign_up": "साइन अप",
+    "product": "उत्पाद",
+    "docs": "दस्तावेज़",
+    "blog": "ब्लॉग",
+    "community": "समुदाय",
+    "company": "कंपनी"
+  },
+  "Hero": {
+    "follow_twitter": "Twitter पर फॉलो करें",
+    "title": "AI चैटबॉट जो <important>विज़िटर्स को ग्राहकों में बदलते हैं।</important>",
+    "description": "मिनटों में अपनी वेबसाइट पर एक पूरी तरह से कस्टमाइज़ किया हुआ बुद्धिमान चैटबॉट तैनात करें। नवीनतम AI मॉडल द्वारा संचालित — कोडिंग की जरूरत नहीं।",
+    "primary_button": "मुफ्त शुरू करें",
+    "secondary_button": "डेमो देखें"
+  },
+  "Sponsors": {
+    "title": "तकनीक द्वारा संचालित"
+  },
+  "Features": {
+    "section_subtitle": "Cutting Edge Chat क्यों चुनें",
+    "section_title": "सही चैटबॉट तैनात करने के लिए सब कुछ",
+    "section_description": "उन व्यवसायों के लिए बनाया गया जो अपने विज़िटर्स के साथ स्मार्ट तरीके से जुड़ना और बातचीत को राजस्व में बदलना चाहते हैं।",
+    "feature1_title": "कई AI मॉडल",
+    "feature2_title": "कस्टम ब्रांडिंग",
+    "feature3_title": "आसान एम्बेड",
+    "feature4_title": "बातचीत का इतिहास",
+    "feature5_title": "ज्ञान आधार",
+    "feature6_title": "विश्लेषण",
+    "feature_description": "लचीला, शक्तिशाली और उपयोग में आसान — ताकि आप अपने व्यवसाय पर ध्यान केंद्रित कर सकें।"
+  },
+  "Pricing": {
+    "section_subtitle": "सरल और पारदर्शी मूल्य निर्धारण",
+    "section_title": "अपने व्यवसाय के लिए उपयुक्त प्लान चुनें",
+    "section_description": "मुफ्त शुरू करें और जरूरत के अनुसार बढ़ें। हर प्लान में एक पूरी तरह से कस्टम चैटबॉट शामिल है।",
+    "button_text": "शुरू करें"
+  },
+  "PricingPlan": {
+    "free_plan_name": "मुफ्त",
+    "premium_plan_name": "प्रीमियम",
+    "enterprise_plan_name": "एंटरप्राइज़",
+    "free_plan_description": "आज़माने के लिए",
+    "premium_plan_description": "बढ़ते व्यवसायों के लिए",
+    "enterprise_plan_description": "बड़े संगठनों के लिए",
+    "feature_team_member": "{number} टीम सदस्य",
+    "feature_website": "{number} चैटबॉट",
+    "feature_storage": "{number} GB स्टोरेज",
+    "feature_transfer": "{number} TB ट्रांसफर",
+    "feature_email_support": "ईमेल सहायता",
+    "plan_interval_month": "महीना",
+    "plan_interval_year": "वर्ष",
+    "next_renew_date": "आपकी सदस्यता {date} को नवीनीकृत होगी"
+  },
+  "FAQ": {
+    "question": "मेरी वेबसाइट पर चैटबॉट लाइव होने में कितना समय लगता है?",
+    "answer": "अधिकांश ग्राहक 10 मिनट से कम समय में सेट हो जाते हैं। साइन अप करने और अपना प्लान चुनने के बाद, आपको एक साधारण एम्बेड कोड मिलेगा जिसे अपनी वेबसाइट में पेस्ट करना है। किसी डेवलपर की जरूरत नहीं।"
+  },
+  "CTA": {
+    "title": "अपने विज़िटर्स को जोड़ने के लिए तैयार हैं?",
+    "description": "उन व्यवसायों से जुड़ें जो पहले से Cutting Edge Chat का उपयोग करके विज़िटर्स को ग्राहकों में बदल रहे हैं।",
+    "button_text": "मुफ्त शुरू करें"
+  },
+  "Footer": {
+    "product": "उत्पाद",
+    "docs": "दस्तावेज़",
+    "blog": "ब्लॉग",
+    "community": "समुदाय",
+    "company": "कंपनी",
+    "terms_of_service": "सेवा की शर्तें",
+    "privacy_policy": "गोपनीयता नीति",
+    "footer_text": "© {year} {name}। सर्वाधिकार सुरक्षित।"
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "आपके पास यह कार्य करने की अनुमति नहीं है"
+  },
+  "SignIn": {
+    "meta_title": "साइन इन",
+    "meta_description": "अपने Cutting Edge Chat खाते में साइन इन करें।"
+  },
+  "SignUp": {
+    "meta_title": "साइन अप",
+    "meta_description": "अपना Cutting Edge Chat खाता बनाएं और आज ही अपना पहला चैटबॉट तैनात करें।"
+  },
+  "DashboardLayout": {
+    "home": "होम",
+    "todos": "चैटबॉट",
+    "members": "सदस्य",
+    "billing": "बिलिंग",
+    "settings": "सेटिंग्स"
+  },
+  "Dashboard": {
+    "meta_title": "Cutting Edge Chat डैशबोर्ड",
+    "meta_description": "अपने चैटबॉट, बिलिंग और खाता सेटिंग्स प्रबंधित करें।"
+  },
+  "DashboardIndex": {
+    "title_bar": "डैशबोर्ड",
+    "title_bar_description": "आपके डैशबोर्ड में आपका स्वागत है",
+    "message_state_title": "आपका चैटबॉट लगभग तैयार है",
+    "message_state_description": "अपने चैटबॉट को लाइव करने के लिए सेटअप पूरा करें।",
+    "message_state_button": "शुरू करें",
+    "message_state_alternative": "सहायता चाहिए? support@cuttingedgechat.com पर संपर्क करें",
+    "max_message": "अधिक चैटबॉट और उन्नत सुविधाओं के लिए अपना प्लान अपग्रेड करें।"
+  },
+  "UserProfile": {
+    "title_bar": "उपयोगकर्ता प्रोफाइल",
+    "title_bar_description": "अपनी उपयोगकर्ता प्रोफाइल देखें और प्रबंधित करें"
+  },
+  "OrganizationProfile": {
+    "title_bar": "संगठन प्रबंधन",
+    "title_bar_description": "अपने संगठन को प्रबंधित करें"
+  },
+  "Billing": {
+    "title_bar": "बिलिंग",
+    "title_bar_description": "अपनी बिलिंग और सदस्यता प्रबंधित करें",
+    "current_section_title": "वर्तमान प्लान",
+    "current_section_description": "अपनी आवश्यकताओं के अनुसार भुगतान प्लान समायोजित करें",
+    "manage_subscription_button": "सदस्यता प्रबंधित करें"
+  },
+  "BillingOptions": {
+    "current_plan": "वर्तमान प्लान",
+    "upgrade_plan": "शुरू करें"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "भुगतान पुष्टि",
+    "message_state_title": "भुगतान सफल",
+    "message_state_description": "आपका भुगतान सफलतापूर्वक प्रसंस्कृत हो गया। आपकी खरीद के लिए धन्यवाद!",
+    "message_state_button": "बिलिंग पर वापस जाएं"
+  },
+  "DataTable": {
+    "no_results": "कोई परिणाम नहीं।"
+  },
+  "Todos": {
+    "title_bar": "चैटबॉट",
+    "title_bar_description": "अपने चैटबॉट देखें और प्रबंधित करें",
+    "add_todo_button": "नया चैटबॉट"
+  },
+  "TodoTableColumns": {
+    "open_menu": "मेनू खोलें",
+    "edit": "संपादित करें",
+    "delete": "हटाएं",
+    "title_header": "नाम",
+    "message_header": "विवरण",
+    "created_at_header": "बनाया गया"
+  },
+  "AddTodo": {
+    "title_bar": "चैटबॉट जोड़ें",
+    "add_todo_section_title": "नया चैटबॉट बनाएं",
+    "add_todo_section_description": "नया चैटबॉट बनाने के लिए नीचे दिया गया फॉर्म भरें"
+  },
+  "EditTodo": {
+    "title_bar": "चैटबॉट संपादित करें",
+    "edit_todo_section_title": "चैटबॉट संशोधित करें",
+    "edit_todo_section_description": "चैटबॉट संपादित करने के लिए नीचे दिया गया फॉर्म भरें"
+  },
+  "TodoForm": {
+    "title_label": "नाम",
+    "title_description": "अपने चैटबॉट के लिए एक नाम दर्ज करें।",
+    "message_title": "विवरण",
+    "message_description": "इस चैटबॉट की कार्यक्षमता का वर्णन करें।",
+    "submit_button": "सबमिट करें"
+  }
+}

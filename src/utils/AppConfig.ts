@@ -7,10 +7,13 @@ const localePrefix: LocalePrefix = 'as-needed';
 export const AppConfig = {
   name: 'Cutting Edge Chat',
   locales: [
-    {
-      id: 'en',
-      name: 'English',
-    },
+    { id: 'en', name: 'English' },
+    { id: 'fr', name: 'Français' },
+    { id: 'es', name: 'Español' },
+    { id: 'it', name: 'Italiano' },
+    { id: 'ja', name: '日本語' },
+    { id: 'zh', name: '中文' },
+    { id: 'hi', name: 'हिन्दी' },
   ],
   defaultLocale: 'en',
   localePrefix,

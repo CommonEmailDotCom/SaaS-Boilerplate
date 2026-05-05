@@ -1,0 +1,167 @@
+{
+  "Index": {
+    "meta_title": "Cutting Edge Chat - あなたのウェブサイト向けカスタムAIチャットボット。",
+    "meta_description": "Cutting Edge Chatは、ビジネス向けの高品質なカスタムAIチャットボットを提供します。インテリジェントでブランドに沿った会話で訪問者を引き付けましょう。"
+  },
+  "Navbar": {
+    "sign_in": "ログイン",
+    "sign_up": "登録",
+    "product": "製品",
+    "docs": "ドキュメント",
+    "blog": "ブログ",
+    "community": "コミュニティ",
+    "company": "会社概要"
+  },
+  "Hero": {
+    "follow_twitter": "Twitterでフォロー",
+    "title": "訪問者を顧客に変える<important>AIチャットボット。</important>",
+    "description": "数分で、完全にカスタマイズされたインテリジェントなチャットボットをウェブサイトに導入できます。最新のAIモデルを使用 — コード不要。",
+    "primary_button": "無料で始める",
+    "secondary_button": "デモを見る"
+  },
+  "Sponsors": {
+    "title": "使用技術"
+  },
+  "Features": {
+    "section_subtitle": "Cutting Edge Chatを選ぶ理由",
+    "section_title": "完璧なチャットボットを導入するために必要なすべて",
+    "section_description": "訪問者とよりスマートに関わり、会話を収益に変えたいビジネス向けに設計されています。",
+    "feature1_title": "複数のAIモデル",
+    "feature2_title": "カスタムブランディング",
+    "feature3_title": "簡単な埋め込み",
+    "feature4_title": "会話履歴",
+    "feature5_title": "ナレッジベース",
+    "feature6_title": "アナリティクス",
+    "feature_description": "柔軟で強力、使いやすい設計 — ビジネスに集中できます。"
+  },
+  "Pricing": {
+    "section_subtitle": "シンプルで透明な料金体系",
+    "section_title": "ビジネスに合ったプランを選択",
+    "section_description": "無料から始めて、成長に合わせてスケールアップ。すべてのプランにデプロイ準備済みの完全カスタムチャットボットが含まれます。",
+    "button_text": "始める"
+  },
+  "PricingPlan": {
+    "free_plan_name": "無料",
+    "premium_plan_name": "プレミアム",
+    "enterprise_plan_name": "エンタープライズ",
+    "free_plan_description": "お試し用",
+    "premium_plan_description": "成長中のビジネス向け",
+    "enterprise_plan_description": "大規模組織向け",
+    "feature_team_member": "{number}名のメンバー",
+    "feature_website": "{number}つのチャットボット",
+    "feature_storage": "{number}GBのストレージ",
+    "feature_transfer": "{number}TBの転送量",
+    "feature_email_support": "メールサポート",
+    "plan_interval_month": "月",
+    "plan_interval_year": "年",
+    "next_renew_date": "サブスクリプションは{date}に更新されます"
+  },
+  "FAQ": {
+    "question": "ウェブサイトにチャットボットを公開するまでどのくらいかかりますか？",
+    "answer": "ほとんどのお客様は10分以内に稼働できます。登録してプランを選択すると、ウェブサイトに貼り付けるだけのシンプルな埋め込みコードが提供されます。開発者は不要です。"
+  },
+  "CTA": {
+    "title": "訪問者を引き付ける準備はできましたか？",
+    "description": "すでにCutting Edge Chatを使って訪問者を顧客に変えているビジネスに参加しましょう。",
+    "button_text": "無料で始める"
+  },
+  "Footer": {
+    "product": "製品",
+    "docs": "ドキュメント",
+    "blog": "ブログ",
+    "community": "コミュニティ",
+    "company": "会社概要",
+    "terms_of_service": "利用規約",
+    "privacy_policy": "プライバシーポリシー",
+    "footer_text": "© {year} {name}. 全著作権所有。"
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "このアクションを実行する権限がありません"
+  },
+  "SignIn": {
+    "meta_title": "ログイン",
+    "meta_description": "Cutting Edge Chatアカウントにログインしてください。"
+  },
+  "SignUp": {
+    "meta_title": "登録",
+    "meta_description": "Cutting Edge Chatアカウントを作成して、今日から最初のチャットボットをデプロイしましょう。"
+  },
+  "DashboardLayout": {
+    "home": "ホーム",
+    "todos": "チャットボット",
+    "members": "メンバー",
+    "billing": "請求",
+    "settings": "設定"
+  },
+  "Dashboard": {
+    "meta_title": "Cutting Edge Chatダッシュボード",
+    "meta_description": "チャットボット、請求、アカウント設定を管理します。"
+  },
+  "DashboardIndex": {
+    "title_bar": "ダッシュボード",
+    "title_bar_description": "ダッシュボードへようこそ",
+    "message_state_title": "チャットボットの準備がほぼ整いました",
+    "message_state_description": "チャットボットを公開するためにセットアップを完了してください。",
+    "message_state_button": "始める",
+    "message_state_alternative": "ヘルプが必要ですか？support@cuttingedgechat.comまでお問い合わせください。",
+    "max_message": "より多くのチャットボットと高度な機能を利用するにはプランをアップグレードしてください。"
+  },
+  "UserProfile": {
+    "title_bar": "ユーザープロフィール",
+    "title_bar_description": "ユーザープロフィールの表示と管理"
+  },
+  "OrganizationProfile": {
+    "title_bar": "組織管理",
+    "title_bar_description": "組織の管理"
+  },
+  "Billing": {
+    "title_bar": "請求",
+    "title_bar_description": "請求とサブスクリプションの管理",
+    "current_section_title": "現在のプラン",
+    "current_section_description": "要件に合わせてお支払いプランを調整してください",
+    "manage_subscription_button": "サブスクリプションを管理"
+  },
+  "BillingOptions": {
+    "current_plan": "現在のプラン",
+    "upgrade_plan": "始める"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "支払い確認",
+    "message_state_title": "支払い完了",
+    "message_state_description": "お支払いが正常に処理されました。ご購入ありがとうございます！",
+    "message_state_button": "請求に戻る"
+  },
+  "DataTable": {
+    "no_results": "結果なし。"
+  },
+  "Todos": {
+    "title_bar": "チャットボット",
+    "title_bar_description": "チャットボットの表示と管理",
+    "add_todo_button": "新しいチャットボット"
+  },
+  "TodoTableColumns": {
+    "open_menu": "メニューを開く",
+    "edit": "編集",
+    "delete": "削除",
+    "title_header": "名前",
+    "message_header": "説明",
+    "created_at_header": "作成日"
+  },
+  "AddTodo": {
+    "title_bar": "チャットボットを追加",
+    "add_todo_section_title": "新しいチャットボットを作成",
+    "add_todo_section_description": "新しいチャットボットを作成するには以下のフォームを入力してください"
+  },
+  "EditTodo": {
+    "title_bar": "チャットボットを編集",
+    "edit_todo_section_title": "チャットボットを変更",
+    "edit_todo_section_description": "チャットボットを編集するには以下のフォームを入力してください"
+  },
+  "TodoForm": {
+    "title_label": "名前",
+    "title_description": "チャットボットの名前を入力してください。",
+    "message_title": "説明",
+    "message_description": "このチャットボットの機能を説明してください。",
+    "submit_button": "送信"
+  }
+}

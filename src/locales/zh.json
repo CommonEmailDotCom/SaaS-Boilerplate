@@ -1,0 +1,167 @@
+{
+  "Index": {
+    "meta_title": "Cutting Edge Chat - 为您的网站定制AI聊天机器人。",
+    "meta_description": "Cutting Edge Chat为您的企业提供高端定制AI聊天机器人。用智能的、符合品牌形象的对话吸引您的访客。"
+  },
+  "Navbar": {
+    "sign_in": "登录",
+    "sign_up": "注册",
+    "product": "产品",
+    "docs": "文档",
+    "blog": "博客",
+    "community": "社区",
+    "company": "公司"
+  },
+  "Hero": {
+    "follow_twitter": "在Twitter上关注我们",
+    "title": "将访客转化为客户的<important>AI聊天机器人。</important>",
+    "description": "几分钟内在您的网站上部署一个完全定制的智能聊天机器人。由最新AI模型驱动 — 无需编码。",
+    "primary_button": "免费开始",
+    "secondary_button": "查看演示"
+  },
+  "Sponsors": {
+    "title": "技术支持"
+  },
+  "Features": {
+    "section_subtitle": "为什么选择Cutting Edge Chat",
+    "section_title": "部署完美聊天机器人所需的一切",
+    "section_description": "专为希望更智能地吸引网站访客并将对话转化为收益的企业而设计。",
+    "feature1_title": "多种AI模型",
+    "feature2_title": "品牌定制",
+    "feature3_title": "简单嵌入",
+    "feature4_title": "对话历史",
+    "feature5_title": "知识库",
+    "feature6_title": "数据分析",
+    "feature_description": "灵活、强大且易于使用 — 让您专注于业务本身。"
+  },
+  "Pricing": {
+    "section_subtitle": "简单透明的定价",
+    "section_title": "选择适合您业务的方案",
+    "section_description": "免费开始，随业务增长按需扩展。每个方案都包含一个随时可部署的完全定制聊天机器人。",
+    "button_text": "开始使用"
+  },
+  "PricingPlan": {
+    "free_plan_name": "免费版",
+    "premium_plan_name": "高级版",
+    "enterprise_plan_name": "企业版",
+    "free_plan_description": "试用",
+    "premium_plan_description": "适合成长型企业",
+    "enterprise_plan_description": "适合大型组织",
+    "feature_team_member": "{number}个团队成员",
+    "feature_website": "{number}个聊天机器人",
+    "feature_storage": "{number}GB存储空间",
+    "feature_transfer": "{number}TB传输量",
+    "feature_email_support": "邮件支持",
+    "plan_interval_month": "月",
+    "plan_interval_year": "年",
+    "next_renew_date": "您的订阅将于{date}续期"
+  },
+  "FAQ": {
+    "question": "在我的网站上部署聊天机器人需要多长时间？",
+    "answer": "大多数客户可以在10分钟内完成部署。注册并选择方案后，您将获得一段简单的嵌入代码，粘贴到您的网站即可。无需开发人员。"
+  },
+  "CTA": {
+    "title": "准备好吸引您的访客了吗？",
+    "description": "加入已经使用Cutting Edge Chat将访客转化为客户的企业行列。",
+    "button_text": "免费开始"
+  },
+  "Footer": {
+    "product": "产品",
+    "docs": "文档",
+    "blog": "博客",
+    "community": "社区",
+    "company": "公司",
+    "terms_of_service": "服务条款",
+    "privacy_policy": "隐私政策",
+    "footer_text": "© {year} {name}。保留所有权利。"
+  },
+  "ProtectFallback": {
+    "not_enough_permission": "您没有执行此操作的权限"
+  },
+  "SignIn": {
+    "meta_title": "登录",
+    "meta_description": "登录您的Cutting Edge Chat账户。"
+  },
+  "SignUp": {
+    "meta_title": "注册",
+    "meta_description": "创建您的Cutting Edge Chat账户，立即部署您的第一个聊天机器人。"
+  },
+  "DashboardLayout": {
+    "home": "首页",
+    "todos": "聊天机器人",
+    "members": "成员",
+    "billing": "账单",
+    "settings": "设置"
+  },
+  "Dashboard": {
+    "meta_title": "Cutting Edge Chat控制台",
+    "meta_description": "管理您的聊天机器人、账单和账户设置。"
+  },
+  "DashboardIndex": {
+    "title_bar": "控制台",
+    "title_bar_description": "欢迎来到您的控制台",
+    "message_state_title": "您的聊天机器人即将就绪",
+    "message_state_description": "完成设置以将您的聊天机器人上线。",
+    "message_state_button": "开始",
+    "message_state_alternative": "需要帮助？请联系我们：support@cuttingedgechat.com",
+    "max_message": "升级您的方案以解锁更多聊天机器人和高级功能。"
+  },
+  "UserProfile": {
+    "title_bar": "用户资料",
+    "title_bar_description": "查看和管理您的用户资料"
+  },
+  "OrganizationProfile": {
+    "title_bar": "组织管理",
+    "title_bar_description": "管理您的组织"
+  },
+  "Billing": {
+    "title_bar": "账单",
+    "title_bar_description": "管理您的账单和订阅",
+    "current_section_title": "当前方案",
+    "current_section_description": "根据您的需求调整付款方案",
+    "manage_subscription_button": "管理订阅"
+  },
+  "BillingOptions": {
+    "current_plan": "当前方案",
+    "upgrade_plan": "开始使用"
+  },
+  "CheckoutConfirmation": {
+    "title_bar": "付款确认",
+    "message_state_title": "付款成功",
+    "message_state_description": "您的付款已成功处理。感谢您的购买！",
+    "message_state_button": "返回账单"
+  },
+  "DataTable": {
+    "no_results": "无结果。"
+  },
+  "Todos": {
+    "title_bar": "聊天机器人",
+    "title_bar_description": "查看和管理您的聊天机器人",
+    "add_todo_button": "新建聊天机器人"
+  },
+  "TodoTableColumns": {
+    "open_menu": "打开菜单",
+    "edit": "编辑",
+    "delete": "删除",
+    "title_header": "名称",
+    "message_header": "描述",
+    "created_at_header": "创建时间"
+  },
+  "AddTodo": {
+    "title_bar": "添加聊天机器人",
+    "add_todo_section_title": "创建新聊天机器人",
+    "add_todo_section_description": "填写以下表单以创建新的聊天机器人"
+  },
+  "EditTodo": {
+    "title_bar": "编辑聊天机器人",
+    "edit_todo_section_title": "修改聊天机器人",
+    "edit_todo_section_description": "填写以下表单以编辑聊天机器人"
+  },
+  "TodoForm": {
+    "title_label": "名称",
+    "title_description": "为您的聊天机器人输入名称。",
+    "message_title": "描述",
+    "message_description": "描述此聊天机器人的功能。",
+    "submit_button": "提交"
+  }
+}
