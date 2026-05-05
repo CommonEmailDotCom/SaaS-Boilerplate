@@ -27,20 +27,28 @@ export default function middleware(
   request: NextRequest,
   event: NextFetchEvent,
 ) {
+  const pathname = request.nextUrl.pathname;
+
+  // ✅ CRITICAL FIX: bypass middleware for API routes (Stripe, webhooks, etc.)
+  if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+    return clerkMiddleware(async (_auth, req) => {
+      return NextResponse.next();
+    })(request, event);
+  }
+
   if (
-    request.nextUrl.pathname.includes('/sign-in')
-    || request.nextUrl.pathname.includes('/sign-up')
-    || isProtectedRoute(request)
+    pathname.includes('/sign-in') ||
+    pathname.includes('/sign-up') ||
+    isProtectedRoute(request)
   ) {
     return clerkMiddleware(async (auth, req) => {
       if (isProtectedRoute(req)) {
-        const locale
-          = req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
+        const locale =
+          req.nextUrl.pathname.match(/(\/.*)\/dashboard/)?.at(1) ?? '';
 
         const signInUrl = new URL(`${locale}/sign-in`, req.url);
 
         await auth.protect({
-          // `unauthenticatedUrl` is needed to avoid error: "Unable to find `next-intl` locale because the middleware didn't run on this request"
           unauthenticatedUrl: signInUrl.toString(),
         });
       }
@@ -48,10 +56,10 @@ export default function middleware(
       const authObj = await auth();
 
       if (
-        authObj.userId
-        && !authObj.orgId
-        && req.nextUrl.pathname.includes('/dashboard')
-        && !req.nextUrl.pathname.endsWith('/organization-selection')
+        authObj.userId &&
+        !authObj.orgId &&
+        req.nextUrl.pathname.includes('/dashboard') &&
+        !req.nextUrl.pathname.endsWith('/organization-selection')
       ) {
         const orgSelection = new URL(
           '/onboarding/organization-selection',
@@ -69,5 +77,5 @@ export default function middleware(
 }
 
 export const config = {
-  matcher: ['/((?!.+\\.[\\w]+$|_next|monitoring).*)', '/', '/(api|trpc)(.*)'], // Also exclude tunnelRoute used in Sentry from the matcher
+  matcher: ['/((?!.*\\.[\\w]+$|_next|monitoring).*)', '/', '/(api|trpc)(.*)'],
 };
