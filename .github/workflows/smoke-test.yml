@@ -6,6 +6,13 @@ on:
     types: [completed]
     branches: [main]
 
+# Cancel any in-progress smoke test when a newer one starts.
+# This prevents a stale failing run from overwriting smoke-status.json
+# after a newer passing run has already committed it.
+concurrency:
+  group: smoke-test-main
+  cancel-in-progress: true
+
 jobs:
   smoke-test:
     if: ${{ github.event.workflow_run.conclusion == 'success' }}
@@ -115,11 +122,35 @@ jobs:
 
       - name: Commit smoke-status.json
         if: always()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          THIS_SHA="${{ steps.sha.outputs.sha }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -- .
           git pull --rebase origin main
+
+          # Guard: skip if the SHA already in smoke-status.json is newer than ours.
+          # Compare commit timestamps via GitHub API to avoid stale overwrites.
+          CURRENT_SHA=$(node -e "try{const f=require('./smoke-status.json');console.log(f.sha||'')}catch{console.log('')}")
+          if [ -n "$CURRENT_SHA" ] && [ "$CURRENT_SHA" != "$THIS_SHA" ]; then
+            THIS_DATE=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/commits/$THIS_SHA" \
+              | jq -r '.commit.committer.date // empty' 2>/dev/null || echo "")
+            CURRENT_DATE=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/commits/$CURRENT_SHA" \
+              | jq -r '.commit.committer.date // empty' 2>/dev/null || echo "")
+
+            if [ -n "$THIS_DATE" ] && [ -n "$CURRENT_DATE" ]; then
+              # If our SHA is older than what's already there, skip
+              if [[ "$THIS_DATE" < "$CURRENT_DATE" ]]; then
+                echo "Skipping: our SHA ($THIS_SHA @ $THIS_DATE) is older than current ($CURRENT_SHA @ $CURRENT_DATE)"
+                exit 0
+              fi
+            fi
+          fi
+
           cp /tmp/smoke-status.json smoke-status.json
           git add smoke-status.json
           git diff --staged --quiet || git commit -m "ci: update smoke-status.json [skip ci]"
