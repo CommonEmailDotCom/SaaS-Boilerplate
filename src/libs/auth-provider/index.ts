@@ -27,6 +27,10 @@ let _cacheTime = 0;
 const CACHE_TTL_MS = 10_000; // re-check DB every 10 seconds
 
 export async function getActiveProvider(): Promise<'clerk' | 'authentik'> {
+  // During build phase, skip DB lookup and use env var directly
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return AUTH_PROVIDER;
+  }
   const now = Date.now();
   if (_cachedProvider && now - _cacheTime < CACHE_TTL_MS) {
     return _cachedProvider;

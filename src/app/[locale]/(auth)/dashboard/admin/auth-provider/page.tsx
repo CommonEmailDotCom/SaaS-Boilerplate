@@ -1,4 +1,4 @@
-import { AUTH_PROVIDER, getActiveProvider } from '@/libs/auth-provider';
+import { getActiveProvider } from '@/libs/auth-provider';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { AuthProviderSwitcher } from '@/features/admin/AuthProviderSwitcher';
 
