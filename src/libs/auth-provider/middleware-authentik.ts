@@ -2,7 +2,7 @@
  * Authentik middleware stub — Phase 3 implementation.
  */
 
-import { NextResponse, type NextFetchEvent, type NextRequest } from 'next/server';
+import type { NextFetchEvent, NextRequest } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 
 import { AllLocales, AppConfig } from '@/utils/AppConfig';
