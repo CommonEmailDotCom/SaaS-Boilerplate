@@ -111,13 +111,13 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
         })}
       </div>
 
-      {/* Warning */}
+      {/* Info */}
       {isDirty && (
-        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-          <strong>⚠️ This will trigger a redeployment.</strong>
+        <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
+          <strong>ℹ️ Instant switch.</strong>
           {' '}Switching from <strong>{PROVIDER_INFO[currentProvider].name}</strong> to{' '}
-          <strong>{PROVIDER_INFO[selected].name}</strong> takes ~5 minutes.
-          Users will be signed out and need to sign in again with the new provider.
+          <strong>{PROVIDER_INFO[selected].name}</strong> takes effect immediately.
+          Users will need to sign in again with the new provider.
         </div>
       )}
 
@@ -139,7 +139,7 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
         disabled={!isDirty || loading}
         className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-2.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:pointer-events-none disabled:opacity-50"
       >
-        {loading ? 'Switching...' : 'Switch Provider & Redeploy'}
+        {loading ? 'Switching...' : 'Switch Provider'}
       </button>
     </div>
   );

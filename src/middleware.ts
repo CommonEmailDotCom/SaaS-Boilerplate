@@ -5,9 +5,7 @@ import { createAuthMiddleware } from '@/libs/auth-provider/middleware';
 const authMiddleware = createAuthMiddleware();
 
 export default function middleware(request: NextRequest, event: NextFetchEvent) {
-  if (authMiddleware) {
-    return authMiddleware(request, event);
-  }
+  return authMiddleware(request, event);
 }
 
 export const config = {
