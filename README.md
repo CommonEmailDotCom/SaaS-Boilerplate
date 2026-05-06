@@ -2,7 +2,7 @@
 
 [![Smoke Test](https://mcp.joefuentes.me/badge/smoke?v=2)](https://mcp.joefuentes.me/smoke-latest)
 [![Coolify](https://mcp.joefuentes.me/badge/coolify?v=2)](https://joefuentes.me/project/s8rwdhdza1xx5l9a6ju4yqqb/environment/d9wxurw0vd0tmr5vkspch2ho/application/tuk1rcjj16vlk33jrbx3c9d3/deployment)
-[![Live](https://img.shields.io/website?url=https%3A%2F%2Fsaas.joefuentes.me&label=live&style=flat-square&v=2)](https://saas.joefuentes.me)
+[![Live](https://img.shields.io/website?url=https%3A%2F%2Fcuttingedgechat.com&label=live&style=flat-square&v=2)](https://cuttingedgechat.com)
 
 AI-powered custom chatbots for your website. This repository is the **business layer** — authentication, subscriptions, billing, and the customer dashboard. The chatbot product itself is a separate service.
 
@@ -19,7 +19,7 @@ AI-powered custom chatbots for your website. This repository is the **business l
 ## Architecture
 
 ```
-saas.joefuentes.me     ← this repo (business layer)
+cuttingedgechat.com     ← this repo (business layer)
 ├── Landing page
 ├── Sign up / sign in (Clerk)
 ├── Stripe checkout + webhooks
@@ -50,7 +50,7 @@ Required env vars:
 | `STRIPE_SECRET_KEY` | Stripe secret key |
 | `STRIPE_WEBHOOK_SECRET` | Stripe webhook signing secret |
 | `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` | Stripe publishable key |
-| `NEXT_PUBLIC_APP_URL` | App base URL (e.g. `https://saas.joefuentes.me`) |
+| `NEXT_PUBLIC_APP_URL` | App base URL (e.g. `https://cuttingedgechat.com`) |
 | `BILLING_PLAN_ENV` | `dev`, `test`, or `prod` |
 
 ## Database
@@ -88,7 +88,7 @@ Hosted on Hetzner via **Coolify**. Auto-deploys on push to `main`.
 2. GitHub Action (`set-version.yml`) writes commit SHA to `.env.production` and commits
 3. Action calls MCP server which triggers Coolify via internal API
 4. Coolify builds with custom `Dockerfile` (~2-3 min with cache)
-5. Verify: `https://saas.joefuentes.me/api/version`
+5. Verify: `https://cuttingedgechat.com/api/version`
 
 **Build times:**
 - First build after `package.json` changes: ~4-5 min

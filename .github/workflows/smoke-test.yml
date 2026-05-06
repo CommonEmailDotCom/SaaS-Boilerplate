@@ -34,11 +34,11 @@ jobs:
           ATTEMPT=0
           START_TIME=$(date +%s)
 
-          echo "Polling https://saas.joefuentes.me/api/version for SHA ${SHORT_SHA}..."
+          echo "Polling https://cuttingedgechat.com/api/version for SHA ${SHORT_SHA}..."
 
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
-            LIVE_SHA=$(curl -sf https://saas.joefuentes.me/api/version | jq -r '.sha' 2>/dev/null || echo "")
+            LIVE_SHA=$(curl -sf https://cuttingedgechat.com/api/version | jq -r '.sha' 2>/dev/null || echo "")
 
             echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: live=${LIVE_SHA} expected=${SHORT_SHA}"
 

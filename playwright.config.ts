@@ -1,6 +1,6 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const LIVE_URL = 'https://saas.joefuentes.me';
+const LIVE_URL = 'https://cuttingedgechat.com';
 
 export default defineConfig({
   testDir: './tests/e2e',
