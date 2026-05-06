@@ -8,7 +8,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 # NODE_ENV=development forces npm to install devDependencies needed for the build
 ENV NODE_ENV=development
-RUN npm ci
+# Use npm install instead of npm ci to handle lock file updates automatically
+RUN npm install
 
 # ── Builder stage ─────────────────────────────────────────────────────────────
 FROM base AS builder
