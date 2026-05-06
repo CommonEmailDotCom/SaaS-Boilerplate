@@ -20,6 +20,9 @@ export const {
   signIn: authentikSignIn,
   signOut: authentikSignOut,
 } = NextAuth({
+  // Required in next-auth v5 when running behind a reverse proxy (Traefik/Coolify).
+  // Without this, next-auth rejects requests as UntrustedHost.
+  trustHost: true,
   adapter: DrizzleAdapter(db, {
     usersTable: userSchema as any,
     accountsTable: accountSchema as any,
@@ -49,7 +52,6 @@ export const {
   secret: process.env.AUTH_SECRET,
   callbacks: {
     async session({ session, user }) {
-      // Attach our DB user ID to the session
       if (user) {
         session.user.id = user.id;
       }
