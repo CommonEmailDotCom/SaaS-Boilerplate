@@ -14,7 +14,7 @@ import type { NextFetchEvent, NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 
-import { AUTH_PROVIDER } from '@/libs/auth-provider';
+import { AUTH_PROVIDER } from '@/libs/auth-provider/provider-constant';
 import { AllLocales, AppConfig } from '@/utils/AppConfig';
 
 const intlMiddleware = createIntlMiddleware({

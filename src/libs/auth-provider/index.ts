@@ -15,7 +15,7 @@ export type { AuthOrg, AuthSession, AuthUser, AuthProviderType } from './types';
 export type { IAuthProvider } from './types';
 
 /** Build-time / Edge-safe default from env var */
-export const AUTH_PROVIDER = (process.env.AUTH_PROVIDER ?? 'clerk') as 'clerk' | 'authentik';
+export { AUTH_PROVIDER } from './provider-constant';
 
 /**
  * Get the active provider type at runtime.
