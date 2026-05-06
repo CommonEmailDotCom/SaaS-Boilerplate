@@ -1,7 +1,7 @@
-import { auth, clerkClient } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
+import { getAuthProvider, getSession } from '@/libs/auth-provider';
 import { upsertOrganization, getOrganization } from '@/libs/organization';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -21,11 +21,13 @@ const stripeLocaleMap: Record<string, Stripe.Checkout.SessionCreateParams.Locale
 
 export async function POST(req: Request) {
   try {
-    const { userId, orgId } = await auth();
+    const session = await getSession();
 
-    if (!userId) {
+    if (!session?.userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
+
+    const { userId } = session;
 
     const body = await req.json();
     const priceId: string | undefined = body.priceId;
@@ -36,20 +38,20 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
     }
 
-    const clerk = await clerkClient();
-    let finalOrgId = orgId;
+    const provider = getAuthProvider();
+    let finalOrgId = session.orgId;
 
     if (!finalOrgId) {
-      const memberships = await clerk.users.getOrganizationMembershipList({ userId });
+      const orgs = await provider.getUserOrgs(userId);
 
-      if (memberships.data.length > 0) {
-        finalOrgId = memberships.data[0]!.organization.id;
+      if (orgs.length > 0) {
+        finalOrgId = orgs[0]!.id;
       } else {
-        const org = await clerk.organizations.createOrganization({
-          name: `Workspace-${userId.slice(0, 6)}`,
-          createdBy: userId,
-        });
-        finalOrgId = org.id;
+        const newOrg = await provider.createOrg(
+          `Workspace-${userId.slice(0, 6)}`,
+          userId,
+        );
+        finalOrgId = newOrg.id;
       }
     }
 
@@ -69,12 +71,13 @@ export async function POST(req: Request) {
     if (existingOrg?.stripeCustomerId) {
       stripeCustomerId = existingOrg.stripeCustomerId;
     } else {
-      const clerkOrg = await clerk.organizations.getOrganization({
-        organizationId: finalOrgId,
-      });
+      // Get org name from provider for Stripe customer
+      const orgName = (await provider.getUserOrgs(userId))
+        .find(o => o.id === finalOrgId)?.name
+        ?? `Workspace-${userId.slice(0, 6)}`;
 
       const customer = await stripe.customers.create({
-        name: clerkOrg.name,
+        name: orgName,
         metadata: { orgId: finalOrgId, userId },
       });
 
@@ -82,7 +85,7 @@ export async function POST(req: Request) {
       await upsertOrganization(finalOrgId, { stripeCustomerId });
     }
 
-    const session = await stripe.checkout.sessions.create({
+    const checkoutSession = await stripe.checkout.sessions.create({
       mode: 'subscription',
       customer: stripeCustomerId,
       payment_method_types: ['card'],
@@ -96,7 +99,7 @@ export async function POST(req: Request) {
       },
     });
 
-    return NextResponse.json({ url: session.url });
+    return NextResponse.json({ url: checkoutSession.url });
   } catch (error: any) {
     console.error('Stripe checkout error:', error);
     return NextResponse.json(

@@ -1,19 +1,17 @@
-import { auth } from '@clerk/nextjs/server';
 import { getTranslations } from 'next-intl/server';
 
 import { getOrganization, getPlanId } from '@/libs/organization';
+import { getSession } from '@/libs/auth-provider';
 import { MessageState } from '@/features/dashboard/MessageState';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 
 const DashboardIndexPage = async () => {
   const t = await getTranslations('DashboardIndex');
-  const { userId, orgId } = await auth();
+  const session = await getSession();
 
-  if (!userId || !orgId) return null;
+  if (!session?.userId || !session?.orgId) return null;
 
-  // Look up billing state for this org from DB.
-  // Returns null if the org has never checked out (free plan).
-  const org = await getOrganization(orgId);
+  const org = await getOrganization(session.orgId);
   const planId = getPlanId(org);
 
   return (
@@ -26,10 +24,10 @@ const DashboardIndexPage = async () => {
       <div className="mx-6 mt-4 rounded-lg border bg-card p-4 text-sm">
         <div className="flex flex-col gap-1">
           <p>
-            <span className="font-medium">User:</span> {userId}
+            <span className="font-medium">User:</span> {session.userId}
           </p>
           <p>
-            <span className="font-medium">Org:</span> {orgId}
+            <span className="font-medium">Org:</span> {session.orgId}
           </p>
           <p>
             <span className="font-medium">Plan:</span>{' '}

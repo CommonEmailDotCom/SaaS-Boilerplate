@@ -1,6 +1,5 @@
 'use client';
 
-import { useAuth } from '@clerk/nextjs';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -9,11 +8,12 @@ import { useLocale, useTranslations } from 'next-intl';
 import { buttonVariants } from '@/components/ui/buttonVariants';
 import { PricingInformation } from '@/features/billing/PricingInformation';
 import { Section } from '@/features/landing/Section';
+import { useIsSignedIn } from '@/libs/auth-provider/hooks';
 import { PLAN_ID, PricingPlanList } from '@/utils/AppConfig';
 
 export const Pricing = () => {
   const t = useTranslations('Pricing');
-  const { isSignedIn } = useAuth();
+  const isSignedIn = useIsSignedIn();
   const router = useRouter();
   const locale = useLocale();
   const [isSubscribed, setIsSubscribed] = useState(false);

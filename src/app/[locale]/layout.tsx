@@ -1,12 +1,11 @@
 import '@/styles/global.css';
 
 import type { Metadata } from 'next';
-import { enUS, frFR, esES, itIT, jaJP, zhCN } from '@clerk/localizations';
-import { ClerkProvider } from '@clerk/nextjs';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
 import { DemoBadge } from '@/components/DemoBadge';
+import { AUTH_PROVIDER } from '@/libs/auth-provider';
 import { AllLocales, AppConfig } from '@/utils/AppConfig';
 
 export const metadata: Metadata = {
@@ -22,28 +21,31 @@ export function generateStaticParams() {
   return AllLocales.map(locale => ({ locale }));
 }
 
-const clerkLocalizationMap: Record<string, any> = {
-  en: enUS,
-  fr: frFR,
-  es: esES,
-  it: itIT,
-  ja: jaJP,
-  zh: zhCN,
-  // hi: hiIN — requires @clerk/localizations >= 4.x, add after upgrade
-};
-
-export default function RootLayout(props: {
+// Clerk-specific wrapper — only rendered when AUTH_PROVIDER=clerk
+function ClerkWrapper({
+  children,
+  locale,
+}: {
   children: React.ReactNode;
-  params: { locale: string };
+  locale: string;
 }) {
-  unstable_setRequestLocale(props.params.locale);
+  // Dynamic import to avoid loading Clerk when not needed
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { ClerkProvider } = require('@clerk/nextjs');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { enUS, frFR, esES, itIT, jaJP, zhCN } = require('@clerk/localizations');
 
-  const messages = useMessages();
+  const clerkLocalizationMap: Record<string, any> = {
+    en: enUS,
+    fr: frFR,
+    es: esES,
+    it: itIT,
+    ja: jaJP,
+    zh: zhCN,
+  };
 
-  const clerkLocale = clerkLocalizationMap[props.params.locale] ?? enUS;
-  const localePrefix = props.params.locale !== AppConfig.defaultLocale
-    ? `/${props.params.locale}`
-    : '';
+  const clerkLocale = clerkLocalizationMap[locale] ?? enUS;
+  const localePrefix = locale !== AppConfig.defaultLocale ? `/${locale}` : '';
 
   return (
     <ClerkProvider
@@ -54,17 +56,37 @@ export default function RootLayout(props: {
       signUpFallbackRedirectUrl={`${localePrefix}/dashboard`}
       afterSignOutUrl={`${localePrefix}/`}
     >
-      <html lang={props.params.locale} suppressHydrationWarning>
-        <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
-          <NextIntlClientProvider
-            locale={props.params.locale}
-            messages={messages}
-          >
-            {props.children}
-            <DemoBadge />
-          </NextIntlClientProvider>
-        </body>
-      </html>
+      {children}
     </ClerkProvider>
   );
+}
+
+export default function RootLayout(props: {
+  children: React.ReactNode;
+  params: { locale: string };
+}) {
+  unstable_setRequestLocale(props.params.locale);
+  const messages = useMessages();
+
+  const inner = (
+    <html lang={props.params.locale} suppressHydrationWarning>
+      <body className="bg-background text-foreground antialiased" suppressHydrationWarning>
+        <NextIntlClientProvider locale={props.params.locale} messages={messages}>
+          {props.children}
+          <DemoBadge />
+        </NextIntlClientProvider>
+      </body>
+    </html>
+  );
+
+  if (AUTH_PROVIDER === 'clerk') {
+    return (
+      <ClerkWrapper locale={props.params.locale}>
+        {inner}
+      </ClerkWrapper>
+    );
+  }
+
+  // Authentik: no wrapper needed, next-auth SessionProvider added in Phase 3
+  return inner;
 }
