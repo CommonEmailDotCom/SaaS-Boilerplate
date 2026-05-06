@@ -28,6 +28,7 @@ jobs:
 
       - name: Wait for deployment
         id: deploy_wait
+        continue-on-error: true
         run: |
           SHORT_SHA="${{ steps.sha.outputs.sha }}"
           MAX_ATTEMPTS=15
@@ -46,6 +47,7 @@ jobs:
               END_TIME=$(date +%s)
               ELAPSED=$(( END_TIME - START_TIME ))
               echo "deploy_time=${ELAPSED}" >> $GITHUB_OUTPUT
+              echo "timed_out=false" >> $GITHUB_OUTPUT
               echo "Deployment confirmed live in ${ELAPSED}s!"
               exit 0
             fi
@@ -55,6 +57,8 @@ jobs:
             fi
           done
 
+          echo "deploy_time=0" >> $GITHUB_OUTPUT
+          echo "timed_out=true" >> $GITHUB_OUTPUT
           echo "Deployment did not go live within 15 minutes"
           exit 1
 
@@ -71,8 +75,26 @@ jobs:
 
       - name: Run smoke tests
         id: playwright
+        if: steps.deploy_wait.outputs.timed_out != 'true'
         run: npx playwright test 2>&1 | tee /tmp/playwright-output.txt; echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
+
+      - name: Set timed-out playwright output
+        if: steps.deploy_wait.outputs.timed_out == 'true'
+        run: |
+          echo "Deployment timed out — smoke tests not run." > /tmp/playwright-output.txt
+          echo "exit_code=1" >> $GITHUB_OUTPUT
+        id: playwright_timeout
+
+      - name: Resolve exit code
+        id: result
+        if: always()
+        run: |
+          if [ "${{ steps.deploy_wait.outputs.timed_out }}" = "true" ]; then
+            echo "exit_code=1" >> $GITHUB_OUTPUT
+          else
+            echo "exit_code=${{ steps.playwright.outputs.exit_code }}" >> $GITHUB_OUTPUT
+          fi
 
       - name: Generate job summary
         if: always()
@@ -81,13 +103,14 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           RUN_URL="https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/${{ github.run_id }}"
+          DEPLOY_TIME="${{ steps.deploy_wait.outputs.deploy_time }}"
+          EXIT_CODE="${{ steps.result.outputs.exit_code }}"
           node scripts/smoke-summary.js \
             "${{ steps.sha.outputs.sha }}" \
-            "${{ steps.deploy_wait.outputs.deploy_time }}" \
-            "${{ steps.playwright.outputs.exit_code }}" \
+            "${DEPLOY_TIME:-0}" \
+            "${EXIT_CODE:-1}" \
             "/tmp/playwright-output.txt" \
             "$RUN_URL"
-          # Move status file out of repo dir so git pull doesn't conflict
           mv smoke-status.json /tmp/smoke-status.json
 
       - name: Commit smoke-status.json
@@ -114,11 +137,14 @@ jobs:
         if: always()
         run: |
           SHA="${{ github.event.workflow_run.head_sha }}"
-          EXIT_CODE="${{ steps.playwright.outputs.exit_code }}"
+          EXIT_CODE="${{ steps.result.outputs.exit_code }}"
 
           if [ "$EXIT_CODE" = "0" ]; then
             STATE="success"
             DESCRIPTION="Smoke test passed"
+          elif [ "${{ steps.deploy_wait.outputs.timed_out }}" = "true" ]; then
+            STATE="failure"
+            DESCRIPTION="Smoke test failed — deployment timed out"
           else
             STATE="failure"
             DESCRIPTION="Smoke test failed"
@@ -131,7 +157,7 @@ jobs:
             -d "{\"state\":\"${STATE}\",\"description\":\"${DESCRIPTION}\",\"context\":\"smoke-test\"}"
 
       - name: Fail if tests failed
-        if: steps.playwright.outputs.exit_code != '0'
+        if: steps.result.outputs.exit_code != '0'
         run: exit 1
 
       - name: Upload test results on failure
