@@ -1,10 +1,35 @@
 import { NextResponse } from 'next/server';
+import { auth as clerkAuth } from '@clerk/nextjs/server';
 
-import { getSession, getActiveProvider, setActiveProvider } from '@/libs/auth-provider';
+import { getActiveProvider, setActiveProvider } from '@/libs/auth-provider';
+
+/**
+ * Check if the request has any valid session — Clerk or Authentik.
+ * The admin route needs to work regardless of which provider is active.
+ */
+async function isAuthenticated(): Promise<boolean> {
+  // Try Clerk first (always available since clerkMiddleware runs on all requests)
+  try {
+    const { userId } = await clerkAuth();
+    if (userId) return true;
+  } catch {
+    // Clerk not available or no session
+  }
+
+  // Try Authentik (next-auth)
+  try {
+    const { authentikAuth } = await import('@/libs/auth-nextauth');
+    const session = await authentikAuth();
+    if (session?.user?.id) return true;
+  } catch {
+    // Authentik not available or no session
+  }
+
+  return false;
+}
 
 export async function GET() {
-  const session = await getSession();
-  if (!session?.userId) {
+  if (!await isAuthenticated()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -16,8 +41,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const session = await getSession();
-  if (!session?.userId) {
+  if (!await isAuthenticated()) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
 
@@ -29,7 +53,6 @@ export async function POST(req: Request) {
 
   await setActiveProvider(provider as 'clerk' | 'authentik');
 
-  // Tell the client which sign-in URL to redirect to after signing out
   const signInUrl = provider === 'authentik'
     ? '/api/auth/signin/authentik'
     : '/sign-in';
