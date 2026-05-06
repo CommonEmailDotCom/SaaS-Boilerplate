@@ -23,7 +23,7 @@ export default async function OrganizationSelectionPage() {
     const session = await getSession();
     if (!session?.userId) redirect('/sign-in');
 
-    const provider = getAuthProvider();
+    const provider = await getAuthProvider();
     const orgs = await provider.getUserOrgs(session.userId);
 
     if (orgs.length === 0) {

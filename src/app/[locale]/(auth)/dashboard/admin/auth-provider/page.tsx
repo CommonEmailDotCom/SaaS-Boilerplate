@@ -1,15 +1,11 @@
+import { AUTH_PROVIDER } from '@/libs/auth-provider';
 import { TitleBar } from '@/features/dashboard/TitleBar';
 import { AuthProviderSwitcher } from '@/features/admin/AuthProviderSwitcher';
-import { getSession } from '@/libs/auth-provider';
-import { redirect } from 'next/navigation';
 
 type Provider = 'clerk' | 'authentik';
 
 export default async function AuthProviderPage() {
-  const session = await getSession();
-  if (!session?.userId) redirect('/sign-in');
-
-  const currentProvider = (process.env.AUTH_PROVIDER ?? 'clerk') as Provider;
+  const currentProvider = (AUTH_PROVIDER ?? 'clerk') as Provider;
 
   return (
     <>

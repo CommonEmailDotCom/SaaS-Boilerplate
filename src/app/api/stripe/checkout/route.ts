@@ -38,7 +38,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing priceId' }, { status: 400 });
     }
 
-    const provider = getAuthProvider();
+    const provider = await getAuthProvider();
     let finalOrgId = session.orgId;
 
     if (!finalOrgId) {
