@@ -8,6 +8,13 @@
       "when": 1726784321202,
       "tag": "0000_init-db",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1746547200000,
+      "tag": "0001_add-auth-provider-tables",
+      "breakpoints": true
     }
   ]
 }
