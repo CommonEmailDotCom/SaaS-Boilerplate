@@ -3,6 +3,7 @@ import '@/styles/global.css';
 import type { Metadata } from 'next';
 import { enUS, frFR, esES, itIT, jaJP, zhCN } from '@clerk/localizations';
 import { ClerkProvider } from '@clerk/nextjs';
+import { SessionProvider } from 'next-auth/react';
 import { NextIntlClientProvider, useMessages } from 'next-intl';
 import { unstable_setRequestLocale } from 'next-intl/server';
 
@@ -30,7 +31,6 @@ const clerkLocalizationMap: Record<string, any> = {
   it: itIT,
   ja: jaJP,
   zh: zhCN,
-  // hi: hiIN — requires @clerk/localizations >= 4.x
 };
 
 export default function RootLayout(props: {
@@ -70,6 +70,10 @@ export default function RootLayout(props: {
     );
   }
 
-  // Authentik: SessionProvider added in Phase 3
-  return inner;
+  // Authentik: wrap with SessionProvider for useSession() in client components
+  return (
+    <SessionProvider>
+      {inner}
+    </SessionProvider>
+  );
 }
