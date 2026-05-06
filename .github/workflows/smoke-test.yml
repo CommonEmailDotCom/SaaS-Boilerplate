@@ -7,8 +7,6 @@ on:
     branches: [main]
 
 # Cancel any in-progress smoke test when a newer one starts.
-# This prevents a stale failing run from overwriting smoke-status.json
-# after a newer passing run has already committed it.
 concurrency:
   group: smoke-test-main
   cancel-in-progress: true
@@ -28,10 +26,32 @@ jobs:
 
       - name: Get deployed SHA
         id: sha
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          CI_SHA="${{ github.event.workflow_run.head_sha }}"
+          SHORT_CI_SHA=$(echo "$CI_SHA" | cut -c1-7)
+
+          # The CI workflow commits a "ci: update commit sha" bump on top of the
+          # real code commit. Coolify deploys the code commit (parent of the CI bump),
+          # so we must poll for the parent SHA, not the CI bump SHA.
+          CI_MSG=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/$CI_SHA" \
+            | jq -r '.commit.message' 2>/dev/null || echo "")
+
+          if echo "$CI_MSG" | grep -q "^ci:"; then
+            # This is a CI bump commit — get the parent (actual code commit)
+            PARENT_SHA=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/$CI_SHA" \
+              | jq -r '.parents[0].sha' 2>/dev/null || echo "")
+            SHORT_SHA=$(echo "$PARENT_SHA" | cut -c1-7)
+            echo "CI bump detected — polling for parent code commit: $SHORT_SHA"
+          else
+            SHORT_SHA=$SHORT_CI_SHA
+            echo "Direct commit — polling for: $SHORT_SHA"
+          fi
+
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "Waiting for SHA: ${SHORT_SHA}"
 
       - name: Wait for deployment
         id: deploy_wait
@@ -117,7 +137,8 @@ jobs:
             "${DEPLOY_TIME:-0}" \
             "${EXIT_CODE:-1}" \
             "/tmp/playwright-output.txt" \
-            "$RUN_URL"
+            "$RUN_URL" \
+            "${{ github.run_id }}"
           mv smoke-status.json /tmp/smoke-status.json
 
       - name: Commit smoke-status.json
@@ -125,30 +146,19 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          THIS_SHA="${{ steps.sha.outputs.sha }}"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git checkout -- .
           git pull --rebase origin main
 
-          # Guard: skip if the SHA already in smoke-status.json is newer than ours.
-          # Compare commit timestamps via GitHub API to avoid stale overwrites.
-          CURRENT_SHA=$(node -e "try{const f=require('./smoke-status.json');console.log(f.sha||'')}catch{console.log('')}")
-          if [ -n "$CURRENT_SHA" ] && [ "$CURRENT_SHA" != "$THIS_SHA" ]; then
-            THIS_DATE=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/commits/$THIS_SHA" \
-              | jq -r '.commit.committer.date // empty' 2>/dev/null || echo "")
-            CURRENT_DATE=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/commits/$CURRENT_SHA" \
-              | jq -r '.commit.committer.date // empty' 2>/dev/null || echo "")
+          # Guard: only write if our run_id is >= what's already stored.
+          # run_id is a monotonically increasing integer — higher always means newer.
+          OUR_RUN_ID="${{ github.run_id }}"
+          STORED_RUN_ID=$(node -e "try{const f=require('./smoke-status.json');console.log(f.runId||0)}catch{console.log(0)}")
 
-            if [ -n "$THIS_DATE" ] && [ -n "$CURRENT_DATE" ]; then
-              # If our SHA is older than what's already there, skip
-              if [[ "$THIS_DATE" < "$CURRENT_DATE" ]]; then
-                echo "Skipping: our SHA ($THIS_SHA @ $THIS_DATE) is older than current ($CURRENT_SHA @ $CURRENT_DATE)"
-                exit 0
-              fi
-            fi
+          if [ "$OUR_RUN_ID" -lt "$STORED_RUN_ID" ]; then
+            echo "Skipping: our run_id ($OUR_RUN_ID) is older than stored ($STORED_RUN_ID)"
+            exit 0
           fi
 
           cp /tmp/smoke-status.json smoke-status.json

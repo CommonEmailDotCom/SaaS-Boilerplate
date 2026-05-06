@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 // Called by smoke-test.yml to generate a GitHub Actions job summary via Claude API
-// Usage: node scripts/smoke-summary.js <sha> <deploy_seconds> <exit_code> <playwright_output_file> <run_url>
+// Usage: node scripts/smoke-summary.js <sha> <deploy_seconds> <exit_code> <playwright_output_file> <run_url> <run_id>
 
 const fs = require('fs');
 
-const [,, sha, deploySeconds, exitCode, outputFile, runUrl] = process.argv;
+const [,, sha, deploySeconds, exitCode, outputFile, runUrl, runId] = process.argv;
 const passed = exitCode === '0';
 const playwrightOutput = fs.readFileSync(outputFile, 'utf8');
 
@@ -24,7 +24,6 @@ async function getCommitMessage(sha) {
       },
     });
     const data = await res.json();
-    // First line of commit message only
     return data.commit?.message?.split('\n')[0] || '';
   } catch (err) {
     return '';
@@ -74,26 +73,24 @@ ${playwrightOutput}`,
     summary = `## ${icon} Smoke Test ${status} — ${commitInfo}\n\n**Deploy time:** ${deployStr}\n\n\`\`\`\n${playwrightOutput}\n\`\`\``;
   }
 
-  // Write to GitHub Step Summary (renders in UI)
   const summaryFile = process.env.GITHUB_STEP_SUMMARY;
   if (summaryFile) {
     fs.appendFileSync(summaryFile, summary + '\n');
   }
 
-  // Write to file so it can be uploaded as artifact and read via API
   fs.writeFileSync('/tmp/smoke-summary.md', summary + '\n');
 
-  // Write smoke-status.json for the badge endpoint
+  // Include runId so the commit step can use it as a monotonic guard
   const status = {
     status: passed ? 'passing' : 'failing',
     sha,
+    runId: runId ? parseInt(runId, 10) : 0,
     deployTime: deployStr,
     runUrl: runUrl || '',
     timestamp: new Date().toISOString(),
   };
   fs.writeFileSync('smoke-status.json', JSON.stringify(status, null, 2) + '\n');
 
-  // Print to stdout so it appears in the job log
   console.log(summary);
 }
 
