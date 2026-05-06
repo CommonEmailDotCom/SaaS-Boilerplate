@@ -1,71 +1,200 @@
 {
-  "updated": "2026-05-06T22:15:00Z",
-  "sprint": "Auth Provider Switching",
+  "updated": "2026-05-07T00:10:00Z",
+  "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
+  "project": "Cutting Edge Chat — https://cuttingedgechat.com",
+  "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
+  "agent_communication": {
+    "inbox_files": {
+      "observer": "agent_sync/OBSERVER_INBOX.md",
+      "operator": "agent_sync/OPERATOR_INBOX.md"
+    },
+    "protocol": "CHECK YOUR INBOX FILE FIRST at the start of every cycle, before reading this TASK_BOARD. The Manager will leave direct messages there when immediate responses are needed. Reply by appending a REPLY block in your inbox file, or by acting and logging in QA_REPORT.md / BUILD_LOG.md."
+  },
+  "manager_assessment": {
+    "timestamp": "2026-05-07T00:10:00Z",
+    "overall_status": "🟢 ACTIVE — All strategic decisions locked. Inbox system now live. Observer has an open message in OBSERVER_INBOX.md — check it immediately. Operator clear to continue T-005, T-007, T-010 code work.",
+    "active_blockers": [],
+    "owner_decisions_locked": {
+      "Q1_authentik_first_login": "AUTO-CREATE org on first Authentik login. First user in new org gets role=admin.",
+      "Q2_long_term_auth_strategy": "KEEP BOTH PROVIDERS PERMANENTLY. Clerk must not be removed, degraded, or affected in any way.",
+      "Q3_switcher_access_control": "ADMIN ONLY. T-007 + T-010 must ship together."
+    },
+    "architecture_notes_for_agents": [
+      "Middleware runs on Edge runtime — provider-constant.ts is the ONLY safe import for middleware.",
+      "getActiveProvider() has a 5s cache TTL. Tests switching provider must wait >5s before asserting.",
+      "next-auth requires trustHost: true behind Traefik — do not remove.",
+      "Clerk clerkMiddleware() MUST run on all requests even when Authentik is active — Clerk is permanent.",
+      "The /api/auth/authentik-signin route calls authentikSignIn() server-side. The old /api/auth/signin/authentik is broken.",
+      "Coolify SaaS app UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP server UUID: a1fr37jiwehxbfqp90k4cvsw.",
+      "Both providers are permanent — any code touching Clerk must treat it as a first-class citizen, not legacy."
+    ]
+  },
   "columns": {
-    "backlog": [
+    "in_progress": [
       {
-        "id": "T-005",
-        "title": "First Authentik login creates user + org in DB",
-        "description": "When a new user signs in via Authentik for the first time, a user row and organization row should be created and linked. Needs verification.",
-        "priority": "high",
-        "assigned_to": "operator"
+        "id": "BUILD-LOG-FIX",
+        "title": "[INFRA] Restore BUILD_LOG.md",
+        "priority": "critical",
+        "assigned_to": "operator",
+        "manager_instruction": "Active. Read /api/version, check Coolify app UUID tuk1rcjj16vlk33jrbx3c9d3 for deployment timestamp + log errors, confirm migrations ran. Write to /agent_sync/BUILD_LOG.md. Include post-incident note: disk usage and container count after Docker prune."
       },
       {
-        "id": "T-006",
-        "title": "Dashboard + billing work under Authentik session",
-        "description": "Verify org context, billing status, and Stripe checkout all function when auth_provider=authentik.",
+        "id": "INFRA-001",
+        "title": "[INFRA] Schedule recurring Docker prune on Hetzner",
         "priority": "high",
-        "assigned_to": "tester"
+        "assigned_to": "operator",
+        "manager_instruction": "Active. Check if Coolify has a built-in prune schedule. If not, add a weekly cron on the Hetzner host: 'docker system prune -f --filter until=24h'. Consider also truncating /var/log on a schedule. Document in BUILD_LOG.md."
+      },
+      {
+        "id": "T-001",
+        "title": "[VERIFY] Authentik sign-in flow end-to-end — build 670473e",
+        "priority": "critical",
+        "assigned_to": "tester",
+        "sha_under_test": "670473e",
+        "manager_instruction": "⚠️ CHECK OBSERVER_INBOX.md FIRST. Then run full test matrix A → E. Log every step in QA_REPORT.md. Precondition: confirm /api/version returns 670473e or its ci: child. If wrong, log BLOCKED.",
+        "test_matrix": {
+          "precondition": "Confirm /api/version returns SHA matching 670473e or its ci: child. If wrong, STOP and log BLOCKED.",
+          "test_A_clerk_baseline": {
+            "name": "A — Clerk baseline (regression)",
+            "steps": [
+              "Ensure app_config.auth_provider = clerk",
+              "Navigate to /sign-in → Clerk modal loads",
+              "Sign in with test Clerk account",
+              "Assert: /dashboard loads, org name visible, no console errors",
+              "Assert: billing status loads",
+              "Assert: Coolify logs clean"
+            ]
+          },
+          "test_B_switch_to_authentik": {
+            "name": "B — Switch Clerk → Authentik",
+            "steps": [
+              "From /dashboard/admin/auth-provider, select Authentik → Switch",
+              "Assert: POST /api/admin/auth-provider returns 200",
+              "Assert: Auto sign-out from Clerk fires",
+              "Assert: Redirect goes to /api/auth/authentik-signin (NOT old v4 route)",
+              "Assert: Browser lands on https://auth.joefuentes.me",
+              "Sign in with Authentik test credentials",
+              "Assert: Redirect returns to https://cuttingedgechat.com/dashboard",
+              "Assert: next-auth DB session row created in sessions table",
+              "Wait 6s, assert getActiveProvider() = 'authentik'",
+              "Assert: No UntrustedHost or redirect_uri_mismatch in Coolify logs"
+            ]
+          },
+          "test_C_authentik_session": {
+            "name": "C — Dashboard integrity under Authentik session",
+            "steps": [
+              "Signed in via Authentik, navigate to /dashboard",
+              "Assert: org context loads (may be absent until T-005 ships — log as known gap, not failure)",
+              "Assert: billing status loads — no 401 or 500",
+              "Assert: Stripe checkout initiates without auth errors",
+              "Assert: Coolify logs clean"
+            ]
+          },
+          "test_D_switch_back_to_clerk": {
+            "name": "D — Switch Authentik → Clerk",
+            "steps": [
+              "From /dashboard/admin/auth-provider, switch back to Clerk",
+              "Assert: next-auth sign-out fires correctly",
+              "Assert: Redirect goes to /sign-in (Clerk), NOT auth.joefuentes.me",
+              "Sign in via Clerk",
+              "Assert: /dashboard loads normally, no stale next-auth cookie interference",
+              "Assert: Clerk session fully intact"
+            ]
+          },
+          "test_E_smoke_badge": {
+            "name": "E — Smoke badge",
+            "steps": [
+              "Check https://mcp.joefuentes.me/badge/smoke",
+              "Assert: badge shows passing for 670473e or ci: child",
+              "Assert: smoke-status.json not overwritten by stale run"
+            ]
+          }
+        },
+        "on_failure": "Move T-001 to blocked. Log exact step, error, HTTP status, Coolify log excerpt in QA_REPORT.md."
+      },
+      {
+        "id": "T-005",
+        "title": "First Authentik login auto-creates user + org in DB",
+        "priority": "high",
+        "assigned_to": "operator",
+        "manager_instruction": "Code now, deploy after T-001 passes. In src/libs/auth-nextauth.ts signIn callback: (1) check organization_member for existing org, (2) if none, create organization row (name from email local-part or display name, URL-safe slug), (3) insert organization_member with role='admin'. Additive only — must not touch Clerk flows. Wrap in try/catch. T-008 can be added to this same callback (populate authentikId from profile.sub if null)."
       },
       {
         "id": "T-007",
-        "title": "Restrict auth provider switcher to admin role",
-        "description": "Currently any signed-in user can switch providers. Should be restricted to org admin only.",
-        "priority": "medium",
-        "assigned_to": "operator"
+        "title": "Restrict auth provider switcher to org admin role only",
+        "priority": "high",
+        "assigned_to": "operator",
+        "manager_instruction": "Code now, deploy with T-010. In POST /api/admin/auth-provider: under Clerk use clerkClient to assert role=admin; under Authentik query organization_member. Return 403 if not admin. DO NOT SHIP without T-010 — risk of locking out all users if no admin exists yet."
+      }
+    ],
+    "backlog": [
+      {
+        "id": "T-010",
+        "title": "Guarantee at least one admin user exists — bootstrap + enforcement",
+        "priority": "high",
+        "assigned_to": "operator",
+        "manager_instruction": "Must ship alongside T-007. Part 1 (BOOTSTRAP): first user in T-005 org creation gets role=admin — already covered in T-005 instruction. Part 2 (ENFORCEMENT): any API that demotes or removes a member must first count remaining admins in that org. If count would reach zero, return 400 with message 'Cannot remove the last admin of an organization.' Observer must test this: attempt to demote the only admin and assert 400."
       },
       {
         "id": "T-008",
-        "title": "Link user.authentikId after first Authentik login",
-        "description": "Populate the nullable authentikId column on the user row after first Authentik OAuth login to enable account linking.",
-        "priority": "low",
-        "assigned_to": "operator"
-      }
-    ],
-    "in_progress": [
+        "title": "Populate user.authentikId after first Authentik login",
+        "priority": "medium",
+        "assigned_to": "operator",
+        "manager_instruction": "Fold into T-005 signIn callback. After user row found/created, if user.authentikId is null populate from profile.sub. Deploy together with T-005."
+      },
       {
-        "id": "T-001",
-        "title": "[VERIFY] Authentik sign-in flow end-to-end",
-        "description": "After fix in 670473e (next-auth v5 signIn() URL), verify full Clerk→Authentik switch: sign out, redirect to auth.joefuentes.me, sign in, land on /dashboard.",
-        "priority": "critical",
-        "assigned_to": "tester"
+        "id": "T-006",
+        "title": "Stripe checkout works under Authentik session",
+        "priority": "high",
+        "assigned_to": "tester",
+        "manager_instruction": "HOLD — depends on T-005 (org must exist for Stripe org lookup). Queue after T-005 deploys."
+      },
+      {
+        "id": "T-009",
+        "title": "Sign-out from Authentik redirects correctly on provider switch-back",
+        "priority": "medium",
+        "assigned_to": "tester",
+        "manager_instruction": "HOLD — covered by T-001 Test D. Closes with T-001 or escalates as separate blocker."
       }
     ],
-    "blocked": [],
     "in_review": [
       {
         "id": "T-002",
         "title": "Smoke test polls correct SHA (parent of CI bump)",
-        "description": "Fixed in 1542ceb. Smoke test now detects ci: prefix commits and polls the parent code commit SHA instead.",
         "priority": "high",
-        "assigned_to": "tester"
+        "assigned_to": "tester",
+        "sha_fixed_in": "1542ceb",
+        "manager_instruction": "Queue after T-001 complete. Push trivial commit, confirm smoke-test.yml polls parent SHA not ci: bump. Log both SHAs in QA_REPORT.md."
       },
       {
         "id": "T-003",
-        "title": "Smoke test concurrency — cancel stale runs",
-        "description": "Fixed in 370c0c0. concurrency group added, run_id monotonic guard prevents stale overwrites.",
+        "title": "Smoke test concurrency — cancel stale runs + run_id guard",
         "priority": "high",
-        "assigned_to": "tester"
+        "assigned_to": "tester",
+        "sha_fixed_in": "370c0c0",
+        "manager_instruction": "Queue LAST — highest server load. Trigger two simultaneous smoke runs, assert older cancelled, smoke-status.json reflects newer result."
       }
     ],
+    "blocked": [],
     "done": [
       {
         "id": "T-004",
         "title": "Auth provider instant switching via DB (no redeploy)",
-        "description": "getActiveProvider() reads app_config table at runtime. setActiveProvider() writes to DB and busts cache. Middleware checks both Clerk and next-auth cookies.",
         "priority": "critical",
-        "assigned_to": "operator"
+        "assigned_to": "operator",
+        "closed_note": "getActiveProvider() reads app_config table, 5s cache, env var fallback. setActiveProvider() writes DB + busts cache. Middleware checks both Clerk and next-auth cookies. Edge-safe via provider-constant.ts."
       }
     ]
-  }
+  },
+  "active_priority_order": [
+    "1. OBSERVER: Check OBSERVER_INBOX.md and reply",
+    "2. OPERATOR: BUILD-LOG-FIX + INFRA-001",
+    "3. OBSERVER: T-001 A-E — log everything in QA_REPORT.md",
+    "4. OPERATOR: T-005 + T-008 code (deploy after T-001 passes)",
+    "5. OPERATOR: T-007 + T-010 code (deploy together)",
+    "6. OBSERVER: T-002 after T-001 complete",
+    "7. OBSERVER: T-006 / T-009 after T-005 deployed",
+    "8. OBSERVER: T-010 QA — test last-admin demotion guard",
+    "9. OBSERVER: T-003 chaos test — absolute last"
+  ]
 }
