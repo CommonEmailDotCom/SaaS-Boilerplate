@@ -16,7 +16,7 @@ export interface AuthSession {
 
 export interface AuthUser {
   id: string;
-  email: string;
+  email: string | null;
   name: string | null;
   avatarUrl: string | null;
 }
