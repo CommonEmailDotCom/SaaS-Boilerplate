@@ -4,10 +4,11 @@ ALTER TABLE "organization" ADD COLUMN IF NOT EXISTS "slug" text;
 --> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "user" (
 	"id" text PRIMARY KEY NOT NULL,
-	"authentik_id" text NOT NULL,
-	"email" text NOT NULL,
+	"authentik_id" text,
 	"name" text,
-	"avatar_url" text,
+	"email" text NOT NULL,
+	"email_verified" timestamp,
+	"image" text,
 	"updated_at" timestamp DEFAULT now() NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	CONSTRAINT "user_authentik_id_unique" UNIQUE("authentik_id"),

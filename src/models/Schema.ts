@@ -1,6 +1,5 @@
 import {
   bigint,
-  boolean,
   integer,
   pgTable,
   primaryKey,
@@ -60,14 +59,15 @@ export const todoSchema = pgTable('todo', {
 
 /**
  * Local user record linked to Authentik via OIDC sub claim.
- * Created on first login via Authentik.
+ * next-auth DrizzleAdapter requires: id, name, email, emailVerified, image
  */
 export const userSchema = pgTable('user', {
-  id: text('id').primaryKey(), // our UUID
-  authentikId: text('authentik_id').unique().notNull(), // OIDC sub
-  email: text('email').unique().notNull(),
+  id: text('id').primaryKey(), // our UUID (managed by next-auth adapter)
+  authentikId: text('authentik_id').unique(), // OIDC sub — nullable until first login
   name: text('name'),
-  avatarUrl: text('avatar_url'),
+  email: text('email').unique().notNull(),
+  emailVerified: timestamp('email_verified', { mode: 'date' }),
+  image: text('image'), // next-auth expects 'image' not 'avatarUrl'
   updatedAt: timestamp('updated_at', { mode: 'date' })
     .defaultNow()
     .$onUpdate(() => new Date())
@@ -151,7 +151,6 @@ export const verificationTokenSchema = pgTable(
 /**
  * App-wide config store.
  * Used by admin UI to display current auth provider setting.
- * The actual switch is done via AUTH_PROVIDER env var + redeploy.
  */
 export const appConfigSchema = pgTable('app_config', {
   key: text('key').primaryKey(),

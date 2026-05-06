@@ -55,7 +55,7 @@ export const authentikProvider: IAuthProvider = {
         id: user.id,
         email: user.email,
         name: user.name,
-        avatarUrl: user.avatarUrl,
+        avatarUrl: user.image,
       };
     } catch {
       return null;
