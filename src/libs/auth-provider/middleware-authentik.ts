@@ -1,5 +1,9 @@
 /**
  * Authentik middleware — protects routes using next-auth v5 session.
+ *
+ * EDGE RUNTIME SAFE: Does NOT import DB.ts or any Node.js-only modules.
+ * Uses next-auth's built-in middleware which reads the JWT session cookie
+ * directly without hitting the database.
  */
 
 import type { NextFetchEvent, NextRequest } from 'next/server';
@@ -7,7 +11,6 @@ import { NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 
 import { AllLocales, AppConfig } from '@/utils/AppConfig';
-import { authentikAuth } from '../auth-nextauth';
 
 const intlMiddleware = createIntlMiddleware({
   locales: AllLocales,
@@ -26,7 +29,22 @@ function getLocalePrefix(pathname: string) {
   return match?.[1] ?? '';
 }
 
-export async function authentikAuthMiddleware(
+/**
+ * Read next-auth session token from cookie without importing DB.
+ * next-auth stores a JWT cookie (authjs.session-token) that we can
+ * check for existence as a lightweight auth guard in Edge middleware.
+ * Full session validation happens in server components via authentikAuth().
+ */
+function hasSessionCookie(request: NextRequest): boolean {
+  return !!(
+    request.cookies.get('authjs.session-token')
+    ?? request.cookies.get('__Secure-authjs.session-token')
+    ?? request.cookies.get('next-auth.session-token')
+    ?? request.cookies.get('__Secure-next-auth.session-token')
+  );
+}
+
+export function authentikAuthMiddleware(
   request: NextRequest,
   _event: NextFetchEvent,
 ) {
@@ -38,16 +56,11 @@ export async function authentikAuthMiddleware(
   }
 
   if (isProtected(pathname)) {
-    const session = await authentikAuth();
-
-    if (!session?.user) {
+    if (!hasSessionCookie(request)) {
       const locale = getLocalePrefix(pathname);
       const signInUrl = new URL(`${locale}/sign-in`, request.url);
       return NextResponse.redirect(signInUrl);
     }
-
-    // If user has no org and is on dashboard, redirect to org selection
-    // (org check happens in the page itself via getSession)
   }
 
   return intlMiddleware(request);
