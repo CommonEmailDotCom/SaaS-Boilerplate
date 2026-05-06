@@ -54,7 +54,7 @@ export async function POST(req: Request) {
   await setActiveProvider(provider as 'clerk' | 'authentik');
 
   const signInUrl = provider === 'authentik'
-    ? '/api/auth/signin/authentik'
+    ? '/api/auth/authentik-signin'
     : '/sign-in';
 
   return NextResponse.json({
