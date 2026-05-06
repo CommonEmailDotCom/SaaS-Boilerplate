@@ -1,9 +1,12 @@
 /**
- * Provider-agnostic middleware factory.
+ * Provider-agnostic middleware.
  *
- * EDGE RUNTIME SAFE: Does NOT import DB or provider implementations.
- * Checks for both Clerk and next-auth session cookies to detect auth state,
- * so it works regardless of which provider is active — no DB query needed.
+ * When Clerk is active: wraps ALL requests with clerkMiddleware() so that
+ * Clerk's auth() context is always available in server components and API routes.
+ *
+ * When Authentik is active: lightweight cookie check, no Clerk needed.
+ *
+ * EDGE RUNTIME SAFE: does not import DB or provider implementations.
  */
 
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
@@ -11,6 +14,7 @@ import type { NextFetchEvent, NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import createIntlMiddleware from 'next-intl/middleware';
 
+import { AUTH_PROVIDER } from '@/libs/auth-provider';
 import { AllLocales, AppConfig } from '@/utils/AppConfig';
 
 const intlMiddleware = createIntlMiddleware({
@@ -26,7 +30,6 @@ const isProtectedRoute = createRouteMatcher([
   '/:locale/onboarding(.*)',
 ]);
 
-/** Check for any valid session cookie (Clerk or next-auth) */
 function hasAnySession(request: NextRequest): boolean {
   const cookies = request.cookies;
   return !!(
@@ -34,8 +37,8 @@ function hasAnySession(request: NextRequest): boolean {
     ?? cookies.get('__Secure-authjs.session-token')
     ?? cookies.get('next-auth.session-token')
     ?? cookies.get('__Secure-next-auth.session-token')
-    ?? cookies.get('__session') // Clerk
-    ?? cookies.get('__client_uat') // Clerk
+    ?? cookies.get('__session')
+    ?? cookies.get('__client_uat')
   );
 }
 
@@ -45,47 +48,52 @@ function getLocalePrefix(pathname: string): string {
 }
 
 export function createAuthMiddleware() {
-  return function authMiddleware(request: NextRequest, event: NextFetchEvent) {
+  if (AUTH_PROVIDER === 'authentik') {
+    return function authentikMiddleware(request: NextRequest, _event: NextFetchEvent) {
+      const { pathname } = request.nextUrl;
+      if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+        return NextResponse.next();
+      }
+      if (isProtectedRoute(request) && !hasAnySession(request)) {
+        const locale = getLocalePrefix(pathname);
+        return NextResponse.redirect(new URL(`${locale}/sign-in`, request.url));
+      }
+      return intlMiddleware(request);
+    };
+  }
+
+  // Clerk: wrap ALL requests so auth() context is always set
+  return function clerkAuthMiddleware(request: NextRequest, event: NextFetchEvent) {
     const { pathname } = request.nextUrl;
 
-    // Skip API and static routes — never block these
-    if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
-      return NextResponse.next();
-    }
+    return clerkMiddleware(async (auth, req) => {
+      if (pathname.startsWith('/api') || pathname.startsWith('/trpc')) {
+        return NextResponse.next();
+      }
 
-    // For protected routes: use Clerk middleware which handles its own
-    // session validation. If Clerk is not active, fall back to cookie check.
-    if (isProtectedRoute(request)) {
-      // Try Clerk middleware first — it handles both Clerk and falls through cleanly
-      return clerkMiddleware(async (auth, req) => {
+      if (isProtectedRoute(req)) {
         const authObj = await auth();
 
-        // If Clerk has a valid session, proceed normally
-        if (authObj.userId) {
-          // Redirect to org selection if no org
-          if (
-            !authObj.orgId
-            && req.nextUrl.pathname.includes('/dashboard')
-            && !req.nextUrl.pathname.endsWith('/organization-selection')
-          ) {
-            return NextResponse.redirect(
-              new URL('/onboarding/organization-selection', req.url),
-            );
-          }
-          return intlMiddleware(req);
+        if (!authObj.userId) {
+          const locale = getLocalePrefix(req.nextUrl.pathname);
+          const signInUrl = new URL(`${locale}/sign-in`, req.url);
+          await auth.protect({ unauthenticatedUrl: signInUrl.toString() });
         }
 
-        // No Clerk session — check for next-auth session cookie (Authentik)
-        if (hasAnySession(req)) {
-          return intlMiddleware(req);
+        const refreshed = await auth();
+        if (
+          refreshed.userId
+          && !refreshed.orgId
+          && req.nextUrl.pathname.includes('/dashboard')
+          && !req.nextUrl.pathname.endsWith('/organization-selection')
+        ) {
+          return NextResponse.redirect(
+            new URL('/onboarding/organization-selection', req.url),
+          );
         }
+      }
 
-        // No session at all — redirect to sign-in
-        const locale = getLocalePrefix(req.nextUrl.pathname);
-        return NextResponse.redirect(new URL(`${locale}/sign-in`, req.url));
-      })(request, event);
-    }
-
-    return intlMiddleware(request);
+      return intlMiddleware(req);
+    })(request, event);
   };
 }
