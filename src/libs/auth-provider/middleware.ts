@@ -3,21 +3,18 @@
  * Returns a Next.js middleware function for the active auth provider.
  */
 
+import type { NextFetchEvent, NextRequest } from 'next/server';
+
+import { authentikAuthMiddleware } from './middleware-authentik';
+import { clerkAuthMiddleware } from './middleware-clerk';
 import { AUTH_PROVIDER } from './index';
 
 export function createAuthMiddleware() {
-  if (AUTH_PROVIDER === 'clerk') {
-    // Lazy import so Clerk is only loaded when active
-    const { clerkAuthMiddleware } = require('./middleware-clerk');
-    return clerkAuthMiddleware;
-  }
-
   if (AUTH_PROVIDER === 'authentik') {
-    // TODO Phase 3: return authentik middleware
-    const { authentikAuthMiddleware } = require('./middleware-authentik');
     return authentikAuthMiddleware;
   }
-
-  // Fallback — no auth protection
-  return null;
+  // Default: clerk
+  return clerkAuthMiddleware;
 }
+
+export type AuthMiddlewareFn = (req: NextRequest, event: NextFetchEvent) => unknown;
