@@ -1,8 +1,8 @@
 {
-  "status": "passing",
-  "sha": "670473e",
-  "runId": 25462878794,
-  "deployTime": "6 min 2s",
-  "runUrl": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25462878794",
-  "timestamp": "2026-05-06T21:52:50.268Z"
+  "status": "failing",
+  "sha": "a5109cd",
+  "runId": 25464272284,
+  "deployTime": "0s",
+  "runUrl": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25464272284",
+  "timestamp": "2026-05-06T22:34:08.867Z"
 }
