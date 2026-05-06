@@ -5,29 +5,31 @@
  * with AUTH_PROVIDER env var as the fallback default. This means switching
  * providers is instant — no redeploy needed, just update app_config.
  *
- * IMPORTANT: This file may be imported by middleware (Edge runtime) indirectly.
- * getSession() and getAuthProvider() use dynamic imports and must only be
- * called from server components and API routes, never from middleware.
+ * IMPORTANT: The middleware always runs clerkMiddleware() regardless of the
+ * active provider, because it's baked at build time. Switching providers
+ * works because getSession() reads the DB-configured provider and routes
+ * to the correct session implementation — Clerk's auth() or next-auth's
+ * session — at request time.
  */
 
 export type { AuthOrg, AuthSession, AuthUser, AuthProviderType } from './types';
 export type { IAuthProvider } from './types';
 
-// Re-export the Edge-safe constant AND import it for local use
+// Re-export and import the Edge-safe constant
 export { AUTH_PROVIDER } from './provider-constant';
 import { AUTH_PROVIDER } from './provider-constant';
 
 /**
  * Get the active provider type at runtime.
  * Reads from app_config DB table first, falls back to AUTH_PROVIDER env var.
- * Cached per-process to avoid a DB query on every request.
+ * Cached per-process with a short TTL.
  */
 let _cachedProvider: 'clerk' | 'authentik' | null = null;
 let _cacheTime = 0;
-const CACHE_TTL_MS = 10_000;
+const CACHE_TTL_MS = 5_000; // 5 seconds — short enough for instant switching
 
 export async function getActiveProvider(): Promise<'clerk' | 'authentik'> {
-  // Skip DB during build — no DB connection available
+  // Skip DB during build phase
   if (process.env.NEXT_PHASE === 'phase-production-build') {
     return AUTH_PROVIDER;
   }
@@ -64,7 +66,8 @@ export async function getActiveProvider(): Promise<'clerk' | 'authentik'> {
 
 /**
  * Set the active provider in app_config.
- * Instant effect — no redeploy needed.
+ * Busts in-process cache immediately. Other processes will pick it up
+ * within CACHE_TTL_MS (5 seconds).
  */
 export async function setActiveProvider(provider: 'clerk' | 'authentik'): Promise<void> {
   const { db } = await import('@/libs/DB');
@@ -78,13 +81,15 @@ export async function setActiveProvider(provider: 'clerk' | 'authentik'): Promis
       set: { value: provider, updatedAt: new Date() },
     });
 
-  // Bust cache immediately
+  // Bust local cache
   _cachedProvider = provider;
   _cacheTime = Date.now();
 }
 
 /**
- * Get the current session. Call from server components and API routes only.
+ * Get the current session.
+ * Routes to the correct provider based on app_config DB value.
+ * Call from server components and API routes only.
  */
 export async function getSession() {
   const provider = await getActiveProvider();
@@ -97,7 +102,8 @@ export async function getSession() {
 }
 
 /**
- * Get the active provider instance. Call from server components and API routes only.
+ * Get the active provider instance.
+ * Call from server components and API routes only.
  */
 export async function getAuthProvider() {
   const provider = await getActiveProvider();

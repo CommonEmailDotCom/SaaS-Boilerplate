@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 
 type Provider = 'clerk' | 'authentik';
 
@@ -15,14 +14,12 @@ const PROVIDER_INFO = {
     description: 'Hosted auth with pre-built UI, organizations, and user management.',
     features: ['Hosted sign-in / sign-up UI', 'Organization management', 'User profiles', '7-language localization'],
     color: 'bg-purple-500',
-    docs: 'https://clerk.com/docs',
   },
   authentik: {
     name: 'Authentik',
     description: 'Self-hosted identity provider running on your own infrastructure.',
     features: ['Self-hosted on auth.joefuentes.me', 'OIDC / OAuth2 / SAML', 'Full data ownership', 'SSO for all your apps'],
     color: 'bg-blue-500',
-    docs: 'https://docs.goauthentik.io',
   },
 } as const;
 
@@ -30,7 +27,6 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
   const [selected, setSelected] = useState<Provider>(currentProvider);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ success?: boolean; message?: string; error?: string } | null>(null);
-  const router = useRouter();
 
   const isDirty = selected !== currentProvider;
 
@@ -46,9 +42,22 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
         body: JSON.stringify({ provider: selected }),
       });
       const data = await res.json();
-      setResult(data);
+
       if (data.success) {
-        router.refresh();
+        setResult({ success: true, message: 'Provider switched. Signing you out...' });
+
+        // Sign out from current provider and redirect to new sign-in
+        setTimeout(() => {
+          if (currentProvider === 'clerk') {
+            // Clerk sign out via redirect
+            window.location.href = `/sign-out?redirectUrl=${encodeURIComponent(data.signInUrl)}`;
+          } else {
+            // next-auth sign out
+            window.location.href = `/api/auth/signout?callbackUrl=${encodeURIComponent(data.signInUrl)}`;
+          }
+        }, 1500);
+      } else {
+        setResult({ error: data.error ?? 'Something went wrong' });
       }
     } catch (err: any) {
       setResult({ error: err.message });
@@ -71,7 +80,7 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
 
       {/* Provider cards */}
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {(['clerk', 'authentik'] as Provider[]).map(provider => {
+        {(['clerk', 'authentik'] as Provider[]).map((provider) => {
           const info = PROVIDER_INFO[provider];
           const isSelected = selected === provider;
           const isCurrent = currentProvider === provider;
@@ -115,9 +124,8 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
       {isDirty && (
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-800">
           <strong>ℹ️ Instant switch.</strong>
-          {' '}Switching from <strong>{PROVIDER_INFO[currentProvider].name}</strong> to{' '}
-          <strong>{PROVIDER_INFO[selected].name}</strong> takes effect immediately.
-          Users will need to sign in again with the new provider.
+          {' '}You will be signed out and redirected to sign in with{' '}
+          <strong>{PROVIDER_INFO[selected].name}</strong>.
         </div>
       )}
 

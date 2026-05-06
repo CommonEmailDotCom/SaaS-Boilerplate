@@ -27,11 +27,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
   }
 
-  await setActiveProvider(provider);
+  await setActiveProvider(provider as 'clerk' | 'authentik');
+
+  // Tell the client which sign-in URL to redirect to after signing out
+  const signInUrl = provider === 'authentik'
+    ? '/api/auth/signin/authentik'
+    : '/sign-in';
 
   return NextResponse.json({
     success: true,
     provider,
-    message: `Switched to ${provider}. Active immediately — no redeploy needed.`,
+    signInUrl,
+    message: `Switched to ${provider}. Please sign out and sign back in.`,
   });
 }
