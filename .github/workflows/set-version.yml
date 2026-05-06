@@ -7,9 +7,8 @@ on:
 jobs:
   set-version:
     if: |
-      !contains(github.event.head_commit.message, 'ci: update commit sha') &&
-      !contains(github.event.head_commit.message, 'chore(release):') &&
-      !contains(github.event.head_commit.message, 'ci: update package-lock.json')
+      !contains(github.event.head_commit.message, 'ci:') &&
+      !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -47,10 +46,12 @@ jobs:
 
       - name: Commit updated .env.production
         run: |
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | head -1)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .env.production
-          git diff --staged --quiet || git commit -m "ci: update commit sha to $(echo "${{ github.sha }}" | cut -c1-7)"
+          git diff --staged --quiet || git commit -m "ci: ${SHORT_SHA} ${COMMIT_MSG}"
           git push
 
       - name: Trigger Coolify deployment
