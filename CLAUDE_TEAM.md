@@ -101,35 +101,28 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T06:15:00Z*
+*Updated by Manager — 2026-05-07T06:30:00Z*
 
-### 🔴 INDEFINITELY STALLED — Owner Action Required (Cycle 11)
+### 🟡 NEAR-UNBLOCKED — Awaiting CI Run 25479445125 Result (Cycle 12)
 
-The sprint has now reached **Cycle 11** with **four consecutive cycles** of no result from GitHub Actions run 25477808748. No agent can unblock this. The sprint is flagged as **indefinitely stalled** until the owner acts.
+The stall is broken. Observer triggered a new `observer-qa.yml` run (ID: **25479445125**, SHA: `bed242e`) at 06:20:16Z. All 6 infrastructure/setup steps passed cleanly. Step 7 (Playwright tests) was **in_progress** at end of Cycle 11.
 
-#### Required Owner Action — exactly one of the following
+This cycle's single critical question: **Did run 25479445125 pass or fail?**
 
-**Option A — Check the existing run:**
-1. Go to https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25477808748
-2. Report **PASSED** or **FAILED**
-3. If FAILED: paste the failing step name and error message
+#### Observer — Cycle 12 Priority
+1. **Check run 25479445125** at https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25479445125
+   - If **PASS**: Log `🟢 T-001 PASS — DEPLOY SIGNAL` prominently in QA_REPORT.md.
+   - If **FAIL**: Identify the failing step/error, apply a targeted fix to spec or workflow, re-trigger, log new run URL.
+2. **SHA alignment**: Live SHA `f52c77a` vs run SHA `bed242e` — confirm whether these align (possible in-flight deployment). If mismatch persists after run completes, flag explicitly.
+3. **Carry forward** headless battery — no regressions expected.
 
-**Option B — Re-trigger and watch:**
-1. Go to https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml
-2. Click **Run workflow** → branch `main`
-3. Watch live and report result (or paste the new run URL here)
+#### Operator — Cycle 12
+- Standby. Update BUILD_LOG.md.
+- The moment Observer logs `🟢 T-001 PASS — DEPLOY SIGNAL`, deploy T-007 + T-010 **together immediately**.
+- Also: investigate whether `f52c77a` vs `bed242e` SHA mismatch is due to a deployment that happened outside normal flow. Log findings in BUILD_LOG.md.
 
-**Option C — Grant API access:**
-Provide a `GITHUB_TOKEN` with `actions:read` so Observer can query the GitHub API autonomously each cycle.
-
-#### What Happens Next
-- **If PASSED:** Observer declares T-001 PASS → Operator deploys T-007 + T-010 immediately → Sprint moves to Phase 6.
-- **If FAILED:** Observer identifies specific failing step, applies targeted fix, re-triggers, logs new run URL. Sprint resumes.
-
-#### Agent Status This Cycle
-- **Observer:** Holding. No network access. Headless battery carried forward — no regressions. Awaiting owner input.
-- **Operator:** Standby. No code tasks. BUILD_LOG.md updated. Ready to deploy T-007 + T-010 on signal.
-- **Manager:** All resolvable issues closed. Sprint indefinitely stalled — flagged for owner.
+#### Owner — No action required this cycle
+Observer has self-unblocked. The only remaining owner action would be if run 25479445125 has already concluded and Observer cannot read the result — in that case the owner can paste the result as before.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -154,8 +147,10 @@ Provide a `GITHUB_TOKEN` with `actions:read` so Observer can query the GitHub AP
 | 2026-05-07 | Secret name churn: QA_GMAIL_* → GOOGLE_TEST_* → QA_GMAIL_* | ✅ RESOLVED: Locked. Hard rule added. |
 | 2026-05-07 | NEW-RISK-01 — secret name mismatch | ✅ CLOSED |
 | 2026-05-07 | MCP_DEPLOY_SECRET confusion | ✅ PERMANENTLY CLOSED |
-| 2026-05-07 | observer-qa.yml run 25477808748 — results unknown (Cycles 8–11) | 🔴 INDEFINITELY STALLED: Owner must act. Agents cannot access GitHub Actions. |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting Test B via observer-qa.yml. |
+| 2026-05-07 | observer-qa.yml run 25477808748 — results unknown (Cycles 8–11) | ✅ SUPERSEDED: New run 25479445125 triggered by Observer at 06:20:16Z. Old run no longer tracked. |
+| 2026-05-07 | Run 25479445125 — Playwright tests in_progress at end of Cycle 11 | 🟡 MONITORING: Observer checks result in Cycle 12. |
+| 2026-05-07 | SHA mismatch: live `f52c77a` vs run `bed242e` | 🟡 MONITORING: May be in-flight deploy. Operator to investigate. |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Being validated by run 25479445125. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | Fixed in `1542ceb` |
