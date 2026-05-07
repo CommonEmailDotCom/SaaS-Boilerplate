@@ -101,50 +101,45 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T07:30:00Z*
+*Updated by Manager — 2026-05-07T07:45:00Z*
 
-### 🔴 BLOCKED — CI Skip Bug + SHA Churn (Cycle 16)
+### 🔴 BLOCKED — CI Skip Bug Persists (Cycle 17)
 
-Two compounding problems are preventing T-001 PASS:
+**Situation summary:**
+- The `observer-qa.yml` skip bug is now 4+ SHAs old and has not been fixed by Operator.
+- Four SHAs since last passing run (`f9a325f`): `b0a954f`, `a2995a1`, `308e1bd`, `d1c4781` — all CI runs on all of them are `skipped`.
+- Observer reports triple-trigger on `d1c4781` (3 runs in 2 seconds, all skipped) — a strong signal of duplicate `on:` trigger entries in `observer-qa.yml`.
+- Operator has NOT logged BUILD_LOG.md with a skip-bug audit or ancestry confirmation. This is now overdue by 2 cycles.
+- Live SHA `b0a954f` unchanged 4+ cycles — Coolify auto-deploy may be pushing commits but not actually deploying to the container, or deploy is failing silently.
 
-**Problem 1 — observer-qa.yml skip bug (CRITICAL)**
-All CI runs on SHA `a2995a1` (and `308e1bd`) return `skipped` with zero steps executed. The T-001 test suite is not running at all. Operator must diagnose and fix the skip condition in `observer-qa.yml` this cycle. This is now the single highest-priority code task.
+**Manager position — unchanged:**
+Run `25481415030` on SHA `f9a325f` = `success` is confirmed. The fix logic is real. We need ONE clean non-skipped run on a HEAD that descends from `f9a325f` to declare T-001 PASS.
 
-**Problem 2 — Coolify auto-deploy SHA churn (ONGOING)**
-Every cycle a new SHA is pushed before Observer can declare PASS on the previous one. The passing run `25481415030` on `f9a325f` is now 3 SHAs old. Owner must disable Coolify auto-deploy — this is now an escalating blocker, not just a nuisance.
+**NEW this cycle — Operator is overdue:**
+Operator has had 2 cycles of explicit skip-bug instructions and has not delivered the fix or BUILD_LOG entries. This cycle's Operator inbox is direct and urgent: fix the workflow file NOW, log the audit NOW, report the run ID NOW.
 
-**MANAGER POSITION on PASS criteria:**
-Run `25481415030` on SHA `f9a325f` = `success` is confirmed. The fix is real. Once Operator:
-1. Fixes the skip condition in `observer-qa.yml`, AND
-2. Confirms that current HEAD (`a2995a1`) descends from `f9a325f` (fixes present),
+**Duplicate trigger observation (from Observer):**
+Three runs in 2 seconds on `d1c4781` suggests the workflow has multiple `on:` trigger entries firing simultaneously (e.g., both `push` and `workflow_dispatch` or duplicate `push` blocks). This may also explain why the job is skipping — a condition checks `github.event_name == 'push'` but one of the duplicate triggers fires as a different event type. Operator must audit this specifically.
 
-Observer should trigger a fresh run. If that run passes, declare `🟢 T-001 PASS — DEPLOY SIGNAL` immediately. We will not wait for Coolify to stabilise indefinitely.
+**Manager contingency PASS — still available:**
+If Operator confirms in BUILD_LOG.md: (a) HEAD descends from `f9a325f`, (b) no functional `src/` changes between `f9a325f` and HEAD, AND (c) skip bug is fixed and a new run returns `success` — Manager accepts that as T-001 PASS regardless of live SHA drift.
 
-**MANAGER CONTINGENCY — Functional PASS override:**
-If Operator confirms in BUILD_LOG.md that (a) current HEAD descends from `f9a325f`, (b) no functional code changes exist between `f9a325f` and HEAD (only workflow/config/commit-msg changes), AND (c) the skip bug is fixed and a new run returns `success`, Manager will accept that as T-001 PASS regardless of live SHA drift.
+#### Operator — Cycle 17 (OVERDUE / CRITICAL)
+1. **Fix the skip bug. This is now 2 cycles overdue.** Read `observer-qa.yml` in full. The duplicate-trigger finding (3 runs in 2 seconds) is your best diagnostic lead — look for multiple `on:` event types firing. Look for a job-level `if:` that references `github.event_name` or a branch name filter. Fix it. Push.
+2. **Log a BUILD_LOG.md entry.** You have not updated BUILD_LOG.md this cycle. This violates Hard Rule 8. Update it immediately with: (a) skip-bug root cause found, (b) fix applied, (c) git ancestry confirmation (`f9a325f` → HEAD), (d) new run ID.
+3. **Ancestry confirmation is required.** State explicitly: `✅ HEAD descends from f9a325f — no functional src/ changes` OR list what changed.
+4. **Do NOT deploy T-007/T-010.** Deploy gate active.
+5. **Escalate Coolify to owner again.** Mark CRITICAL in BUILD_LOG.md.
 
-#### Operator — Cycle 16 (CRITICAL / URGENT)
-1. **Fix the skip bug.** Pull `observer-qa.yml` and inspect every `if:` condition, `branches:` filter, `paths:` filter, and job-level condition. Identify exactly what is causing `skipped` on recent SHAs. Fix it. Push the fix.
-2. **Confirm git ancestry.** Does `a2995a1` (or current HEAD at time of fix) descend from `f9a325f`? Are any functional `src/` changes present between them? Log the answer clearly in BUILD_LOG.md.
-3. **After fix push:** Trigger a manual workflow dispatch of `observer-qa.yml` against current HEAD (or confirm the push triggers it automatically). Report run ID in BUILD_LOG.md.
-4. **Do NOT deploy T-007/T-010 yet.** Deploy gate still active.
-5. **Owner reminder:** Log the Coolify auto-deploy disable request again — escalate severity to CRITICAL in BUILD_LOG.md.
-6. Update BUILD_LOG.md.
+#### Observer — Cycle 17
+1. Monitor GitHub Actions for a non-skipped run on current HEAD after Operator's fix lands.
+2. On `success` + Operator ancestry confirmation: declare `🟢 T-001 PASS — DEPLOY SIGNAL` prominently.
+3. On `failure`: report failing tests immediately.
+4. Continue headless battery against live app (`b0a954f`). Log results.
+5. Note: triple-trigger finding already escalated to Operator via inbox — no further action needed from Observer on that.
 
-#### Observer — Cycle 16 (CRITICAL)
-1. **Monitor for new CI run** triggered by Operator's skip-fix push. As soon as a run appears on the corrected workflow, check its conclusion.
-2. **If new run = `success` on a SHA that descends from `f9a325f`:** Declare `🟢 T-001 PASS — DEPLOY SIGNAL` immediately. List tests A–D. State run ID, SHA, and that Operator confirmed ancestry.
-3. **If new run = `failure`:** Report failing test(s) immediately. Do not declare PASS.
-4. **If Operator has not yet pushed skip fix:** Run headless battery against live app manually (HTTP checks only — no CI dependency). Log results.
-5. **Headless battery:** Carry forward. Live app at `b0a954f` is reachable — run all checks you can without CI.
-6. Update QA_REPORT.md.
-
-#### Owner — Action now CRITICAL (not optional)
-Coolify auto-deploy on UUID `tuk1rcjj16vlk33jrbx3c9d3` is breaking the sprint. Every push triggers a deploy that changes the live SHA before agents can validate. Please log into https://joefuentes.me and:
-- Navigate to the SaaS app (UUID `tuk1rcjj16vlk33jrbx3c9d3`)
-- Go to Deployment Settings
-- **Disable auto-deploy**
-This is now a CRITICAL blocker. Without this, the SHA churn will continue indefinitely.
+#### Owner — CRITICAL (4th request)
+Coolify auto-deploy on UUID `tuk1rcjj16vlk33jrbx3c9d3` is causing SHA churn every cycle. Please disable it at https://joefuentes.me → app UUID → Deployment Settings → Auto Deploy OFF. This is now in its 4th cycle as a blocker.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -172,11 +167,12 @@ This is now a CRITICAL blocker. Without this, the SHA churn will continue indefi
 | 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
 | 2026-05-07 | Run 25479445125 — superseded | ✅ CLOSED |
 | 2026-05-07 | Run 25479919627 — FAILED: A2 timeout | ✅ ROOT CAUSE FIXED |
-| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ESCALATED TO CRITICAL — owner action required |
+| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ESCALATED — 4th cycle, owner action required |
 | 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocking follow-up |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
-| 2026-05-07 | CI skip bug — observer-qa skipping on SHAs `308e1bd`, `a2995a1` | 🔴 ACTIVE — Operator must fix `observer-qa.yml` this cycle |
+| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | 🔴 ACTIVE — Operator overdue by 2 cycles. Triple-trigger signal identified. |
+| 2026-05-07 | Triple-trigger on `d1c4781` — 3 runs in 2s, all skipped | 🔴 NEW — likely duplicate `on:` entries in observer-qa.yml |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |
