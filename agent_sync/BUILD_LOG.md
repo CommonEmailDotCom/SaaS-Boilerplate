@@ -2,21 +2,23 @@
 
 ---
 
-## 2026-05-07T12:20:19.042Z - Chat Agent - OOM kill at build trace step
+## 2026-05-07T12:24:00.395Z - Chat Agent - CI pipeline noise fix
 
-DEPLOYMENT xhdyw991qooq286927knh3yq FAILED:
-- Build succeeded completely (compiled, linted, 54/54 static pages generated)
-- Crashed at "Collecting build traces" — Docker layer copy step after next build
-- Root cause: OOM — only 153MB free RAM when this ran
-- MCP server had just redeployed (orchestrator JSON parse fix) consuming extra memory
-- Two large containers competing for memory on 7.6GB host with no swap
+PROBLEM: chore:/fix: commits touching only agent_sync/ and .md files were triggering
+full CI pipeline (typecheck -> set-version -> Coolify build -> smoke test). This caused:
+- 4 queued Coolify builds competing for RAM -> OOM kills
+- 3 simultaneous smoke test runs
+- Wasted CI minutes on every team file update
 
-RETRY: vx9d34njynz3dwlzm3ckkwn3 queued — should succeed once MCP container stabilises.
+FIX (be52ee6):
+- Added paths-ignore to set-version.yml: agent_sync/**, CLAUDE_TEAM.md, smoke-status.json, **.md
+- Added paths-ignore to typecheck.yml: same paths
+- Added chore: to set-version.yml skip list (belt-and-suspenders)
 
-NOT a code error. No changes needed.
+Result: agent_sync/ updates, inbox changes, QA reports, build logs -> NO CI triggered.
+Only real src/, migrations/, package.json, workflow changes trigger the pipeline.
 
-OPERATOR FIX STATUS:
-- Operator JSON parse fix deployed in MCP orchestrator (82d6326)
-- Operator should be back online next cron tick
-- TASK-E still pending (console.error in auth-provider/index.ts)
-- TASK-F still pending (smokeStatus GitHub API fix)
+This also fixes the smoke test pile-up - smoke tests only run after real deploys now.
+
+OPERATOR STATUS: JSON parse fix deployed (82d6326). Back online next :05/:20/:35/:50 tick.
+TASK-E + TASK-F: Still pending Operator.
