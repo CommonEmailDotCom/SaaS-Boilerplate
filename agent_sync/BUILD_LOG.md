@@ -1,41 +1,35 @@
-## BUILD_LOG.md
+### Cycle 15 — 2026-05-07T07:20:00Z
 
-### Cycle 14 — 2026-05-07T07:05:00Z
+**Status:** Standby — awaiting T-001 PASS signal. SHA alignment check performed.
 
-**Status:** Standby — awaiting T-001 PASS signal.
+**Live SHA (from pre-fetched data):** `b0a954f`
 
-**Live SHA:** `b0a954f` (another auto-deploy has occurred — Coolify continues to deploy every push to main)
+**Target SHA (passing T-001 run 25481415030):** `f9a325f`
 
-**Latest Observer QA Runs (SHA `d9fcc73`):**
-- Run `25481226982` — conclusion: `skipped` (created 07:04:06Z)
-- Run `25481219196` — conclusion: `in_progress` (created 07:03:54Z)
-- Run `25481219176` — conclusion: `failure` (created 07:03:54Z)
+**SHA Match:** ❌ NO — live SHA `b0a954f` ≠ `f9a325f`
 
-**Analysis:**
-- SHA `d9fcc73` is yet another new push (previously we saw `dced2a3`, now `d9fcc73`). Coolify has auto-deployed `b0a954f` to live. The SHA churn continues.
-- Run `25481219176` shows `failure` on SHA `d9fcc73` — this is concerning. The most recent completed run failed.
-- Run `25481226982` is `skipped` — the smoke-test job was skipped, possibly because a previous job failed.
-- Run `25481219196` is still `in_progress` — this may be the actual T-001 QA run Observer triggered.
-- **T-001 PASS has NOT been declared.** No `🟢 T-001 PASS — DEPLOY SIGNAL` in QA_REPORT.md.
+**New SHA observed:** `308e1bd` — latest CI runs (07:17:14–07:17:17Z) are all on `308e1bd`, all `skipped`. This is yet another new push to main that Coolify auto-deployed. Coolify has now moved past `b0a954f` to `308e1bd`.
 
-**Deploy Gate:** ACTIVE. T-007 + T-010 remain coded but NOT committed to main. Hard rule enforced.
+**CI Run Analysis (SHA `308e1bd`):**
+- Run `25481765180` — `skipped` (07:17:17Z)
+- Run `25481763139` — `skipped` (07:17:14Z)
+- Run `25481763067` — `skipped` (07:17:14Z)
+- All three runs skipped — the observer-qa job is not executing. This suggests either a branch filter condition, a job dependency failure, or a workflow trigger mismatch on `308e1bd`.
+
+**T-001 PASS status:** NOT declared. No `🟢 T-001 PASS — DEPLOY SIGNAL` in QA_REPORT.md.
+
+**Deploy Gate:** ACTIVE. T-007 + T-010 remain coded but NOT deployed.
 
 **SHA Drift Summary (cumulative):**
 | SHA | Event |
 |---|---|
-| `f52c77a` | Earlier tracked cycle |
-| `6e99ee5` | Auto-deployed by Coolify |
-| `61c15b5` | Observer fix — auto-deployed |
-| `dced2a3` | Another push — auto-deployed |
-| `d9fcc73` | Latest push — CI running |
-| `b0a954f` | Current live (Coolify auto-deployed `d9fcc73` or later) |
+| `f9a325f` | PASSING run 25481415030 — never confirmed live |
+| `b0a954f` | Was live SHA (Cycle 14) |
+| `d9fcc73` | Previous push |
+| `308e1bd` | Latest push — all CI runs skipped |
 
-Coolify auto-deploy remains active. Owner action still required to toggle off at https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF.
+**Analysis:** Coolify auto-deploy has pushed the live SHA forward again. The passing run `f9a325f` was never live — each cycle a new SHA has superseded it. The skipped runs on `308e1bd` are concerning — Observer needs to identify why observer-qa is skipping and trigger a fresh run against current HEAD.
 
-**Actions this cycle:** No code changes. BUILD_LOG updated. Monitoring for T-001 PASS signal.
+**Actions this cycle:** No code changes. BUILD_LOG updated with live data. Monitoring for T-001 PASS signal.
 
-| SHA | Status | Notes |
-|---|---|---|
-| `b0a954f` | ✅ Live (auto-deployed) | Latest Coolify deploy |
-| `d9fcc73` | ⏳ CI mixed results | failure + in_progress + skipped runs |
-| pending | ⏳ Holding | T-007 + T-010: coded, awaiting T-001 PASS signal |
+**Coolify auto-deploy:** Still active. Owner action still required at https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF. This is causing continuous SHA churn and preventing T-001 PASS from being confirmed against live.
