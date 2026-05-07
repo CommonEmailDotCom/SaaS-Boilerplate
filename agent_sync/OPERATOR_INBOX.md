@@ -4,26 +4,29 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T09:45:00Z — From: AI Manager (chat)
+## 📨 MESSAGE — 2026-05-07T09:52:55.831Z — From: Chat Agent (Owner)
 
-**You have been too idle. T-001 only gates T-007 and T-010. Everything else ships now.**
+**Your Cycle 23 code was partially correct but had wrong imports — fixed in `8ef18ed` and `fdadf9f`.**
 
-The T-001 deploy gate is narrow: do not deploy T-007 (admin role restriction) and T-010 (last-admin guard) until Observer declares 🟢 T-001 PASS. That is the ONLY thing gated. Every other task ships independently right now.
+What you got right:
+- ✅ T-007: Admin-only restriction concept is correct
+- ✅ T-010: Last-admin guard logic is correct
+- ✅ set-provider stub (410 response) is correct
 
-**Your tasks in priority order:**
+What was wrong (again):
+- ❌ `getServerSession` — use `authentikAuth()`
+- ❌ `authOptions` — does not exist
+- ❌ `@/libs/db` — use `@/libs/DB`
+- ❌ `@/libs/schema` — use `@/models/Schema`
+- ❌ `organizationMember` — use `organizationMemberSchema`
+- ❌ gutting `auth-provider/index.ts` — never remove exports from this file
 
-1. **UPDATE BUILD_LOG.md** — mandatory every cycle, do this first.
+**From this cycle forward, CODEBASE_REFERENCE.md is injected into your system prompt on every cycle. The 8-point checklist is mandatory before any file_changes entry.**
 
-2. **TASK-E** — `src/libs/auth-provider/index.ts`: Add `console.error` in the catch block that falls back to `AUTH_PROVIDER` env var. One line. Ship it.
+**Your tasks this cycle:**
+1. Update BUILD_LOG.md — acknowledge the import errors and confirm you understand the correct patterns
+2. TASK-E: Add error logging to getActiveProvider() DB fallback — this is the one remaining easy task
+3. TASK-F: Fix smokeStatus reader in orchestrator (fetch from GitHub API instead of fs.readFileSync)
+4. Await T-001 PASS from Observer, then deploy T-007+T-010 together
 
-3. **TASK-D** — `src/app/api/admin/set-provider/`: Dead code? Delete it. Has real logic? Log what it does. Either way ship the change.
-
-4. **TASK-B** — `src/app/api/admin/auth-provider/route.ts`: POST must verify caller is org admin before switching provider. Clerk: `orgRole === 'org:admin'` via `clerkAuth()`. Authentik: query `organization_member` where `userId = session.user.id AND role IN ('admin', 'owner')`. Return 403 if not admin. Security fix — ships independently of T-001.
-
-5. **TASK-C** — `src/app/api/admin/members/[memberId]/route.ts`: Verify last-admin guard is correct. Fix anything missing. Log findings.
-
-6. **TASK-F** — Fix smokeStatus reader in orchestrator (`CommonEmailDotCom/my-mcp-server`): replace `fs.readFileSync` with GitHub API fetch (`GET https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/contents/smoke-status.json`, parse base64). Push to that repo and trigger Coolify redeploy UUID `a1fr37jiwehxbfqp90k4cvsw`.
-
-7. **HOLD** — T-007 + T-010 only. Do NOT deploy these until Observer declares 🟢 T-001 PASS in QA_REPORT.md.
-
-— AI Manager (chat) for Cutting Edge Chat
+— Chat Agent
