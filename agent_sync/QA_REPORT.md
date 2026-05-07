@@ -1,68 +1,116 @@
 # QA Report
 
-## Cycle 44 — 2026-05-07T14:55:00Z — T-001 BLOCKED (Script Not Found — MCP Not Redeployed)
+## Cycle 45 — 2026-05-07T15:10:00Z — T-001 BLOCKED (script error)
 
 **Live SHA:** `51505d4`
-**T-001 Result:** BLOCKED — `script not found at /repo-observer/scripts/t001-run.js`
-**Overall Status: 17/18 CONDITIONAL PASS (held) — T-001 cannot execute**
+**T-001 Result:** BLOCKED — script execution error
+**Overall Status: 🔴 BLOCKED — t001-run.js failing with unspecified error**
 
 ---
 
 ### SHA Verification
 
-Live app reports SHA `51505d4`. This matches `setVersionRuns` latest success run `25500882284` at SHA `51505d4`. SHA confirmed correct. Testing scope is valid.
+Live SHA confirmed: `51505d4` — matches last set-version.yml success run (`25500882284`). ✅
 
 ---
 
-### T-001 Execution — BLOCKED
-
-The orchestrator attempted to run `scripts/t001-run.js` this cycle and returned:
+### T-001 Execution Result
 
 ```
-script not found at /repo-observer/scripts/t001-run.js
+ERROR: Command failed: node /repo-observer/scripts/t001-run.js
 ```
 
-This is the **identical blocker** reported in Cycles 42 and 43. Despite the OBSERVER_INBOX message from Chat Agent stating "everything is unblocked" and the script exists, the `t001Result` in LIVE DATA for this cycle confirms the script is still not found at runtime. This means **the MCP server container is still running stale code** — the commit `b5fc42f` (and any subsequent commits adding the script) has NOT been picked up by the running container.
+The script exists at `/repo-observer/scripts/t001-run.js` (repo was cloned — no longer a "file not found" error), but the command is **failing at runtime**. The error output is empty beyond the command failure line, which means either:
+1. The script itself is throwing an uncaught exception with no stderr output captured
+2. A missing environment variable or dependency is causing an immediate exit
+3. The script has a syntax or import error
 
-**Root cause:** `coolify_trigger_deploy` for UUID `a1fr37jiwehxbfqp90k4cvsw` has NOT been called by the Operator. The container volume at `/repo-observer/` does not have the current script. The OBSERVER_INBOX claim that scripts are present appears to be based on the git repo state, not the running container state.
+This is a **different error** than previous cycles (previously: "script not found"). The MCP redeploy (UUID `qzxqp7fyl3rsbm162tip1lc9`) per the inbox message appears to have resolved the "not found" issue — the repo is now being cloned — but the script is crashing at runtime.
 
-**This is Cycle 44 — the third consecutive cycle blocked by this exact issue.**
+**Action Required:** Operator must run `node /repo-observer/scripts/t001-run.js 2>&1` with full stderr capture to expose the actual error message, or check if required environment variables (TEST credentials, session tokens) are present on the new MCP container.
+
+---
+
+### T-001 Test Matrix — Cannot Update This Cycle
+
+Prior baseline from Cycle 43 (17/18) remains the last confirmed state. Cannot update without a clean script run.
+
+| Test | Last Known Result | Notes |
+|---|---|---|
+| A1: Clerk session valid | ✅ PASS | |
+| A2: /dashboard authed | ✅ PASS | |
+| A3: JWT valid | ✅ PASS | |
+| A4: Token subject matches | ✅ PASS | |
+| B1: Authentik signin redirect | ✅ PASS | |
+| B2: PKCE present | ✅ PASS | |
+| B3: Google ID token via refresh | ✅ PASS | |
+| B4: ID token email correct | ✅ PASS | |
+| B4b: Token freshness | ✅ PASS | |
+| B5: Authentik OIDC discovery | ✅ PASS | |
+| C1: /dashboard unauthed → /sign-in | ✅ PASS | |
+| C2: /api/admin/auth-provider 401 unauthed | ✅ PASS | |
+| C3: Active provider HTTP 401 | ✅ PASS | |
+| E1: Badge endpoint HTTP 200 | ✅ PASS | |
+| E2: Badge smoke status | ❌ FAIL | Smoke still failing at 51505d4 |
+| E3: Version endpoint | ✅ PASS | SHA 51505d4 |
 
 ---
 
 ### Smoke Test Status
 
-| Run ID | SHA | Conclusion | Timestamp |
-|---|---|---|---|
-| 25501646535 | 520a6be | skipped | 14:20:14 |
-| 25501636517 | 7f10b5d | skipped | 14:20:04 |
-| 25500900931 | 5b4686e | **failure** | 14:06:39 |
+🔴 **Smoke test still failing** — run `25500900931` at SHA `51505d4` shows `failing`. This is now at least 40+ minutes old with no resolution logged in BUILD_LOG.
 
-- Latest smoke test run `25500900931` shows **failure** at SHA `5b4686e`
-- Note: `smokeStatus` reports SHA `51505d4` but the run data shows SHA `5b4686e` for that run ID — possible metadata mismatch in orchestrator reporting
-- Two most recent smoke runs are `skipped` — these are on `ci:` commits (520a6be, 7f10b5d), which is CORRECT per Hard Rule #10
-- Smoke failure is still unresolved and unacknowledged by Operator
+Recent smoke runs:
+- `25501646535` — SKIPPED (sha: 520a6be, ci: commit)
+- `25501636517` — SKIPPED (sha: 7f10b5d, ci: commit)
+- `25500900931` — **FAILURE** (sha: 5b4686e, 14:06:39)
 
----
+Note: The smoke run SHA shown is `5b4686e` not `51505d4` — these may represent different commit SHAs in the smoke run metadata vs the app version. The smokeStatus object reports SHA `51505d4` failing. Either way, smoke is failing and unresolved.
 
-### Latest Observer QA Detail
-
-Most recent observer-qa.yml run `25492882269` at SHA `86cb34d` — **FAILURE**
-
-Failed step: **[6] Verify secrets** → caused [7] Run T-001 tests to skip
-
-This run is on an old SHA (`86cb34d`) from 11:25 UTC — observer-qa.yml is deleted (Hard Rule #13), these runs are residual/irrelevant. Do not act on these.
+**E2 cannot pass until smoke is green.**
 
 ---
 
-### T-001 Test Matrix (Last Known — Cycle 43)
+### Observer QA Runs (observer-qa.yml)
 
-From prior cycle execution when script was reportedly accessible:
+Per Hard Rule #13, observer-qa.yml is DELETED. The `latestObserverQaDetail` showing failure at `86cb34d` / step `[6] Verify secrets` is from the deleted workflow — stale data, irrelevant.
+
+---
+
+### autoDispatch
+
+`failed (422)` — noted, not actionable by Observer.
+
+---
+
+### Escalations
+
+🔴 **CRITICAL — t001-run.js runtime crash (4th consecutive blocked cycle)**
+The "script not found" error is resolved (MCP redeployed per inbox), but the script now crashes at runtime with no error detail. Operator must debug with full stderr capture:
+```
+node /repo-observer/scripts/t001-run.js 2>&1
+```
+Most likely cause: missing env vars (session tokens, test credentials) not set on new MCP container UUID `qzxqp7fyl3rsbm162tip1lc9`.
+
+🔴 **CRITICAL — Smoke test failing at 51505d4 — 45+ minutes uninvestigated**
+Operator has not logged any findings. This blocks E2 and contributes to T-001 17/18 stall.
+
+---
+
+_Observer Agent — Cycle 45 — 2026-05-07T15:10:00Z_
+
+---
+
+## Cycle 44 — 2026-05-07T14:55:00Z — T-001 BLOCKED (script not found)
+
+**Live SHA:** `51505d4`
+**T-001 Result:** BLOCKED — MCP server not redeployed
+**Overall Status: 🔴 BLOCKED — Operator has not called coolify_trigger_deploy**
 
 | Test | Result | Notes |
 |---|---|---|
-| A1–A4: Clerk session auth | ✅ PASS | |
-| B1–B5: Authentik OIDC | ✅ PASS | |
+| A1–A4: Clerk auth | ✅ PASS | |
+| B1–B5: Authentik auth | ✅ PASS | |
 | C1–C3: Unauthed redirects | ✅ PASS | |
 | E1: Badge HTTP 200 | ✅ PASS | |
 | E2: Badge smoke status | ❌ FAIL | Stale badge — not a code defect |
@@ -83,34 +131,3 @@ Operator has not logged any findings in BUILD_LOG. This must be addressed before
 ---
 
 _Observer Agent — Cycle 44 — 2026-05-07T14:55:00Z_
-
----
-
-## Cycle 43 — 2026-05-07T14:52:00Z — T-001 17/18 CONDITIONAL PASS
-
-**Live SHA:** `51505d4`
-**T-001 Result:** 17/18
-**Overall Status: CONDITIONAL PASS — E2 smoke badge stale**
-
-| Test | Result | Notes |
-|---|---|---|
-| A1: Clerk session valid | ✅ PASS | |
-| A2: /dashboard authed | ✅ PASS | |
-| A3: JWT valid | ✅ PASS | |
-| A4: Token subject matches | ✅ PASS | |
-| B1: Authentik signin redirect | ✅ PASS | → auth.joefuentes.me/authorize |
-| B2: PKCE present | ✅ PASS | |
-| B3: Google ID token via refresh | ✅ PASS | |
-| B4: ID token email correct | ✅ PASS | testercuttingedgechat@gmail.com |
-| B4b: Token freshness | ✅ PASS | Issued 2026-05-07T14:52:18Z |
-| B5: Authentik OIDC discovery | ✅ PASS | HTTP 200 |
-| C1: /dashboard unauthed → /sign-in | ✅ PASS | |
-| C2: /api/admin/auth-provider 401 unauthed | ✅ PASS | |
-| C3: Active provider HTTP 401 | ✅ PASS | |
-| E1: Badge endpoint HTTP 200 | ✅ PASS | |
-| E2: Badge smoke status | ❌ FAIL | Smoke badge stale — not a code defect |
-| E3: Version endpoint | ✅ PASS | SHA 51505d4 |
-
-**17 passed, 1 failed — E2 clears on next real src/ deploy + smoke pass**
-
-_Observer Agent — Cycle 43 — 2026-05-07T14:52:00Z_
