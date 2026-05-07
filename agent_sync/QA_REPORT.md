@@ -1,112 +1,51 @@
-# QA_REPORT.md
+# QA Report — Cutting Edge Chat
 
-## Cycle 28 — 2026-05-07T10:25:00Z
+## Cycle 29 — 2026-05-07T10:40:00Z
+
+**Live SHA:** b0a954f | **Expected SHA under test:** e5007eb (run 25490648032)
 
 ### SHA Verification
 
-- Live SHA from `/api/version`: `b0a954f`
-- Latest observer-qa.yml run `25490149751` is on SHA `46f9aed`
-- SHA mismatch: live app is `b0a954f`, latest CI run is `46f9aed`
-- **Note:** setVersionRuns shows `c84a78a` deployed successfully at 10:23:24, and `ad43288` at 10:20:24. SHA `46f9aed` is a newer commit. The live app at `b0a954f` may not yet reflect the latest deploys — or the orchestrator liveSha is from a prior poll. This does not block QA reporting as the CI runs are independent.
+⚠️ **SHA MISMATCH NOTED:** Live app reports `b0a954f`. Latest observer-qa run (25490648032) is testing SHA `e5007eb`. This indicates a new deployment occurred between the run trigger and now. The run under test is not validating the currently live SHA. Will log this but not block — the run in progress will still produce diagnostic value for the spec.
 
----
+### Run Status Summary
 
-### Run Status Updates This Cycle
+| Run ID | SHA | Status | Notes |
+|---|---|---|---|
+| 25490149751 | 46f9aed | in_progress | Triggered 10:23:46 — still running |
+| 25490205058 | 46f9aed | in_progress | Triggered 10:25:02 — still running |
+| 25490648032 | e5007eb | in_progress | Latest — at step 7 (T-001 tests running) |
 
-#### Run `25489542409` (SHA `bf74ed3`) — ❌ FAILURE
-This is run `25489311400`'s successor — confirmed **FAILURE**. This is the **fifth consecutive step 7 failure**.
+**Key observation:** All three runs are still `in_progress`. No conclusion available for any run yet. Run 25490149751 (the first post-`.toString()`-fix run on SHA `46f9aed`) has been running since 10:23:46 — over 16 minutes. This is unusually long for a Playwright run and may indicate a hang at Google OAuth (bot-detection timeout/navigation hang) rather than a clean pass or fast fail.
 
-#### Run `25489986060` (SHA `b56a407`) — 🔄 IN PROGRESS (created 10:20:03)
-Status: in_progress — conclusion unknown this cycle.
+### latestObserverQaDetail Analysis
 
-#### Run `25490149751` (SHA `46f9aed`) — 🔄 IN PROGRESS (created 10:23:46) — LATEST
-Status: in_progress at **step 4 (Install dependencies)**. Steps 5–9 pending. This is the run triggered after Observer's `c84a78a` fix (`.toString()` on URL object for `waitForURL` predicate).
+Run 25490648032 (SHA `e5007eb`, triggered 10:35:02):
+- Steps 1–6: ✅ All success (setup, checkout, node, deps, playwright, secrets)
+- Step 7 (Run T-001 tests): 🔄 in_progress
+- Steps 8–18: pending
 
----
+No failure data available yet. The test suite is actively running.
 
-### Context: Observer Fix Applied (per OBSERVER_INBOX.md reply)
+### Assessment
 
-Per the Cycle 28 inbox reply already logged, the Observer identified and fixed the root cause of cascading failures:
+**T-001 GATE: ACTIVE — BLOCKED (runs in_progress)**
 
-- **A2 failure:** `TypeError: url.includes is not a function` — `waitForURL` predicate received a `URL` object, not a string. Fixed with `.toString()` in commit `c84a78a`.
-- Tests A1, B1, D2, E1 were already **passing** in the prior run.
-- A3, A4, B2–B4, C1–C4, D1, D3, E2 were cascading failures from A2's broken session setup.
-- Fix: one `.toString()` call. Deployed via `set-version.yml` as `c84a78a` (success at 10:23:24).
-- New run `25490149751` on SHA `46f9aed` is now in progress — this should be the first run with the A2 fix in place.
+Cannot declare PASS or FAIL this cycle. Three runs are simultaneously in_progress. The prolonged duration of run 25490149751 (16+ minutes) is a concern — Google OAuth bot-detection hangs are typically silent timeouts that don't produce an immediate error, they just exhaust the `waitForURL` timeout. If A2 is hanging on `accounts.google.com` waiting for a redirect that never comes due to bot-detection, the test will eventually timeout rather than fail fast.
 
----
+### Action Plan — Next Cycle
 
-### T-001 Declaration
+1. Check conclusion of all three in_progress runs (25490149751, 25490205058, 25490648032)
+2. **If any run shows SUCCESS** → declare 🟢 T-001 PASS
+3. **If A2 fails with timeout/navigation hang on accounts.google.com** → this confirms bot-detection as secondary blocker. Pivot IMMEDIATELY to session injection per Manager instruction. Do not push another OAuth fix.
+4. **If A2 fails with `TypeError: url.includes is not a function` again** → `.toString()` fix not in the SHA under test — verify SHA chain.
+5. **SHA discrepancy:** Live SHA `b0a954f` is not being tested by any current run. Need to confirm what `b0a954f` contains and whether a new run should target it.
 
-**T-001 PASS: ❌ NOT YET DECLARED**
+### T-001 Gate
 
-Run `25490149751` is still in_progress at step 4. Cannot declare pass this cycle. Awaiting conclusion.
+ACTIVE — awaiting run conclusions. Three simultaneous in_progress runs. Duration concern on oldest run (25490149751) suggests possible OAuth timeout hang. Next cycle is likely decisive.
 
----
-
-### Consecutive Failure Count
-
-| Run ID | SHA | Result |
-|---|---|---|
-| 25487914378 | `96991b9` | ❌ FAILURE (1) |
-| 25488141574 | `d328910` | ❌ FAILURE (2) |
-| 25488605813 | `8ef18ed` | ❌ FAILURE (3) |
-| 25488843096 | `bb2d43d` | ❌ FAILURE (4) |
-| 25489542409 | `bf74ed3` | ❌ FAILURE (5) |
-| 25489986060 | `b56a407` | 🔄 IN PROGRESS |
-| 25490149751 | `46f9aed` | 🔄 IN PROGRESS (post-fix) |
-
-**Five consecutive failures confirmed.** The `c84a78a` fix (URL.toString() for waitForURL predicate) is the first targeted fix for the confirmed root cause. Run `25490149751` is the first post-fix run.
-
----
-
-### Root Cause (Confirmed by Owner + Observer Analysis)
-
-- **Primary:** `googleOAuthSignIn()` blocked by Google bot detection in headless Chromium → session injection approach adopted per Owner instruction.
-- **Secondary (newly identified):** `TypeError: url.includes is not a function` in A2's `waitForURL` predicate → fixed in `c84a78a` with `.toString()`.
-- **Impact:** A2 failure caused all downstream tests to fail (no authenticated session to inherit).
-- **Fix status:** Deployed. Awaiting CI confirmation.
-
----
-
-### Deploy Gate Status
-
-| Item | Status |
-|---|---|
-| Live SHA | `b0a954f` |
-| Latest CI run `25490149751` (SHA `46f9aed`) | 🔄 IN PROGRESS — step 4 |
-| T-001 PASS declared | ❌ NO |
-| Deploy gate (T-007+T-010 formal validation) | 🔴 ACTIVE — awaiting T-001 PASS |
-| Coolify auto-deploy | ✅ OFF |
-| URL.toString() fix (`c84a78a`) | ✅ DEPLOYED |
-
----
-
-### Smoke / Deploy Status (Informational — Hard Rule #10)
-
-- smokeStatus: ❌ `fs.readFileSync is not a function` — TASK-F ongoing (Operator)
-- setVersionRuns: `c84a78a` success at 10:23:24, `ad43288` success at 10:20:24
-- smokeTestRuns: skipped/cancelled (expected on `ci:` commits — Hard Rule #10)
-
----
-
-### Next Cycle Action
-
-1. Check `latestObserverQaDetail` for run `25490149751` conclusion.
-2. Also check run `25489986060` conclusion (may have completed).
-3. If `25490149751` **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL**.
-4. If **failure** → report exact step 7 error from `latestObserverQaDetail`. The `.toString()` fix was the known blocker — any new failure is a new distinct issue requiring diagnosis.
-5. If still in_progress → note and await next cycle.
-
-_Observer Agent — Cycle 28 — 2026-05-07T10:25:00Z_
-
----
-
-## Cycle 27 — 2026-05-07T10:10:00Z
-
-[Archived — Run 25488843096 (SHA `bb2d43d`) confirmed fourth consecutive failure. Run 25489311400 (SHA `bf74ed3`) in_progress at step 7. Deploy gate active. Root cause unknown — Operator tasked with retrieving verbatim step 7 log from GitHub Actions.]
-
-_Observer Agent — Cycle 27 — 2026-05-07T10:10:00Z_
+_Observer Agent — no app code modified. Cycle 29 — 2026-05-07T10:40:00Z_
 
 ---
 
