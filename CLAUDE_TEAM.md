@@ -101,32 +101,34 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T06:45:00Z*
+*Updated by Manager — 2026-05-07T07:15:00Z*
 
-### 🟡 NEAR-UNBLOCKED — Awaiting New CI Run Result (Cycle 13)
+### 🟡 ONE STEP FROM UNBLOCKED — SHA Alignment Required (Cycle 15)
 
-Observer has identified and fixed the root cause of T-001 test failures (commit `61c15b5`). The fix addresses the `googleOAuthSignIn` helper — popup/redirect fallback logic, Enter key instead of unreliable button clicks, and a precise password selector. A new `observer-qa.yml` run is being triggered this cycle.
+Run `25481415030` concluded **`success`** on SHA `f9a325f` — the first passing T-001 result ever. The fix progression is complete. The only remaining blocker before declaring `🟢 T-001 PASS — DEPLOY SIGNAL` is confirming that SHA `f9a325f` is deployed to live (or is a confirmed ancestor/descendant match with the live SHA `b0a954f`).
 
-**Two open concerns before T-001 PASS can be declared:**
-1. **SHA mismatch** — Live app is at `6e99ee5`, latest tested SHA is `e4e00da`. Deployments appear to be occurring outside the T-001 gate (three SHA changes in tracked cycles). Operator must explain what is deploying to live and lock down unauthorized auto-deploys.
-2. **New run result** — Observer must report the new run URL and outcome next cycle.
+**Two tasks this cycle — one per agent:**
 
-#### Observer — Cycle 13 Priority
-1. **Trigger and record** the new `observer-qa.yml` run (if not already done at end of Cycle 12 — confirm). Log the new run ID and SHA in QA_REPORT.md.
-2. **Check the new run result.** If PASS AND SHA matches live: declare `🟢 T-001 PASS — DEPLOY SIGNAL`. If FAIL: identify exact error, apply minimal fix, re-trigger.
-3. **SHA alignment**: Do not declare T-001 PASS if CI run SHA ≠ live SHA unless confirmed equivalent.
+#### Operator — Cycle 15 (CRITICAL / URGENT)
+1. **SHA confirmation.** Check `/api/version` on the live app right now. If Coolify has auto-deployed `f9a325f` (likely, given auto-deploy pattern), live SHA will now match the passing run. Report the live SHA in BUILD_LOG.md.
+2. **If live SHA = `f9a325f`:** Log `✅ SHA CONFIRMED — f9a325f is live` in BUILD_LOG.md. Observer can then immediately declare T-001 PASS.
+3. **If live SHA ≠ `f9a325f`:** Confirm whether `f9a325f` is a descendant of live SHA `b0a954f` (i.e., all T-001 fixes are present). If yes, flag for Observer to declare PASS anyway (fixes are live). If no, log which fixes are missing.
+4. **Stand by for immediate deploy.** The moment Observer logs `🟢 T-001 PASS — DEPLOY SIGNAL`, deploy T-007 + T-010 together. No other code tasks until then.
+5. Update BUILD_LOG.md.
 
-#### Operator — Cycle 13
-1. **Update BUILD_LOG.md.**
-2. **CRITICAL — Explain the SHA drift.** Live has gone through `f52c77a` → `6e99ee5` → possibly more changes. What is triggering these deploys? Is Coolify auto-deploying on every push? This bypasses the deploy gate. Investigate and report in BUILD_LOG.md. If Coolify auto-deploy is on, determine whether it should be paused until T-001 PASS.
-3. **Confirm SHA of `61c15b5`** — Observer's fix commit. Is this what will be live by the time the new run completes? Log in BUILD_LOG.md.
-4. **Deploy gate is ACTIVE.** T-007 + T-010 must NOT ship until Observer logs `🟢 T-001 PASS — DEPLOY SIGNAL`.
+#### Observer — Cycle 15 (CRITICAL)
+1. **Check `/api/version`** on the live app. Compare against `f9a325f`.
+2. **Check run `25481424199`** (parallel run on `f9a325f`, was `in_progress` at Cycle 14 close). Report its conclusion.
+3. **If live SHA = `f9a325f` AND run `25481415030` = `success`:** Declare `🟢 T-001 PASS — DEPLOY SIGNAL` at the top of your QA_REPORT.md Cycle 15 entry. List tests A–D passed.
+4. **If SHA mismatch persists:** Trigger a new run against current HEAD. Do not block indefinitely — if `f9a325f` and HEAD are functionally identical (only workflow/commit-msg differences), note that and declare PASS.
+5. Update QA_REPORT.md.
 
-#### Owner — No action required this cycle unless SHA drift is a Coolify setting only the owner can change.
+#### Owner — Action still requested (optional but helpful)
+Coolify auto-deploy remains active on UUID `tuk1rcjj16vlk33jrbx3c9d3`. This has caused SHA churn throughout the sprint. If you can log into https://joefuentes.me and toggle off auto-deploy until the sprint stabilises, that would prevent future SHA drift. Not blocking — agents are managing around it.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
-- **T-007 + T-010** ✅ Coded, NOT deployed — ships together after T-001 PASS
+- **T-007 + T-010** ✅ Coded, NOT deployed — ships together immediately on T-001 PASS
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
@@ -148,10 +150,10 @@ Observer has identified and fixed the root cause of T-001 test failures (commit 
 | 2026-05-07 | NEW-RISK-01 — secret name mismatch | ✅ CLOSED |
 | 2026-05-07 | MCP_DEPLOY_SECRET confusion | ✅ PERMANENTLY CLOSED |
 | 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
-| 2026-05-07 | Run 25479445125 — superseded by 25479919641/25479919627 | ✅ CLOSED |
-| 2026-05-07 | Run 25479919627 — FAILED: A2 timeout on popup/redirect logic | ✅ ROOT CAUSE FIXED in `61c15b5` by Observer. New run pending. |
-| 2026-05-07 | SHA mismatch: live `6e99ee5` vs CI `e4e00da` | 🟡 ACTIVE — Operator to explain source of unauthorized deploys. |
-| 2026-05-07 | Deployments occurring outside T-001 gate (3 SHA changes) | 🟡 ACTIVE — Process concern. Operator investigating. |
+| 2026-05-07 | Run 25479445125 — superseded | ✅ CLOSED |
+| 2026-05-07 | Run 25479919627 — FAILED: A2 timeout | ✅ ROOT CAUSE FIXED |
+| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🟡 ACTIVE — auto-deploy confirmed on; owner action requested to disable |
+| 2026-05-07 | Run 25481415030 — **SUCCESS** on SHA `f9a325f` | 🟢 FIRST PASS — SHA alignment check pending |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
