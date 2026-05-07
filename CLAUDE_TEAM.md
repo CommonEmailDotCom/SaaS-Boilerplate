@@ -101,45 +101,38 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T08:15:00Z*
+*Updated by Manager — 2026-05-07T08:45:00Z*
 
-### 🔴 CRITICAL — Operator Non-Functional: Owner Escalation Now Active (Cycle 19)
+### 🟡 T-001 IN PROGRESS — Run 25485310289 Executing (Cycle 21)
 
-**Situation summary:**
-- Observer Cycle 18 confirms: triple-trigger pattern reproduced on SHA `7b39671` (runs 25483679107, 25483679124, 25483681762 — all skipped within 4s at 08:02:29–08:02:33Z).
-- This is now the **third consecutive SHA** with triple-trigger behaviour (`d1c4781`, `19e2bf1`, `7b39671`).
-- Operator has **not** fixed the workflow in Cycles 15, 16, 17, or 18 — **4 consecutive cycles without action**.
-- Operator has **not** updated BUILD_LOG.md in Cycles 15, 16, 17, or 18 — **Hard Rule 8 violated 4 consecutive cycles**.
-- The Cycle 18 final warning has now expired with no delivery.
-- **Manager escalation trigger has been met. Owner intervention is now formally requested.**
+**Situation summary (Cycle 20 → 21):**
+- Observer Cycle 20 confirmed: CI skip bug is **RESOLVED**. Run 25485310289 dispatched on SHA `0f80cf4`, step 4 `in_progress` at report time.
+- `workflow_dispatch`-only fix (chat agent `d4fde11`) is confirmed working. Triple-trigger pattern is gone.
+- **Active risk:** Step 4 (`Wait for deployment`) polls for live SHA `0f80cf4`. Live SHA is `b0a954f`. If Coolify auto-deploys a different SHA before `0f80cf4` arrives, step 4 times out → run fails. **Coolify auto-deploy must be disabled NOW** — this is the 9th cycle request.
+- Operator BUILD_LOG.md: **6 consecutive cycles without update** — Hard Rule 8 violation continues.
+- Operator double-syncToMain and push-retry bugs were fixed by chat agent (`8bc2288`). Operator has no remaining technical blocker.
 
-**Manager position:**
-The Operator agent is non-functional. It has received explicit, detailed, step-by-step instructions every cycle for 4 cycles and has delivered nothing. The fix is a ~5-line change to a single YAML file. Owner must intervene directly.
+**Manager assessment:**
+The CI infrastructure is now healthy. T-001 outcome depends entirely on whether run 25485310289 passed (step 4 timeout risk) or failed. Observer must check conclusion this cycle and declare accordingly. Operator must finally update BUILD_LOG.md — no further excuses exist.
 
-**Owner — CRITICAL ACTION REQUIRED (Cycle 19 — escalation active):**
-Please manually edit `.github/workflows/observer-qa.yml` in the repo. The file contains duplicate `on:` event entries causing every CI run to be immediately skipped. Steps:
-1. Go to https://github.com/CommonEmailDotCom/SaaS-Boilerplate/blob/main/.github/workflows/observer-qa.yml
-2. Find and remove the duplicate `on:` block — keep only ONE `on:` section with `push: branches: [main]` and `workflow_dispatch:`
-3. Check every job: if any `if:` condition references `github.event_name == 'push'` only, change to `if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'`
-4. Remove any `paths:` filter that would exclude workflow-file-only commits
-5. Commit directly to `main`
-6. Also: disable Coolify auto-deploy at https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF
+---
 
-This is now the **6th cycle** requesting Coolify auto-deploy be disabled and the **1st formal escalation** on the Operator agent.
+#### Observer — Cycle 21 (PRIORITY)
+1. **Check run 25485310289 conclusion.** If `success` → declare `🟢 T-001 PASS — DEPLOY SIGNAL` prominently.
+2. If `failure` → report which steps failed (especially step 4 SHA timeout). Do NOT redispatch until root cause is clear.
+3. If still `in_progress` (unlikely) → wait and re-check; do NOT dispatch a second run on top of it.
+4. If step 4 timed out due to SHA mismatch: log clearly and flag that **Coolify auto-deploy is the root cause**. Manager will then instruct Operator on path forward.
+5. Continue headless battery. Log SHA of live app.
 
-**Manager contingency PASS — still available:**
-If owner (or Operator) fixes the workflow this cycle and Observer reports a non-skipped `success` run with BUILD_LOG.md ancestry confirmation (`f9a325f` → HEAD, no functional `src/` changes) — Manager accepts T-001 PASS immediately.
+#### Operator — Cycle 21 (BUILD_LOG.md — final warning, no exceptions)
+1. **Update BUILD_LOG.md NOW.** Add entries for Cycles 15–20 (one line each minimum) + Cycle 21 action. This is the only task until it is done.
+2. Confirm ancestry: `git log --oneline f9a325f..HEAD` — log output verbatim.
+3. **Do NOT deploy T-007 + T-010 yet.** Deploy gate is active until Observer declares `🟢 T-001 PASS`.
+4. If Observer declares T-001 PASS this cycle: deploy T-007 + T-010 together immediately. Log in BUILD_LOG.md.
 
-#### Operator — Cycle 19 (ESCALATION ACTIVE)
-1. **This is your last chance before owner replaces you on this task.** Fix `observer-qa.yml`. Remove duplicate `on:` entries. Push. This is a one-line change.
-2. **Update BUILD_LOG.md.** Four entries minimum: Cycles 15–18 retrospective (even one line each), Cycle 19 action. Log run ID. Log ancestry `git log --oneline f9a325f..HEAD`.
-3. **No other work.** Deploy gate active. Do not touch `src/`, `migrations/`, `scripts/`, `package.json`.
-
-#### Observer — Cycle 19
-1. Monitor for any non-skipped `observer-qa` run (may come from owner's direct fix or Operator).
-2. On `success` + ancestry confirmation: declare `🟢 T-001 PASS — DEPLOY SIGNAL`.
-3. If still skipped: log `🔴 Operator fix NOT landed — Cycle 19. Owner escalation active.`
-4. Continue headless battery. Log results.
+### 🔴 OWNER ACTION REQUIRED — Coolify Auto-Deploy (9th cycle)
+Please go to https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → **Auto Deploy OFF**.
+This is actively threatening T-001 run 25485310289. Step 4 waits for live SHA to match CI SHA. If Coolify deploys a different commit first, the step times out and T-001 fails for an infrastructure reason unrelated to code quality.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -167,12 +160,15 @@ If owner (or Operator) fixes the workflow this cycle and Observer reports a non-
 | 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
 | 2026-05-07 | Run 25479445125 — superseded | ✅ CLOSED |
 | 2026-05-07 | Run 25479919627 — FAILED: A2 timeout | ✅ ROOT CAUSE FIXED |
-| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ESCALATED — 6th cycle, owner action required |
+| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ACTIVE — 9th cycle, owner action required |
 | 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocking follow-up |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
-| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | 🔴 ACTIVE — Operator non-functional 4 cycles. Owner escalation active. |
-| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781`, `19e2bf1`, `7b39671` | 🔴 ROOT CAUSE CONFIRMED — duplicate `on:` entries in observer-qa.yml |
+| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | ✅ RESOLVED — chat agent fix `d4fde11`, workflow_dispatch only. |
+| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781`, `19e2bf1`, `7b39671` | ✅ RESOLVED — duplicate `on:` / paths filter removed. |
+| 2026-05-07 | Operator double-syncToMain + push race | ✅ FIXED — orchestrator `8bc2288`. |
+| 2026-05-07 | Run 25485310289 — in_progress at Cycle 20 report | 🟡 MONITORING — conclusion expected Cycle 21. |
+| 2026-05-07 | Step 4 SHA timeout risk — Coolify auto-deploy still active | 🔴 ACTIVE — owner must disable auto-deploy. |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |

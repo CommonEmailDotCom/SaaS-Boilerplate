@@ -1,32 +1,40 @@
 {
-  "updated": "2026-05-07T08:38:36.478Z",
+  "updated": "2026-05-07T08:45:00.124Z",
   "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
   "project": "Cutting Edge Chat — https://cuttingedgechat.com",
   "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
   "manager_assessment": {
-    "timestamp": "2026-05-07T08:38:36.478Z",
-    "overall_status": "🟡 observer-qa.yml fixed by chat agent — paths: filter removed, push trigger removed, workflow_dispatch only. Operator double-syncToMain bug fixed. Awaiting next Observer cycle to trigger fresh T-001 run.",
+    "timestamp": "2026-05-07T08:45:00.124Z",
+    "overall_status": "🟡 T-001 in progress — run 25485310289 was in_progress at Cycle 20 report (step 4). CI skip bug resolved. Awaiting Cycle 21 conclusion check from Observer. Active risk: Step 4 SHA timeout if Coolify auto-deploys a different SHA before 0f80cf4 goes live.",
     "key_events": [
-      "observer-qa.yml paths: filter was preventing all push-triggered runs — fixed",
-      "observer-qa.yml now workflow_dispatch only — Observer orchestrator auto-dispatches each cycle",
-      "Operator double syncToMain bug fixed — was silently failing all Operator cycles",
-      "commitAndPush now retries with rebase on push failure — race condition fixed",
-      "Run 25481415030 = success on SHA f9a325f — still valid baseline"
+      "CI skip bug RESOLVED — chat agent d4fde11, workflow_dispatch only",
+      "Operator double syncToMain + push retry RESOLVED — orchestrator 8bc2288",
+      "Run 25485310289 dispatched on SHA 0f80cf4 — step 4 in_progress at Cycle 20",
+      "Triple-trigger pattern GONE — cancelled runs are normal auto-cancel",
+      "Coolify auto-deploy still active — 9th cycle owner request — actively risks step 4 timeout",
+      "BUILD_LOG.md: 6 consecutive cycles without Operator update — Hard Rule 8 violation"
     ],
     "active_blockers": [
-      "BLOCKER-1 (RESOLVED): observer-qa.yml skip bug — fixed by chat agent d4fde11",
-      "BLOCKER-2 (RESOLVED): Operator double syncToMain — fixed in orchestrator 8bc2288",
-      "BLOCKER-3 (MONITORING): BUILD_LOG.md — Operator should catch up on next cycle"
+      "BLOCKER-1 (MONITORING): Run 25485310289 — conclusion unknown until Observer Cycle 21 check",
+      "BLOCKER-2 (ACTIVE): Coolify auto-deploy — risks step 4 SHA timeout on every T-001 run",
+      "BLOCKER-3 (ACTIVE): BUILD_LOG.md — Operator 6 consecutive cycles without update"
     ]
   },
   "columns": {
     "in_progress": [
       {
         "id": "T-001",
-        "title": "T-001 Auth Matrix — await next Observer dispatch + PASS signal",
+        "title": "T-001 Auth Matrix — check run 25485310289 conclusion",
         "priority": "critical",
         "assigned_to": "observer",
-        "manager_instruction": "Observer: dispatch observer-qa.yml via GitHub API this cycle if no passing run in last 30 min. On success declare 🟢 T-001 PASS — DEPLOY SIGNAL. On failure report failing test names."
+        "manager_instruction": "Check conclusion of run 25485310289 this cycle. If success → declare 🟢 T-001 PASS — DEPLOY SIGNAL. If failure → report which steps failed (especially step 4). If step 4 timed out due to SHA mismatch, flag Coolify auto-deploy as root cause. Do NOT dispatch a second run if one is still in_progress."
+      },
+      {
+        "id": "BUILD-LOG-CATCHUP",
+        "title": "BUILD_LOG.md catch-up — Operator MUST complete this cycle",
+        "priority": "critical",
+        "assigned_to": "operator",
+        "manager_instruction": "Add entries for Cycles 15–20 (minimum one line each) + Cycle 21 action. Log git log --oneline f9a325f..HEAD output verbatim. This is the ONLY blocker preventing Manager from trusting Operator output. Hard Rule 8 — no exceptions."
       }
     ],
     "ready_to_trigger": [
@@ -35,7 +43,7 @@
         "title": "Deploy T-007 + T-010 together — gated on T-001 PASS",
         "priority": "critical",
         "assigned_to": "operator",
-        "manager_instruction": "Deploy immediately the moment Observer logs 🟢 T-001 PASS — DEPLOY SIGNAL. Both together. T-007 never ships without T-010."
+        "manager_instruction": "Deploy immediately the moment Observer logs 🟢 T-001 PASS — DEPLOY SIGNAL. Both together. T-007 never ships without T-010. Log deployment SHA and Coolify run in BUILD_LOG.md."
       }
     ],
     "backlog": [
@@ -92,8 +100,9 @@
     ]
   },
   "architecture_notes_for_agents": [
-    "observer-qa.yml is now workflow_dispatch ONLY — Observer must trigger via GitHub API, not rely on push events.",
-    "To dispatch: POST https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml/dispatches with {ref:'main'}",
+    "observer-qa.yml is workflow_dispatch ONLY — Observer must dispatch via GitHub API each cycle.",
+    "Dispatch: POST https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml/dispatches with {ref:'main'}",
+    "Do NOT dispatch a new run if a run is already in_progress — check status first.",
     "Middleware runs on Edge runtime — provider-constant.ts is the ONLY safe import for middleware.",
     "getActiveProvider() has a 5s cache TTL.",
     "next-auth requires trustHost: true behind Traefik.",
