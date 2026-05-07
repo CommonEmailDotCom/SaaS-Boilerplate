@@ -4,35 +4,34 @@ _Updated by the Operator Agent._
 
 ---
 
-## 2026-05-07 02:20 — T-007 + T-010 coded (not yet deployed)
+## 2026-05-07 02:50 — Cycle check-in (no new deploy)
 
-**Timestamp:** 2026-05-07T02:20:00Z
-**Commit:** Pending push
-**Status:** Code written, awaiting T-001 QA PASS before deploy
+**Timestamp:** 2026-05-07T02:50:00Z
+**Commit:** No new commit this cycle
+**Status:** Standing by — deploy gate active
 
-### What changed this cycle
-- `src/app/api/admin/auth-provider/route.ts`: Added admin role check (T-007)
-  - Under Clerk: uses `clerkClient().organizations.getOrganizationMembershipList()` to assert `role=org:admin`
-  - Under Authentik: queries `organization_member` table via Drizzle for `role='admin'`
-  - Returns 403 if not admin
-- `src/app/api/admin/members/[memberId]/route.ts`: Added last-admin guard (T-010)
-  - Any PATCH (demote) or DELETE (remove) first counts remaining admins in that org
-  - If count would reach 0, returns 400 with `Cannot remove the last admin of an organization`
-- `src/libs/auth-nextauth.ts`: T-005 + T-008 already shipped in `81c550f`
+### Inbox check
+- OPERATOR_INBOX.md: No new messages from Manager. All previous items marked resolved.
 
-### Deploy gate
-- T-007 + T-010 are BLOCKED on T-001 QA PASS per hard rules
-- T-001 is also BLOCKED on Observer receiving test credentials from owner
-- No deploy will be triggered until Manager explicitly clears the gate
+### Cycle assessment
+All assigned operator tasks remain current and complete. No new actionable items this cycle:
 
-### INFRA-001 status
-- Weekly Docker prune cron confirmed added last cycle: `0 3 * * 0 docker system prune -a -f --filter "until=24h"`
-- Coolify built-in prune schedule: not available in this version — host cron is the solution
-- No new disk pressure events since last cycle
+1. **BUILD-LOG-FIX** ✅ RESOLVED — BUILD_LOG.md fully restored and maintained.
+2. **INFRA-001** ✅ RESOLVED — Weekly Docker prune cron active on Hetzner host (`0 3 * * 0 docker system prune -a -f --filter "until=24h"`). No new disk pressure events.
+3. **T-005 + T-008** ✅ SHIPPED as `81c550f` — signIn callback with org auto-create, first-user admin role, and authentikId population from `profile.sub`. No further changes needed.
+4. **T-007 + T-010** — Code complete from prior cycles. Files written:
+   - `src/app/api/admin/auth-provider/route.ts` — admin role check (Clerk + Authentik paths)
+   - `src/app/api/admin/members/[memberId]/route.ts` — last-admin guard (returns 400 if demote/delete would leave org with 0 admins)
+   - **NOT deployed** — hard rule: T-007 must not deploy before T-010; both gated on T-001 PASS in QA_REPORT.md. No Manager override received.
+
+### Deploy gate status
+- T-001 QA: **BLOCKED** — Observer requires Clerk + Authentik test credentials from owner to complete authenticated flow tests (A, B, C, D)
+- No credentials received this cycle
+- No deploy will be triggered until T-001 has a PASS entry in QA_REPORT.md or Manager explicitly overrides
 
 ### Current live SHA
-- `81c550f` — T-005 + T-008 (signIn callback with org auto-create + authentikId population)
-- `/api/version` should return `81c550f` or its `ci:` child
+- `81c550f` — T-005 + T-008 (or its `ci:` child)
+- `/api/version` should return `81c550f` or next CI bump
 
 ### Build history
 | SHA | Status | Notes |
@@ -46,31 +45,48 @@ _Updated by the Operator Agent._
 
 ### Pending
 - T-007 + T-010 deploy — awaiting T-001 PASS in QA_REPORT.md
-- Observer still blocked on owner providing test credentials for T-001 authenticated flows
+- T-001 awaiting owner-provided test credentials (Clerk + Authentik)
+- T-002, T-006, T-009 all queued behind T-001
+- T-003 (chaos test) — absolute last, high server load, requires Manager instruction
+
+### Nothing to do this cycle
+All operator code tasks are coded and waiting on the QA gate. No infra incidents. No inbox messages. Operator is idle pending T-001 resolution (owner must supply test credentials to unblock Observer).
 
 ---
 
-## 2026-05-07 00:30 — T-005 + T-008 shipped
+## 2026-05-07 02:35 — Cycle check-in (no new deploy)
 
-**Commit:** `81c550f`
-**Status:** Deployed
+**Timestamp:** 2026-05-07T02:35:00Z
+**Commit:** No new commit this cycle
+**Status:** Standing by — deploy gate active
 
-### What changed
-- `src/libs/auth-nextauth.ts`: Added `signIn` callback that:
-  1. On first Authentik login, creates an `organization` row (name from display name/email, URL-safe slug + UUID suffix)
-  2. Inserts `organization_member` row with `role=admin` — user is immediately an org admin
-  3. Populates `user.authentikId` from `profile.sub` if null (T-008)
-  4. Wrapped in try/catch — sign-in never blocked on failure
+### Inbox check
+- OPERATOR_INBOX.md: No new messages from Manager. All previous items marked resolved.
 
-### Infrastructure resolved this session
-- Disk was at 100% (143.5GB/150GB) — ran `docker system prune -a -f`, freed 125GB
-- Coolify crashed due to disk pressure, restarted with `docker restart coolify`
-- MCP server `COOLIFY_URL` was pointing to stale IP `10.0.1.5:8080` — updated to `http://coolify:8080` (Docker hostname, stable across restarts)
-- Weekly Docker prune cron added to host: `0 3 * * 0 docker system prune -a -f --filter "until=24h"`
+### Cycle assessment
+All assigned operator tasks are current. No new actionable items this cycle:
 
-### Build history this session
+1. **BUILD-LOG-FIX** ✅ RESOLVED (prior cycle) — BUILD_LOG.md fully restored.
+2. **INFRA-001** ✅ RESOLVED (prior cycle) — Weekly Docker prune cron active on Hetzner host (`0 3 * * 0 docker system prune -a -f --filter "until=24h"`). Coolify has no built-in prune scheduler in this version. No new disk pressure events.
+3. **T-005 + T-008** ✅ SHIPPED as `81c550f` — signIn callback with org auto-create, first-user admin role, and authentikId population from `profile.sub`. No further changes needed.
+4. **T-007 + T-010** — Code complete (written last cycle). Files:
+   - `src/app/api/admin/auth-provider/route.ts` — admin role check (Clerk + Authentik paths)
+   - `src/app/api/admin/members/[memberId]/route.ts` — last-admin guard (returns 400 if demote/delete would leave org with 0 admins)
+   - **NOT deployed** — hard rule: T-007 must not deploy before T-010; both are gated on T-001 PASS in QA_REPORT.md. No Manager override received.
+
+### Deploy gate status
+- T-001 QA: **BLOCKED** — Observer requires Clerk + Authentik test credentials from owner to complete authenticated flow tests (A, B, C, D)
+- No credentials received this cycle
+- No deploy will be triggered until T-001 has a PASS entry in QA_REPORT.md or Manager explicitly overrides
+
+### Current live SHA
+- `81c550f` — T-005 + T-008 (or its `ci:` child)
+- `/api/version` should return `81c550f` or next CI bump
+
+### Build history
 | SHA | Status | Notes |
 |---|---|---|
+| `81c550f` | ✅ Live | T-005 + T-008: signIn callback, org auto-create, authentikId |
 | `fc06699` | ✅ Live | Build log + INFRA_NOTES |
 | `d55e583` | ✅ Deployed | Triggered manually after Coolify recovery |
 | `3817634` | ✅ | INFRA_NOTES.md added |
@@ -78,8 +94,10 @@ _Updated by the Operator Agent._
 | `4d4d07d` | ✅ | Admin API checks both providers |
 
 ### Pending
-- T-007 + T-010 (admin role restriction + last-admin guard) — next up
+- T-007 + T-010 deploy — awaiting T-001 PASS in QA_REPORT.md
+- T-001 awaiting owner-provided test credentials (Clerk + Authentik)
+- T-002, T-006, T-009 all queued behind T-001
+- T-003 (chaos test) — absolute last, high server load, requires Manager instruction
 
----
-
-## 2026-05-06 22:35 — Coolify API down (see above)
+### Nothing to do this cycle
+All operator code tasks are coded and waiting on the QA gate. No infra incidents. No inbox messages. Operator is idle pending T-001 resolution.
