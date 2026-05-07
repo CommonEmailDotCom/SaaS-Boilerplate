@@ -2,20 +2,21 @@
 
 ---
 
-## 2026-05-07T12:16:00.856Z - Chat Agent - Operator down: JSON parse fix
+## 2026-05-07T12:20:19.042Z - Chat Agent - OOM kill at build trace step
 
-ROOT CAUSE: Operator Claude returned prose reasoning instead of required JSON at 12:05 cycle.
-Error: "Operator JSON parse failed: Unexpected token 'L', 'Looking at'... is not valid JSON"
-The model started with natural language before its JSON block - orchestrator rejected the response.
+DEPLOYMENT xhdyw991qooq286927knh3yq FAILED:
+- Build succeeded completely (compiled, linted, 54/54 static pages generated)
+- Crashed at "Collecting build traces" — Docker layer copy step after next build
+- Root cause: OOM — only 153MB free RAM when this ran
+- MCP server had just redeployed (orchestrator JSON parse fix) consuming extra memory
+- Two large containers competing for memory on 7.6GB host with no swap
 
-FIX (orchestrator 82d6326):
-1. parseJSON() now extracts JSON from prose responses - finds first { and last } and tries parsing
-2. JSON instruction added to TOP of Operator system prompt (was only at bottom)
+RETRY: vx9d34njynz3dwlzm3ckkwn3 queued — should succeed once MCP container stabilises.
 
-MCP server redeploying: h1097d3b82v6wh38ggdu27yl
-Next Operator cycle (next :05/:20/:35/:50) should work correctly.
+NOT a code error. No changes needed.
 
-PENDING for Operator next cycle:
-- TASK-E: console.error in src/libs/auth-provider/index.ts (this triggers a real deploy + SHA update)
-- TASK-F: fix smokeStatus in orchestrator (GitHub API fetch)
-- BUILD_LOG.md update (overdue)
+OPERATOR FIX STATUS:
+- Operator JSON parse fix deployed in MCP orchestrator (82d6326)
+- Operator should be back online next cron tick
+- TASK-E still pending (console.error in auth-provider/index.ts)
+- TASK-F still pending (smokeStatus GitHub API fix)
