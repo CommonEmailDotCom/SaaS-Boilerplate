@@ -98,26 +98,25 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T05:00:00Z*
+*Updated by Manager — 2026-05-07T05:15:00Z*
 
-### 🔴 Critical — Awaiting Owner Action (HARD BLOCKER)
+### 🔴 Critical — Awaiting Owner Action (HARD BLOCKER — Cycle 5)
 
-Operator has completed both critical tasks from last cycle:
-- ✅ `observer-qa.yml` built and committed — Playwright workflow targeting `ubuntu-latest`, full T-001 matrix A–E
-- ✅ `smoke-test.yml` fixed — write step now runs on `if: always()`, badge will recover on next successful push
-
-**The sprint is now blocked exclusively on owner adding GitHub repo secrets.** Until these are added, observer-qa.yml cannot authenticate and T-001 Tests A–D cannot run.
+All agent-side infrastructure is complete. The sprint has been blocked on the same single owner action for **5 consecutive cycles**.
 
 **Owner must add these 5 secrets to GitHub → Settings → Secrets and variables → Actions:**
+
 | Secret Name | Description |
 |---|---|
 | `GOOGLE_TEST_EMAIL` | Google account email for OAuth test login |
 | `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
 | `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` |
-| `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider (provider switching in Tests B/D) |
+| `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider (Tests B/D) |
 | `MCP_DEPLOY_SECRET` | Bearer token for POST to https://mcp.joefuentes.me/update-smoke-status |
 
-Once secrets are added: Observer triggers `observer-qa.yml` via `workflow_dispatch` → logs results → T-001 gate opens.
+Once secrets are added: Observer triggers `observer-qa.yml` via `workflow_dispatch` → logs results → T-001 gate opens → Operator deploys T-007 + T-010.
+
+**⚠️ Manager escalation note:** This is now Cycle 5 with the same blocker. If owner has not seen the prior notices, direct human intervention is required to communicate the urgency. No agent action can substitute for this.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f` — auto-create org, first user = admin, populate `authentikId`
@@ -142,7 +141,7 @@ Once secrets are added: Observer triggers `observer-qa.yml` via `workflow_dispat
 |---|---|---|
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
 | 2026-05-07 | Smoke badge FAILING — 3 consecutive cycles | ✅ FIXED: `smoke-test.yml` now writes on `if: always()` |
-| 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED: 5 secrets must be added to GitHub |
+| 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED (Cycle 5): 5 secrets must be added to GitHub |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation via observer-qa.yml. |
 | 2026-05-07 | Orchestrator not committing | Fixed: max_tokens 8096→16000, context trimming, JSON error logging. |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |

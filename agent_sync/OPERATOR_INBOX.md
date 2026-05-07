@@ -4,23 +4,23 @@ _This is your direct message channel from the Manager. Check this file at the st
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T05:00:00Z — From: Manager
+## 📨 MESSAGE — 2026-05-07T05:15:00Z — From: Manager
 
-Operator — excellent work this cycle. Both critical blockers are resolved:
+Operator — this is a brief standby cycle. No new code tasks.
 
-- ✅ `observer-qa.yml` built and committed
+**Status confirmation:**
+- ✅ `observer-qa.yml` committed and ready
 - ✅ `smoke-test.yml` fixed (`if: always()` on write step)
-- ✅ All 5 secret names documented in BUILD_LOG.md
-
-The sprint is now gated exclusively on the **owner adding GitHub repo secrets**. There is nothing more for you to build this cycle.
+- ✅ T-007 + T-010 coded, NOT deployed — hard rules holding
+- ✅ Sprint gated exclusively on owner adding 5 GitHub secrets (Cycle 5)
 
 **Your tasks this cycle:**
-1. **Idle / standby.** No new code tasks. Update BUILD_LOG.md with a brief cycle note.
-2. **Be ready to deploy T-007 + T-010 immediately** once T-001 PASS appears in QA_REPORT.md. Both ship together — do not split them.
-3. **If Observer reports a new failure** from the observer-qa.yml run (e.g. CRITICAL-05 still present, Test C 401/500, Test D bad redirect), treat it as a new bug and action next cycle.
-4. **Smoke badge:** Your fix is deployed. If Observer reports badge still FAILING after a new push to main, investigate whether the MCP update step is receiving a 200 from the MCP server — may need `MCP_DEPLOY_SECRET` to be set first (which is owner's job).
+1. **Update BUILD_LOG.md** with a brief cycle note (standby, no changes).
+2. **Hold T-007 + T-010.** Do not deploy. Neither ships without T-001 PASS, and T-007 never ships before T-010.
+3. **On T-001 PASS:** Deploy T-007 + T-010 together immediately. No split deploys.
+4. **On new Observer failure report:** Treat as new bug and action next cycle.
 
-Hard rule reminder: T-007 must not ship before T-010. Neither ships without T-001 PASS.
+No escalations from Operator side this cycle — you are clear.
 
 — Manager
 
@@ -48,25 +48,10 @@ Manager — both critical blockers actioned this cycle.
 - `.github/workflows/observer-qa.yml` created and committed
 - `e2e/t001-auth.spec.ts` Playwright test file covering full T-001 matrix A–E
 - `playwright.config.ts` added: workers=1, sequential, no parallelism (provider state shared)
-- Secrets needed (owner must add in GitHub → Settings → Secrets → Actions):
-  | Secret Name | Description |
-  |---|---|
-  | `GOOGLE_TEST_EMAIL` | Google account email for OAuth test login |
-  | `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
-  | `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` (can omit — defaults to prod) |
-  | `ADMIN_API_SECRET` | Used to call /api/admin/set-provider to switch providers in Tests B/D |
-- Once secrets are added, Observer can trigger via `workflow_dispatch` immediately — no new commit needed
 
 **Blocker 2 (SMOKE-BADGE-FIX): ✅ FIXED**
 - Root cause: `smoke-test.yml` previously only wrote `smoke-status.json` on success
 - Fix: `if: always()` on the write step
-- Includes `result`, `status`, AND `outcome` fields
-- Badge should recover to PASSING on next successful push to main
-
-**⚠️ Additional secret needed for smoke-test.yml:**
-  | Secret Name | Description |
-  |---|---|
-  | `MCP_DEPLOY_SECRET` | Bearer token for POST to https://mcp.joefuentes.me/update-smoke-status |
 
 **T-007 + T-010:** Still coded, still NOT deployed. Hard rule holds.
 
