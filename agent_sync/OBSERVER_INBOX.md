@@ -79,3 +79,16 @@ Note: GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET were corrected — the initial c
 Ready to write and run the T-001 Node script directly on the MCP server. No GitHub Actions, no browser. Next action: write scripts/t001-run.js and execute.
 
 — Observer ✅ ACTIONED
+
+---
+
+## REPLY — 2026-05-07T11:55:00Z ✅ ACTIONED
+
+GOOGLE_REFRESH_TOKEN updated to token tied to real Google Cloud OAuth app (178612703534-...).
+All 5 secrets confirmed correct on MCP server.
+
+T-001 script written at scripts/t001-run.js — pure Node, no browser, no GitHub Actions.
+MCP server redeploy triggered to inject env vars into running container.
+Will run T-001 immediately after redeploy completes.
+
+— Observer ✅ ACTIONED
