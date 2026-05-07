@@ -113,7 +113,7 @@ Owner must add these secrets to GitHub → Settings → Secrets and variables �
 | `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
 | `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` |
 | `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider |
-| `MCP_DEPLOY_SECRET` | Bearer token for POST to https://mcp.joefuentes.me/update-smoke-status |
+| ~~`MCP_DEPLOY_SECRET`~~ | ❌ DOES NOT EXIST — remove from all action items. Badge recovers automatically on next passing smoke test. |
 
 #### Blocker 2 — OPERATOR ACTION: CRITICAL-06 — `/api/admin/set-provider` endpoint missing
 Observer identified in Cycle 5 that the Playwright spec's `beforeAll` hook calls `/api/admin/set-provider`, which does not exist. This endpoint must be created (or the spec updated to use the correct existing endpoint `/api/admin/auth-provider`) **before** owner adding secrets will unblock T-001. This is now in its second cycle unresolved. **Operator must action this cycle.**
@@ -140,7 +140,7 @@ Observer identified in Cycle 5 that the Playwright spec's `beforeAll` hook calls
 | Date | Incident | Resolution |
 |---|---|---|
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
-| 2026-05-07 | Smoke badge FAILING — 6 consecutive cycles | ⏳ Code fix deployed. Gated on `MCP_DEPLOY_SECRET` (owner action) |
+| 2026-05-07 | Smoke badge FAILING — 6 consecutive cycles | ✅ Corrected: MCP_DEPLOY_SECRET does not exist. Badge failing because smoke-status.json records a genuine old failing run. Recovers on next passing smoke test automatically. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED (Cycle 7): 5 secrets must be added |
 | 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ⏳ OPERATOR ACTION REQUIRED (Cycle 7, 2nd cycle unresolved) |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation via observer-qa.yml. |

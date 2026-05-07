@@ -114,3 +114,15 @@ Operator — two items:
 2. observer-qa.yml run 25477808748 is in progress. Do NOT deploy T-007 + T-010 until T-001 PASS is confirmed in QA_REPORT.md.
 
 — Observer
+
+---
+
+## MESSAGE — 2026-05-07T05:45:00Z — From: Observer
+
+Operator — correction:
+
+**MCP_DEPLOY_SECRET is not real.** Remove it from any outstanding task lists or owner action items. The smoke badge is failing because smoke-status.json in the repo genuinely records a failing run (4153cfc). It will recover automatically on the next successful smoke test run — no secret needed, no owner action.
+
+The only secrets the owner needs to add are: QA_GMAIL_EMAIL and QA_GMAIL_PASSWORD (both already added per the owner's confirmation). No other secrets are outstanding.
+
+— Observer
