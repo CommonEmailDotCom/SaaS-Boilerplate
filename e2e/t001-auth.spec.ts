@@ -6,7 +6,6 @@
  *   QA_GMAIL_EMAIL     — Google account email for OAuth test login
  *   QA_GMAIL_PASSWORD  — Google account password for OAuth test login
  *   TEST_BASE_URL         — Target URL (default: https://cuttingedgechat.com)
- *   ADMIN_API_SECRET      — Secret for /api/admin/set-provider
  *
  * Test Matrix:
  *   Test A: Clerk baseline — Google OAuth, /dashboard loads, org visible
@@ -22,10 +21,7 @@ const BASE_URL = process.env.TEST_BASE_URL ?? 'https://cuttingedgechat.com';
 const MCP_URL = 'https://mcp.joefuentes.me';
 const GOOGLE_EMAIL = process.env.QA_GMAIL_EMAIL ?? '';
 const GOOGLE_PASSWORD = process.env.QA_GMAIL_PASSWORD ?? '';
-const ADMIN_SECRET = process.env.ADMIN_API_SECRET ?? '';
 
-// Cache TTL guard — must wait >6s after provider switch before asserting
-const PROVIDER_SWITCH_WAIT_MS = 7000;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -63,35 +59,13 @@ async function googleOAuthSignIn(page: Page, context: BrowserContext): Promise<v
   }
 }
 
-async function setProvider(provider: 'clerk' | 'authentik'): Promise<void> {
-  const res = await fetch(`${BASE_URL}/api/admin/set-provider`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-secret': ADMIN_SECRET,
-    },
-    body: JSON.stringify({ provider }),
-  });
-  if (!res.ok) {
-    throw new Error(`setProvider(${provider}) failed: ${res.status} ${await res.text()}`);
-  }
-}
 
-async function waitForProviderCacheBust(): Promise<void> {
-  await new Promise((r) => setTimeout(r, PROVIDER_SWITCH_WAIT_MS));
-}
 
 // ---------------------------------------------------------------------------
 // Test A — Clerk baseline
 // ---------------------------------------------------------------------------
 
 test.describe('Test A — Clerk baseline (Google OAuth via Clerk)', () => {
-  test.beforeAll(async () => {
-    // Ensure provider is Clerk before Test A
-    await setProvider('clerk');
-    await waitForProviderCacheBust();
-  });
-
   test('A1: Clerk sign-in page loads', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
     // Clerk renders a sign-in widget
@@ -128,11 +102,6 @@ test.describe('Test A — Clerk baseline (Google OAuth via Clerk)', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Test B — Switch Clerk→Authentik (Google OAuth via Authentik)', () => {
-  test.beforeAll(async () => {
-    await setProvider('authentik');
-    await waitForProviderCacheBust();
-  });
-
   test('B1: After switch, sign-in page redirects through Authentik', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'domcontentloaded' });
     // Should redirect to Authentik or show Authentik login
@@ -173,13 +142,6 @@ test.describe('Test B — Switch Clerk→Authentik (Google OAuth via Authentik)'
 // ---------------------------------------------------------------------------
 
 test.describe('Test C — Dashboard under Authentik (org context, no errors)', () => {
-  test.beforeAll(async () => {
-    // Provider should still be Authentik from Test B
-    // Re-assert to be safe
-    await setProvider('authentik');
-    await waitForProviderCacheBust();
-  });
-
   test('C1: /dashboard loads without 401/500', async ({ page, context }) => {
     await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
     await googleOAuthSignIn(page, context);
@@ -224,11 +186,6 @@ test.describe('Test C — Dashboard under Authentik (org context, no errors)', (
 // ---------------------------------------------------------------------------
 
 test.describe('Test D — Switch Authentik→Clerk (sign-out + redirect)', () => {
-  test.beforeAll(async () => {
-    await setProvider('clerk');
-    await waitForProviderCacheBust();
-  });
-
   test('D1: After switch back to Clerk, sign-out redirects to /sign-in (not auth.joefuentes.me)', async ({
     page,
     context,

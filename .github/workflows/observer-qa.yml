@@ -21,7 +21,6 @@ jobs:
       TEST_BASE_URL: ${{ secrets.TEST_BASE_URL || 'https://cuttingedgechat.com' }}
       QA_GMAIL_EMAIL: ${{ secrets.QA_GMAIL_EMAIL }}
       QA_GMAIL_PASSWORD: ${{ secrets.QA_GMAIL_PASSWORD }}
-      ADMIN_API_SECRET: ${{ secrets.ADMIN_API_SECRET }}
 
     steps:
       - name: Checkout repository
@@ -47,10 +46,6 @@ jobs:
           fi
           if [ -z "$QA_GMAIL_PASSWORD" ]; then
             echo "❌ QA_GMAIL_PASSWORD secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
-            exit 1
-          fi
-          if [ -z "$ADMIN_API_SECRET" ]; then
-            echo "❌ ADMIN_API_SECRET secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
             exit 1
           fi
           echo "✅ All required secrets present."
