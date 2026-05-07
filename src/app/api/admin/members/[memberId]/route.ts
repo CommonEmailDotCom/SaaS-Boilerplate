@@ -1,31 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { auth as clerkAuth } from '@clerk/nextjs/server';
-import { clerkClient } from '@clerk/nextjs/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/libs/auth-nextauth';
+import { auth as clerkAuth, clerkClient } from '@clerk/nextjs/server';
+import { and, count, eq, inArray } from 'drizzle-orm';
+
 import { getActiveProvider } from '@/libs/auth-provider';
-import { db } from '@/libs/db';
-import { organizationMember } from '@/libs/schema';
-import { eq, and, inArray, count } from 'drizzle-orm';
+import { authentikAuth } from '@/libs/auth-nextauth';
+import { db } from '@/libs/DB';
+import { organizationMemberSchema } from '@/models/Schema';
 
-interface RouteContext {
-  params: { memberId: string };
-}
+type RouteContext = { params: { memberId: string } };
 
-// DELETE — remove a member from the organisation
-export async function DELETE(
-  _req: NextRequest,
-  { params }: RouteContext
-) {
+export async function DELETE(_req: NextRequest, { params }: RouteContext) {
   const { memberId } = params;
-  const activeProvider = await getActiveProvider();
+  const provider = await getActiveProvider();
 
-  if (activeProvider === 'clerk') {
-    // Clerk handles last-admin guard internally via its API
+  if (provider === 'clerk') {
     const { orgId } = await clerkAuth();
-    if (!orgId) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!orgId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
     try {
       await (await clerkClient()).organizations.deleteOrganizationMembership({
         organizationId: orgId,
@@ -34,70 +25,60 @@ export async function DELETE(
       return NextResponse.json({ success: true });
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Clerk error';
-      // Clerk returns 422 when removing last admin
       return NextResponse.json({ error: message }, { status: 400 });
     }
-  } else {
-    // Authentik / next-auth path
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+  }
 
-    // Verify caller is admin/owner
-    const callerRows = await db
-      .select()
-      .from(organizationMember)
+  // Authentik path
+  const session = await authentikAuth();
+  if (!session?.user?.id) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  // Caller must be admin/owner
+  const callerRows = await db
+    .select()
+    .from(organizationMemberSchema)
+    .where(
+      and(
+        eq(organizationMemberSchema.userId, session.user.id),
+        inArray(organizationMemberSchema.role, ['admin', 'owner'])
+      )
+    )
+    .limit(1);
+
+  if (callerRows.length === 0) {
+    return NextResponse.json({ error: 'Forbidden: org admin required' }, { status: 403 });
+  }
+
+  // Last-admin guard
+  const targetRows = await db
+    .select()
+    .from(organizationMemberSchema)
+    .where(eq(organizationMemberSchema.userId, memberId))
+    .limit(1);
+
+  if (targetRows.length > 0 && ['admin', 'owner'].includes(targetRows[0]!.role ?? '')) {
+    const orgId = targetRows[0]!.orgId;
+    const [{ adminCount }] = await db
+      .select({ adminCount: count() })
+      .from(organizationMemberSchema)
       .where(
         and(
-          eq(organizationMember.userId, session.user.id),
-          inArray(organizationMember.role, ['admin', 'owner'])
+          eq(organizationMemberSchema.orgId, orgId),
+          inArray(organizationMemberSchema.role, ['admin', 'owner'])
         )
-      )
-      .limit(1);
-    if (callerRows.length === 0) {
+      );
+
+    if (adminCount <= 1) {
       return NextResponse.json(
-        { error: 'Forbidden: org admin required' },
-        { status: 403 }
+        { error: 'Cannot remove the last admin from the organisation' },
+        { status: 400 }
       );
     }
-
-    // Last-admin guard for Authentik path
-    const targetRows = await db
-      .select()
-      .from(organizationMember)
-      .where(eq(organizationMember.userId, memberId))
-      .limit(1);
-
-    if (targetRows.length > 0) {
-      const targetRole = targetRows[0].role;
-      if (['admin', 'owner'].includes(targetRole ?? '')) {
-        // Count how many admins/owners exist in this org
-        const orgId = targetRows[0].organizationId;
-        const adminCountResult = await db
-          .select({ adminCount: count() })
-          .from(organizationMember)
-          .where(
-            and(
-              eq(organizationMember.organizationId, orgId),
-              inArray(organizationMember.role, ['admin', 'owner'])
-            )
-          );
-        const adminCount = adminCountResult[0]?.adminCount ?? 0;
-        if (adminCount <= 1) {
-          return NextResponse.json(
-            { error: 'Cannot remove the last admin from the organisation' },
-            { status: 400 }
-          );
-        }
-      }
-    }
-
-    // Perform the removal
-    await db
-      .delete(organizationMember)
-      .where(eq(organizationMember.userId, memberId));
-
-    return NextResponse.json({ success: true });
   }
+
+  await db
+    .delete(organizationMemberSchema)
+    .where(eq(organizationMemberSchema.userId, memberId));
+
+  return NextResponse.json({ success: true });
 }

@@ -1,66 +1,89 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { auth as clerkAuth } from '@clerk/nextjs/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/libs/auth-nextauth';
-import { getActiveProvider } from '@/libs/auth-provider';
-import { db } from '@/libs/db';
-import { appConfig, organizationMember } from '@/libs/schema';
-import { eq, and, inArray } from 'drizzle-orm';
+import { and, inArray, eq } from 'drizzle-orm';
 
-// GET — return current active provider
-export async function GET(_req: NextRequest) {
+import { getActiveProvider, setActiveProvider } from '@/libs/auth-provider';
+import { authentikAuth } from '@/libs/auth-nextauth';
+import { db } from '@/libs/DB';
+import { organizationMemberSchema } from '@/models/Schema';
+
+/**
+ * T-007: Admin-only check for provider switching.
+ * Clerk: orgRole must be org:admin.
+ * Authentik: organization_member.role must be admin or owner.
+ */
+async function isOrgAdmin(): Promise<boolean> {
   const provider = await getActiveProvider();
-  return NextResponse.json({ provider });
-}
 
-// POST — switch active provider (admin only)
-export async function POST(req: NextRequest) {
-  const activeProvider = await getActiveProvider();
-
-  // --- Admin check ---
-  if (activeProvider === 'clerk') {
-    const { orgRole } = await clerkAuth();
-    if (orgRole !== 'org:admin') {
-      return NextResponse.json(
-        { error: 'Forbidden: org admin required' },
-        { status: 403 }
-      );
-    }
-  } else {
-    // Authentik path — check organization_member table
-    const session = await getServerSession(authOptions);
-    if (!session?.user?.id) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-    const memberRows = await db
-      .select()
-      .from(organizationMember)
-      .where(
-        and(
-          eq(organizationMember.userId, session.user.id),
-          inArray(organizationMember.role, ['admin', 'owner'])
-        )
-      )
-      .limit(1);
-    if (memberRows.length === 0) {
-      return NextResponse.json(
-        { error: 'Forbidden: org admin required' },
-        { status: 403 }
-      );
+  if (provider === 'clerk') {
+    try {
+      const { userId, orgRole } = await clerkAuth();
+      return !!userId && orgRole === 'org:admin';
+    } catch {
+      return false;
     }
   }
 
-  // --- Apply switch ---
-  const body = await req.json();
-  const { provider } = body as { provider: string };
+  // Authentik
+  try {
+    const session = await authentikAuth();
+    if (!session?.user?.id) return false;
+
+    const rows = await db
+      .select()
+      .from(organizationMemberSchema)
+      .where(
+        and(
+          eq(organizationMemberSchema.userId, session.user.id),
+          inArray(organizationMemberSchema.role, ['admin', 'owner'])
+        )
+      )
+      .limit(1);
+
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
+export async function GET() {
+  // Auth check — any authenticated user can read current provider
+  try {
+    const { userId } = await clerkAuth();
+    if (!userId) {
+      const session = await authentikAuth();
+      if (!session?.user?.id) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
+    }
+  } catch {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  }
+
+  const current = await getActiveProvider();
+  return NextResponse.json({ current, available: ['clerk', 'authentik'] });
+}
+
+export async function POST(req: Request) {
+  // T-007: admin only
+  if (!await isOrgAdmin()) {
+    return NextResponse.json({ error: 'Forbidden: org admin required' }, { status: 403 });
+  }
+
+  const { provider } = await req.json();
+
   if (!['clerk', 'authentik'].includes(provider)) {
     return NextResponse.json({ error: 'Invalid provider' }, { status: 400 });
   }
 
-  await db
-    .update(appConfig)
-    .set({ value: provider, updatedAt: new Date() })
-    .where(eq(appConfig.key, 'auth_provider'));
+  await setActiveProvider(provider as 'clerk' | 'authentik');
 
-  return NextResponse.json({ success: true, provider });
+  const signInUrl = provider === 'authentik' ? '/api/auth/authentik-signin' : '/sign-in';
+
+  return NextResponse.json({
+    success: true,
+    provider,
+    signInUrl,
+    message: `Switched to ${provider}. Please sign out and sign back in.`,
+  });
 }
