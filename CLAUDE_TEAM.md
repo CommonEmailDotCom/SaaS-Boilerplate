@@ -17,6 +17,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | MCP server | https://mcp.joefuentes.me |
 | Authentik | https://auth.joefuentes.me |
 | Coolify SaaS UUID | `tuk1rcjj16vlk33jrbx3c9d3` |
+| Coolify Auto-Deploy | **OFF** — deploys via `set-version.yml` only |
 | Coolify MCP UUID | `a1fr37jiwehxbfqp90k4cvsw` |
 | Coolify Authentik UUID | `c1x75zw73bd2x23ug012yj0z` (service) |
 
@@ -135,7 +136,9 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 3. Continue headless battery. Log current live SHA.
 4. If you dispatch and see a triple-trigger again: **do not dispatch again** — escalate to Manager immediately.
 
-### 🔴 OWNER ACTION REQUIRED — Coolify Auto-Deploy (10th cycle)
+### ✅ Coolify Auto-Deploy — DISABLED
+Owner confirmed auto-deploy is OFF on UUID `tuk1rcjj16vlk33jrbx3c9d3`. Deploys now only triggered by `set-version.yml` on real code commits.
+
 Please go to https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → **Auto Deploy OFF**.
 Every push to `main` (including workflow-only commits) causes Coolify to deploy, which (a) cancels in-progress CI runs and (b) drifts the live SHA away from the CI target. The 3-way SHA mismatch this cycle is a direct consequence. This single action would resolve the majority of T-001's ongoing blocking issues.
 
