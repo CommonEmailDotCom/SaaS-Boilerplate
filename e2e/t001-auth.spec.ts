@@ -28,37 +28,47 @@ const GOOGLE_PASSWORD = process.env.QA_GMAIL_PASSWORD ?? '';
 // ---------------------------------------------------------------------------
 
 async function googleOAuthSignIn(page: Page, context: BrowserContext): Promise<void> {
-  // Click Google sign-in button — adjust selector to match actual UI
   const googleBtn = page.locator('button:has-text("Google"), a:has-text("Google"), [data-provider="google"]').first();
   await googleBtn.waitFor({ state: 'visible', timeout: 15000 });
 
-  // Google OAuth opens in same tab or popup — handle both
-  const [popup] = await Promise.all([
-    context.waitForEvent('page').catch(() => null),
-    googleBtn.click(),
-  ]);
+  // Popup has 5s to appear; if not, Clerk is doing a full-page redirect instead
+  const popupPromise = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
+  await googleBtn.click();
+  const popup = await popupPromise;
 
-  const oauthPage = popup ?? page;
-
-  // Fill Google email
-  await oauthPage.waitForURL(/accounts\.google\.com/, { timeout: 15000 });
-  await oauthPage.locator('input[type="email"]').fill(GOOGLE_EMAIL);
-  await oauthPage.locator('#identifierNext, button:has-text("Next")').click();
-
-  // Fill password
-  await oauthPage.locator('input[type="password"]').waitFor({ state: 'visible', timeout: 10000 });
-  await oauthPage.locator('input[type="password"]').fill(GOOGLE_PASSWORD);
-  await oauthPage.locator('#passwordNext, button:has-text("Next")').click();
-
-  // Wait for redirect back to app
+  let oauthPage: Page;
   if (popup) {
-    await popup.waitForEvent('close', { timeout: 30000 }).catch(() => {});
-    await page.waitForURL(`${BASE_URL}/**`, { timeout: 30000 });
+    try {
+      await popup.waitForURL(/accounts.google.com/, { timeout: 10000 });
+      oauthPage = popup;
+    } catch {
+      await page.waitForURL(/accounts.google.com/, { timeout: 15000 });
+      oauthPage = page;
+    }
   } else {
-    await page.waitForURL(`${BASE_URL}/**`, { timeout: 30000 });
+    await page.waitForURL(/accounts.google.com/, { timeout: 15000 });
+    oauthPage = page;
   }
-}
 
+  // Email — skip hidden DOM duplicates Google adds
+  await oauthPage.waitForSelector('input[type="email"]:not([aria-hidden="true"])', { timeout: 15000 });
+  await oauthPage.fill('input[type="email"]:not([aria-hidden="true"])', GOOGLE_EMAIL);
+  await oauthPage.keyboard.press('Enter');
+
+  // Password — use jsname=YPqjbf (visible), not the hidden aria-hidden duplicate
+  await oauthPage.waitForSelector(
+    'input[jsname="YPqjbf"]:not([aria-hidden="true"]), input[type="password"]:not([aria-hidden="true"])',
+    { timeout: 15000 }
+  );
+  await oauthPage.fill(
+    'input[jsname="YPqjbf"]:not([aria-hidden="true"]), input[type="password"]:not([aria-hidden="true"])',
+    GOOGLE_PASSWORD
+  );
+  await oauthPage.keyboard.press('Enter');
+
+  // Always watch main page for final callback
+  await page.waitForURL(`${BASE_URL}/**`, { timeout: 45000 });
+}
 
 
 // ---------------------------------------------------------------------------
