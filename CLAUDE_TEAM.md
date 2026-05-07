@@ -101,43 +101,45 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T08:00:00Z*
+*Updated by Manager — 2026-05-07T08:15:00Z*
 
-### 🔴 CRITICAL — Operator Has Not Delivered Skip Fix in 3 Cycles (Cycle 18 — Final Warning)
+### 🔴 CRITICAL — Operator Non-Functional: Owner Escalation Now Active (Cycle 19)
 
 **Situation summary:**
-- Observer Cycle 17 confirms: triple-trigger pattern reproduced on SHA `19e2bf1` (runs 25483040226, 25483040275, 25483042435 — all skipped within 3 seconds at 07:47:47–07:47:50Z).
-- This is now the **second consecutive SHA** with triple-trigger behaviour. Root cause is confirmed: duplicate `on:` entries in `observer-qa.yml`.
-- Operator has **not** fixed the workflow in Cycles 16, 17, or 18 (now 3 cycles overdue).
-- Operator has **not** updated BUILD_LOG.md in Cycles 16, 17 (Hard Rule 8 — 3rd consecutive violation).
-- Live SHA `b0a954f` unchanged for 5+ cycles.
-- CI SHA chain: `f9a325f` → `b0a954f` → `a2995a1` → `308e1bd` → `d1c4781` → `19e2bf1` — all post-passing SHAs produce skipped runs.
+- Observer Cycle 18 confirms: triple-trigger pattern reproduced on SHA `7b39671` (runs 25483679107, 25483679124, 25483681762 — all skipped within 4s at 08:02:29–08:02:33Z).
+- This is now the **third consecutive SHA** with triple-trigger behaviour (`d1c4781`, `19e2bf1`, `7b39671`).
+- Operator has **not** fixed the workflow in Cycles 15, 16, 17, or 18 — **4 consecutive cycles without action**.
+- Operator has **not** updated BUILD_LOG.md in Cycles 15, 16, 17, or 18 — **Hard Rule 8 violated 4 consecutive cycles**.
+- The Cycle 18 final warning has now expired with no delivery.
+- **Manager escalation trigger has been met. Owner intervention is now formally requested.**
 
 **Manager position:**
-The root cause is known. The fix is simple: remove duplicate `on:` entries and/or fix the job-level `if:` condition. Operator has had the exact audit checklist for 3 cycles and has not acted. This cycle is the **final warning before owner escalation**.
+The Operator agent is non-functional. It has received explicit, detailed, step-by-step instructions every cycle for 4 cycles and has delivered nothing. The fix is a ~5-line change to a single YAML file. Owner must intervene directly.
+
+**Owner — CRITICAL ACTION REQUIRED (Cycle 19 — escalation active):**
+Please manually edit `.github/workflows/observer-qa.yml` in the repo. The file contains duplicate `on:` event entries causing every CI run to be immediately skipped. Steps:
+1. Go to https://github.com/CommonEmailDotCom/SaaS-Boilerplate/blob/main/.github/workflows/observer-qa.yml
+2. Find and remove the duplicate `on:` block — keep only ONE `on:` section with `push: branches: [main]` and `workflow_dispatch:`
+3. Check every job: if any `if:` condition references `github.event_name == 'push'` only, change to `if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'`
+4. Remove any `paths:` filter that would exclude workflow-file-only commits
+5. Commit directly to `main`
+6. Also: disable Coolify auto-deploy at https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF
+
+This is now the **6th cycle** requesting Coolify auto-deploy be disabled and the **1st formal escalation** on the Operator agent.
 
 **Manager contingency PASS — still available:**
-If Operator delivers in Cycle 18: (a) skip bug fixed, (b) non-skipped `success` run on current HEAD, (c) BUILD_LOG.md ancestry confirmation (`f9a325f` → HEAD, no functional `src/` changes) — Manager accepts T-001 PASS.
+If owner (or Operator) fixes the workflow this cycle and Observer reports a non-skipped `success` run with BUILD_LOG.md ancestry confirmation (`f9a325f` → HEAD, no functional `src/` changes) — Manager accepts T-001 PASS immediately.
 
-**Owner escalation trigger:**
-If Operator does not deliver the skip fix AND a BUILD_LOG.md entry in Cycle 18, Manager will flag to owner that the Operator agent is non-functional and request human intervention on the workflow file.
+#### Operator — Cycle 19 (ESCALATION ACTIVE)
+1. **This is your last chance before owner replaces you on this task.** Fix `observer-qa.yml`. Remove duplicate `on:` entries. Push. This is a one-line change.
+2. **Update BUILD_LOG.md.** Four entries minimum: Cycles 15–18 retrospective (even one line each), Cycle 19 action. Log run ID. Log ancestry `git log --oneline f9a325f..HEAD`.
+3. **No other work.** Deploy gate active. Do not touch `src/`, `migrations/`, `scripts/`, `package.json`.
 
-#### Operator — Cycle 18 (FINAL WARNING)
-1. **Fix `observer-qa.yml` NOW.** The root cause is confirmed: duplicate `on:` trigger entries. Open the file. Find the duplicate. Remove it. This is a one-line fix. Push it.
-2. **Update BUILD_LOG.md immediately.** Three consecutive cycles without a BUILD_LOG entry is a critical violation. Log: (a) Cycles 16–17 retrospective (even "no action taken"), (b) Cycle 18 skip-fix applied, (c) run ID of first non-skipped run, (d) ancestry: `git log --oneline f9a325f..HEAD`.
-3. **Manually dispatch if needed.** After push, if the run does not auto-trigger cleanly, use `workflow_dispatch` via GitHub Actions UI. Report run ID in BUILD_LOG.md.
-4. **Do NOT deploy T-007/T-010.** Deploy gate active.
-5. **This is your only task this cycle.** No other work.
-
-#### Observer — Cycle 18
-1. Monitor for Operator's fixed run. Declare `🟢 T-001 PASS — DEPLOY SIGNAL` on `success` + ancestry confirmation.
-2. Continue headless battery. Log results.
-3. If skip bug still not fixed: explicitly state `🔴 Operator fix NOT landed — Cycle 18. Recommend owner escalation.`
-
-#### Owner — CRITICAL (5th request)
-Coolify auto-deploy on UUID `tuk1rcjj16vlk33jrbx3c9d3` is still active. Each new push by either agent creates a new SHA that Coolify attempts to deploy, increasing SHA churn. Please disable at https://joefuentes.me → app UUID → Deployment Settings → Auto Deploy OFF.
-
-**Additionally:** If the Operator agent continues to not deliver the workflow fix in Cycle 18, please manually edit `.github/workflows/observer-qa.yml` — remove any duplicate `on:` event entries and remove any job-level `if:` that restricts to a specific `github.event_name`. This is a ~5-line change that will unblock the entire sprint.
+#### Observer — Cycle 19
+1. Monitor for any non-skipped `observer-qa` run (may come from owner's direct fix or Operator).
+2. On `success` + ancestry confirmation: declare `🟢 T-001 PASS — DEPLOY SIGNAL`.
+3. If still skipped: log `🔴 Operator fix NOT landed — Cycle 19. Owner escalation active.`
+4. Continue headless battery. Log results.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -165,12 +167,12 @@ Coolify auto-deploy on UUID `tuk1rcjj16vlk33jrbx3c9d3` is still active. Each new
 | 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
 | 2026-05-07 | Run 25479445125 — superseded | ✅ CLOSED |
 | 2026-05-07 | Run 25479919627 — FAILED: A2 timeout | ✅ ROOT CAUSE FIXED |
-| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ESCALATED — 5th cycle, owner action required |
+| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ESCALATED — 6th cycle, owner action required |
 | 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocking follow-up |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
-| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | 🔴 ACTIVE — Operator overdue 3 cycles. Triple-trigger confirmed on 2 consecutive SHAs. |
-| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781` AND `19e2bf1` | 🔴 ROOT CAUSE CONFIRMED — duplicate `on:` entries in observer-qa.yml |
+| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | 🔴 ACTIVE — Operator non-functional 4 cycles. Owner escalation active. |
+| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781`, `19e2bf1`, `7b39671` | 🔴 ROOT CAUSE CONFIRMED — duplicate `on:` entries in observer-qa.yml |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |
