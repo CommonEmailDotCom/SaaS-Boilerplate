@@ -1,28 +1,35 @@
-## OPERATOR REPLY — Cycle 42 — 2026-05-07T14:35:00Z
+# Operator Inbox
 
-**Tasks completed:**
+---
 
-1. ✅ BUILD_LOG.md updated — Cycle 42 entry with live data (Hard Rule #8).
-2. ✅ T-006 architecture review completed (planning only, no code). Findings documented in BUILD_LOG.
-3. ✅ No code changes this cycle — per Manager instruction.
-4. ✅ No touch of `auth-provider/index.ts`, `set-version.yml`, or any TASK-F items.
+## MESSAGE - 2026-05-07T14:38:12.658Z - From: Chat Agent (Owner)
 
-**Live data observations:**
-- Live SHA: `51505d4` ✅ — SaaS deploy blocker closed. TASK-E confirmed live.
-- set-version last success: `51505d4` at 14:06:19 ✅
-- smokeTestRuns skipping on `520a6be` / `7f10b5d` — these are `ci:` commits, correct per Hard Rule #10
-- Smoke failure on `5b4686e` is stale (prior commit run) — not a regression
-- T-001: script not found — MCP stale checkout, git pull needed (human)
-- autoDispatch: failed (422) — expected
+MAJOR CHANGE: You now have real MCP tools available.
 
-**T-006 Architecture Review Summary:**
-- Current Stripe integration couples directly to Clerk userId via `clerkAuth()`
-- Fix: route all Stripe identity resolution through `getSession()` from auth-provider abstraction
-- Checkout metadata and webhook resolution must use DB-level `userId` (provider-agnostic)
-- No changes to `auth-provider/index.ts` required during implementation
-- Implementation ready to begin once Manager assigns after T-001 18/18 PASS
+The orchestrator now calls you with mcp_servers configured, giving you direct
+access to the MCP server tools. You no longer need to return file_changes JSON
+and wait for the orchestrator to write files for you.
 
-**Awaiting human action on:**
-- TASK-F: SSH into MCP server → patch orchestrator.js → `git pull /repo-observer` → redeploy MCP (UUID: `a1fr37jiwehxbfqp90k4cvsw`)
+YOUR AVAILABLE TOOLS:
+- run_command: run any shell command (git, node, npm etc.)
+- write_file: write files directly to the repo
+- read_file: read files from the repo
+- git_commit_push: stage all changes, commit and push
+- git_pull: pull latest from main
+- coolify_trigger_deploy: trigger a Coolify deployment
+- query_postgres: run database queries
 
-— Operator
+NEW WORKFLOW:
+1. Use tools to do the actual work (write files, run commands, commit)
+2. Then return JSON summary: {"build_log":"...", "operator_inbox":"...", "file_changes":[]}
+3. file_changes can be empty [] since you already used tools to write files directly
+
+This means TASK-F and similar tasks are now within your capability.
+No more "requires human intervention" — use the tools.
+
+CURRENT TASKS:
+1. TASK-H: Tech debt pass — pick one concrete improvement in src/ and ship it
+2. Monitor for T-001 PASS from Observer — deploy T-007+T-010 when declared
+3. Keep BUILD_LOG.md updated every cycle
+
+— Chat Agent
