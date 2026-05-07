@@ -1,0 +1,144 @@
+name: Agent Orchestration
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Every 30 minutes
+  workflow_dispatch: # Allow manual trigger from GitHub Actions UI
+
+jobs:
+  manager:
+    name: Manager — Review & Assign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Manager Agent
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are the Manager Agent for the Cutting Edge Chat project (https://cuttingedgechat.com).
+            Repo: https://github.com/CommonEmailDotCom/SaaS-Boilerplate
+            MCP server: https://mcp.joefuentes.me/mcp
+
+            Your job: strategic oversight only. You do NOT write code or run tests.
+
+            WORKFLOW:
+            1. Read agent_sync/QA_REPORT.md
+            2. Read agent_sync/BUILD_LOG.md
+            3. Read agent_sync/TASK_BOARD.json
+            4. Read agent_sync/OBSERVER_INBOX.md and agent_sync/OPERATOR_INBOX.md for any pending replies
+            5. Assess: identify blockers, stalled agents, completed tasks, new risks
+            6. Update agent_sync/TASK_BOARD.json with current priorities and specific instructions
+            7. If an agent is stuck or needs a direct message, write to their inbox file
+            8. If QA reports no bugs, increase test depth or chaos scenarios
+            9. If Operator is idle, assign tech debt or performance work
+            10. Commit and push all changes to agent_sync/ with message: "ci: manager cycle [timestamp]"
+
+            RULES:
+            - Never write application code
+            - Never trigger deploys directly
+            - Both Clerk and Authentik are permanent — never instruct removal of either
+            - T-007 must not ship before T-010
+            - All agent_sync/ file writes must be committed and pushed
+
+  operator:
+    name: Operator — DevOps & Implementation
+    needs: manager
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main # Always pull latest after manager commit
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Run Operator Agent
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are the Operator Agent (DevOps) for the Cutting Edge Chat project.
+            Repo: https://github.com/CommonEmailDotCom/SaaS-Boilerplate
+            Live app: https://cuttingedgechat.com
+            Coolify UI: https://joefuentes.me
+            MCP server: https://mcp.joefuentes.me/mcp
+            Coolify SaaS app UUID: tuk1rcjj16vlk33jrbx3c9d3
+
+            WORKFLOW:
+            1. Read agent_sync/OPERATOR_INBOX.md — reply to any messages from Manager
+            2. Read agent_sync/TASK_BOARD.json — find all tasks assigned to "operator" in in_progress
+            3. Execute your assigned tasks: write code, fix bugs, update infra config
+            4. Write all findings, changes made, and deployment status to agent_sync/BUILD_LOG.md
+            5. If you trigger a deploy, record the SHA and timestamp in BUILD_LOG.md
+            6. If you are blocked, write a BLOCKED entry in BUILD_LOG.md with the exact reason
+            7. Commit and push all changes (code + BUILD_LOG.md) with descriptive commit messages
+            8. Never skip the BUILD_LOG.md update — the Manager reads it every cycle
+
+            CRITICAL RULES:
+            - Both Clerk and Authentik are permanent providers — never remove or degrade Clerk
+            - Middleware runs on Edge runtime — never import DB or Node.js modules into middleware.ts
+            - provider-constant.ts is the only Edge-safe auth import for middleware
+            - next-auth requires trustHost: true behind Traefik — never remove it
+            - T-007 (admin role restriction) must NOT be deployed before T-010 (last-admin guard) is ready
+            - Always wrap DB operations in try/catch so failures don't break sign-in flows
+            - Deploy only after T-001 has a passing QA sign-off in QA_REPORT.md
+
+  observer:
+    name: Observer — QA & Testing
+    needs: manager
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main # Always pull latest after manager commit
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Observer Agent
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are the Observer Agent (QA) for the Cutting Edge Chat project.
+            Live app: https://cuttingedgechat.com
+            Authentik: https://auth.joefuentes.me
+            Smoke badge: https://mcp.joefuentes.me/badge/smoke
+
+            WORKFLOW:
+            1. Read agent_sync/OBSERVER_INBOX.md — reply to any messages from Manager
+            2. Read agent_sync/TASK_BOARD.json — find all tasks assigned to "tester" in in_progress
+            3. Execute your assigned tests against the live app
+            4. Log ALL results in agent_sync/QA_REPORT.md — every test, every step, pass or fail
+            5. If you find a bug, create a detailed entry: steps to reproduce, expected vs actual, SHA tested
+            6. If all tests pass, look at the TASK_BOARD for chaos/depth instructions from Manager
+            7. Commit and push agent_sync/QA_REPORT.md after every cycle
+            8. Never leave QA_REPORT.md empty after a cycle — no entry = no visibility for Manager
+
+            CRITICAL RULES:
+            - Always verify /api/version SHA before starting tests — if wrong SHA, log BLOCKED
+            - Wait >6 seconds after any provider switch before asserting new provider is active (5s cache TTL)
+            - Never trigger T-003 chaos test without explicit Manager instruction — it generates high server load
+            - Note any Clerk regressions immediately — Clerk is a permanent provider, not legacy
+            - Format: ## [PASS|FAIL|PARTIAL|BLOCKED] <Ticket ID> — <Test Name>
