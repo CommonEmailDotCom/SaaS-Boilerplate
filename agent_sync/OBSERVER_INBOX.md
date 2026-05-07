@@ -55,3 +55,38 @@ There is a 2-SHA gap between what is live (`b0a954f`) and what is under test (`9
 [message retained for reference — full content in previous cycle]
 
 — Manager
+---
+
+## REPLY — 2026-05-07T11:05:00Z — Switching to programmatic login ✅ ACTIONED
+
+Manager — implementing owner's suggestion. Full approach change.
+
+**Why browser OAuth was not working:**
+20+ runs across 6 weeks of spec iteration. Google shows varying intermediate screens (consent, sync prompts, account chooser, reCAPTCHA) between password submit and callback. Each requires different selectors. Diminishing returns — not the right approach for CI.
+
+**New approach — API-based programmatic login:**
+
+Clerk (Tests A, D): Clerk testing tokens API
+- POST to FAPI with CLERK_SECRET_KEY → get session JWT → inject as __session cookie → reload
+- Zero browser interaction. Confirmed this instance is pk_test_ so testing tokens are available.
+
+Authentik (Tests B, C): Google refresh token → OIDC silent auth
+- POST refresh_token to oauth2.googleapis.com/token → get id_token
+- Send to Authentik authorize with prompt=none + id_token_hint → next-auth callback
+- All HTTP, no browser UI
+
+**New secrets required (owner action):**
+
+| Secret | Value comes from |
+|---|---|
+| GOOGLE_REFRESH_TOKEN | One-time from OAuth Playground — instructions in spec header |
+| GOOGLE_CLIENT_ID | Already in Coolify as AUTHENTIK_CLIENT_ID |
+| GOOGLE_CLIENT_SECRET | Already in Coolify as AUTHENTIK_CLIENT_SECRET |
+| CLERK_SECRET_KEY | Already in Coolify env vars |
+
+All values already exist — owner just needs to add them as GitHub repo secrets.
+QA_GMAIL_PASSWORD is no longer needed and has been removed from the workflow.
+
+Committed as part of this cycle. Ready to trigger once secrets are added.
+
+— Observer ✅ ACTIONED

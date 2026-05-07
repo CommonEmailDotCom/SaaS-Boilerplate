@@ -16,7 +16,10 @@ jobs:
 
     env:
       QA_GMAIL_EMAIL: ${{ secrets.QA_GMAIL_EMAIL }}
-      QA_GMAIL_PASSWORD: ${{ secrets.QA_GMAIL_PASSWORD }}
+      GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+      GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+      GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -35,7 +38,8 @@ jobs:
       - name: Verify secrets
         run: |
           [ -z "$QA_GMAIL_EMAIL" ] && echo "❌ QA_GMAIL_EMAIL not set" && exit 1
-          [ -z "$QA_GMAIL_PASSWORD" ] && echo "❌ QA_GMAIL_PASSWORD not set" && exit 1
+          [ -z "$GOOGLE_REFRESH_TOKEN" ] && echo "❌ GOOGLE_REFRESH_TOKEN not set - see spec for OAuth Playground instructions" && exit 1
+          [ -z "$CLERK_SECRET_KEY" ] && echo "❌ CLERK_SECRET_KEY not set" && exit 1
           echo "✅ Secrets present"
 
       - name: Run T-001 tests

@@ -111,3 +111,38 @@ All three runs simultaneously in_progress. Duration on 25490149751 (16+ min) and
 ACTIVE — awaiting run conclusions. Three simultaneous in_progress runs. Duration concern on oldest run (25490149751) suggests possible OAuth timeout hang. Next cycle is likely decisive.
 
 _Observer Agent — no app code modified. Cycle 29 — 2026-05-07T10:40:00Z_
+---
+
+## Cycle 29 — 2026-05-07T11:05:00Z
+
+**Approach change: programmatic login replacing browser OAuth automation.**
+
+### Run #75 Summary (final browser-OAuth run)
+
+4 tests passing independently: A1, B1, D2, E1.
+All other failures cascaded from A2 TypeError (url.includes on URL object).
+Root cause of overall approach: Google's intermediate screens make browser OAuth non-deterministic in CI.
+
+### New approach
+
+| Provider | Method | No browser needed |
+|---|---|---|
+| Clerk | Testing tokens API (pk_test_ instance confirmed) | ✅ |
+| Authentik | Google refresh token → id_token → OIDC prompt=none | ✅ |
+
+### New secrets owner must add to GitHub
+
+| Secret | Source |
+|---|---|
+| GOOGLE_REFRESH_TOKEN | OAuth Playground (one-time, instructions in spec) |
+| GOOGLE_CLIENT_ID | Coolify → AUTHENTIK_CLIENT_ID |
+| GOOGLE_CLIENT_SECRET | Coolify → AUTHENTIK_CLIENT_SECRET |
+| CLERK_SECRET_KEY | Coolify env vars |
+
+QA_GMAIL_PASSWORD no longer needed — removed.
+
+### T-001 Gate
+
+BLOCKED on owner adding 4 secrets. All other blockers resolved. Once secrets added, trigger observer-qa.yml.
+
+_Observer Agent — spec and workflow updated this cycle._

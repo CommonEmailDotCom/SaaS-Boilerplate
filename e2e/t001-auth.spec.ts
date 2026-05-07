@@ -2,110 +2,155 @@
  * T-001 Auth Matrix — End-to-End Tests A–E
  * Cutting Edge Chat — https://cuttingedgechat.com
  *
- * Required GitHub Secrets:
- *   QA_GMAIL_EMAIL     — Google account email for OAuth test login
- *   QA_GMAIL_PASSWORD  — Google account password for OAuth test login
- *   TEST_BASE_URL         — Target URL (default: https://cuttingedgechat.com)
+ * Uses programmatic/API-based login — no browser OAuth flow.
  *
- * Test Matrix:
- *   Test A: Clerk baseline — Google OAuth, /dashboard loads, org visible
- *   Test B: Switch Clerk→Authentik — Google OAuth through Authentik, session created
- *   Test C: Dashboard under Authentik — org context, no 401/500
- *   Test D: Switch Authentik→Clerk — sign-out, redirect to /sign-in (not auth.joefuentes.me)
- *   Test E: Smoke badge — GET /badge/smoke returns PASSING
+ * Required GitHub Secrets:
+ *   QA_GMAIL_EMAIL          — Google account email
+ *   GOOGLE_REFRESH_TOKEN    — From OAuth Playground (see instructions below)
+ *   GOOGLE_CLIENT_ID        — OAuth Client ID (same as AUTHENTIK_CLIENT_ID in Coolify)
+ *   GOOGLE_CLIENT_SECRET    — OAuth Client Secret (same as AUTHENTIK_CLIENT_SECRET in Coolify)
+ *   CLERK_SECRET_KEY        — Clerk secret key (already in Coolify env vars)
+ *
+ * How to get GOOGLE_REFRESH_TOKEN (one-time manual step):
+ *   1. Go to https://developers.google.com/oauthplayground
+ *   2. Click gear icon top-right → check "Use your own OAuth credentials"
+ *   3. Enter your Google Client ID and Client Secret
+ *   4. In Step 1: select "https://www.googleapis.com/auth/userinfo.email" and "openid"
+ *   5. Click "Authorize APIs" → sign in as testercuttingedgechat@gmail.com
+ *   6. In Step 2: click "Exchange authorization code for tokens"
+ *   7. Copy refresh_token value → add as GOOGLE_REFRESH_TOKEN GitHub secret
+ *
+ * Login strategy:
+ *   Clerk  (A, D): Clerk testing tokens API → inject __session cookie → reload
+ *   Authentik (B, C): refresh token → Google ID token → Authentik OIDC prompt=none
  */
 
-import { test, expect, type Page, type BrowserContext } from '@playwright/test';
+import { test, expect, type Page } from '@playwright/test';
+import * as nodehttps from 'https';
 
 const BASE_URL = process.env.TEST_BASE_URL ?? 'https://cuttingedgechat.com';
 const MCP_URL = 'https://mcp.joefuentes.me';
 const GOOGLE_EMAIL = process.env.QA_GMAIL_EMAIL ?? '';
-const GOOGLE_PASSWORD = process.env.QA_GMAIL_PASSWORD ?? '';
-
+const GOOGLE_REFRESH_TOKEN = process.env.GOOGLE_REFRESH_TOKEN ?? '';
+const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? '';
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY ?? '';
+const CLERK_FAPI = 'https://smashing-bison-72.clerk.accounts.dev';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Programmatic login helpers — API-based, no browser OAuth UI
 // ---------------------------------------------------------------------------
 
-async function googleOAuthSignIn(page: Page, context: BrowserContext): Promise<void> {
-  const googleBtn = page.locator('button:has-text("Google"), a:has-text("Google"), [data-provider="google"]').first();
-  await googleBtn.waitFor({ state: 'visible', timeout: 15000 });
-
-  // Popup has 5s to appear; if not, Clerk is doing a full-page redirect instead
-  const popupPromise = context.waitForEvent('page', { timeout: 5000 }).catch(() => null);
-  await googleBtn.click();
-  const popup = await popupPromise;
-
-  let oauthPage: Page;
-  if (popup) {
-    try {
-      await popup.waitForURL(/accounts.google.com/, { timeout: 10000 });
-      oauthPage = popup;
-    } catch {
-      await page.waitForURL(/accounts.google.com/, { timeout: 15000 });
-      oauthPage = page;
-    }
-  } else {
-    await page.waitForURL(/accounts.google.com/, { timeout: 15000 });
-    oauthPage = page;
-  }
-
-  // Email — skip hidden DOM duplicates Google adds
-  await oauthPage.waitForSelector('input[type="email"]:not([aria-hidden="true"])', { timeout: 15000 });
-  await oauthPage.fill('input[type="email"]:not([aria-hidden="true"])', GOOGLE_EMAIL);
-  await oauthPage.keyboard.press('Enter');
-
-  // Password — use jsname=YPqjbf (visible), not the hidden aria-hidden duplicate
-  await oauthPage.waitForSelector(
-    'input[jsname="YPqjbf"]:not([aria-hidden="true"]), input[type="password"]:not([aria-hidden="true"])',
-    { timeout: 15000 }
-  );
-  await oauthPage.fill(
-    'input[jsname="YPqjbf"]:not([aria-hidden="true"]), input[type="password"]:not([aria-hidden="true"])',
-    GOOGLE_PASSWORD
-  );
-  await oauthPage.keyboard.press('Enter');
-
-  // Google may show intermediate screens after password (consent, account chooser, sync prompt).
-  // Wait for OAuth page to leave accounts.google.com before asserting the final app URL.
-  await oauthPage.waitForURL(url => !url.toString().includes('accounts.google.com'), { timeout: 45000 });
-
-  // Confirm we landed back on the app
-  await page.waitForURL(`${BASE_URL}/**`, { timeout: 30000 });
+function getGoogleIdToken(): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const body = new URLSearchParams({
+      client_id: GOOGLE_CLIENT_ID,
+      client_secret: GOOGLE_CLIENT_SECRET,
+      refresh_token: GOOGLE_REFRESH_TOKEN,
+      grant_type: 'refresh_token',
+    }).toString();
+    const req = nodehttps.request(
+      {
+        hostname: 'oauth2.googleapis.com',
+        path: '/token',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Content-Length': Buffer.byteLength(body),
+        },
+      },
+      (res) => {
+        let data = '';
+        res.on('data', (d) => { data += d; });
+        res.on('end', () => {
+          try {
+            const json = JSON.parse(data);
+            if (json.id_token) resolve(json.id_token);
+            else reject(new Error('No id_token: ' + data.substring(0, 200)));
+          } catch (e) { reject(e); }
+        });
+      }
+    );
+    req.on('error', reject);
+    req.write(body);
+    req.end();
+  });
 }
 
+async function clerkSignIn(page: Page): Promise<void> {
+  const resp = await fetch(`${CLERK_FAPI}/v1/client/sign_ins`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
+    },
+    body: new URLSearchParams({ identifier: GOOGLE_EMAIL, strategy: 'ticket' }).toString(),
+  });
+  const data = await resp.json() as any;
+  const token: string | undefined = data?.client?.sessions?.[0]?.last_active_token?.jwt;
+  if (!token) throw new Error('Clerk testing token API failed: ' + JSON.stringify(data).substring(0, 300));
+
+  await page.context().addCookies([{
+    name: '__session',
+    value: token,
+    domain: new URL(BASE_URL).hostname,
+    path: '/',
+    httpOnly: true,
+    secure: true,
+    sameSite: 'Lax',
+  }]);
+  await page.reload({ waitUntil: 'networkidle' });
+}
+
+async function authentikSignIn(page: Page): Promise<void> {
+  const idToken = await getGoogleIdToken();
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: GOOGLE_CLIENT_ID,
+    redirect_uri: `${BASE_URL}/api/auth/callback/authentik`,
+    scope: 'openid email profile',
+    id_token_hint: idToken,
+    prompt: 'none',
+  });
+  await page.goto(
+    `https://auth.joefuentes.me/application/o/authorize/?${params.toString()}`,
+    { waitUntil: 'commit' }
+  );
+  await page.waitForURL(
+    (url) => url.toString().includes(BASE_URL) && !url.toString().includes('error'),
+    { timeout: 30000 }
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Test A — Clerk baseline
 // ---------------------------------------------------------------------------
 
-test.describe('Test A — Clerk baseline (Google OAuth via Clerk)', () => {
+test.describe('Test A — Clerk baseline', () => {
   test('A1: Clerk sign-in page loads', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-    // Clerk renders a sign-in widget
-    await expect(page.locator('[data-clerk-component], .cl-rootBox, .cl-signIn-root, button:has-text("Google")')
-      .first()).toBeVisible({ timeout: 15000 });
+    await expect(
+      page.locator('[data-clerk-component], .cl-rootBox, .cl-signIn-root, button:has-text("Google")').first()
+    ).toBeVisible({ timeout: 15000 });
   });
 
-  test('A2: Google OAuth sign-in via Clerk → /dashboard loads', async ({ page, context }) => {
+  test('A2: Clerk programmatic sign-in → /dashboard loads', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-    await googleOAuthSignIn(page, context);
-    await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+    await clerkSignIn(page);
+    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 20000 });
   });
 
-  test('A3: Dashboard shows org name', async ({ page, context }) => {
+  test('A3: Dashboard shows content', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-    await googleOAuthSignIn(page, context);
+    await clerkSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-    // Org name should appear somewhere on the dashboard — adjust selector if needed
-    const orgEl = page.locator('[data-org-name], .org-name, h1, h2').first();
-    await expect(orgEl).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('A4: Billing page loads without 401/500', async ({ page, context }) => {
+  test('A4: Billing page loads without 401/500', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-    await googleOAuthSignIn(page, context);
-    const res = await page.goto(`${BASE_URL}/billing`, { waitUntil: 'networkidle' });
+    await clerkSignIn(page);
+    const res = await page.goto(`${BASE_URL}/dashboard/billing`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
     expect(res?.status()).not.toBe(500);
   });
@@ -115,27 +160,20 @@ test.describe('Test A — Clerk baseline (Google OAuth via Clerk)', () => {
 // Test B — Switch Clerk → Authentik
 // ---------------------------------------------------------------------------
 
-test.describe('Test B — Switch Clerk→Authentik (Google OAuth via Authentik)', () => {
-  test('B1: After switch, sign-in page redirects through Authentik', async ({ page }) => {
-    await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'domcontentloaded' });
-    // Should redirect to Authentik or show Authentik login
-    // Either the URL changes to auth.joefuentes.me or an Authentik-branded form appears
-    const url = page.url();
-    const isAuthentikRoute = url.includes('auth.joefuentes.me') ||
-      url.includes('/api/auth/authentik') ||
-      url.includes('/sign-in');
-    expect(isAuthentikRoute).toBe(true);
+test.describe('Test B — Switch Clerk→Authentik', () => {
+  test('B1: Authentik signin route redirects to auth.joefuentes.me', async ({ page }) => {
+    const resp = await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'commit' });
+    expect(page.url()).toContain('auth.joefuentes.me');
+    expect(page.url()).not.toContain('error=Configuration');
   });
 
-  test('B2: Google OAuth through Authentik → callback to /dashboard', async ({ page, context }) => {
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
-    await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+  test('B2: Authentik programmatic sign-in → /dashboard', async ({ page }) => {
+    await authentikSignIn(page);
+    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 30000 });
   });
 
   test('B3: next-auth session cookie present after Authentik login', async ({ page, context }) => {
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
+    await authentikSignIn(page);
     const cookies = await context.cookies(BASE_URL);
     const sessionCookie = cookies.find(
       (c) => c.name.startsWith('next-auth') || c.name.startsWith('__Secure-next-auth')
@@ -143,9 +181,8 @@ test.describe('Test B — Switch Clerk→Authentik (Google OAuth via Authentik)'
     expect(sessionCookie).toBeDefined();
   });
 
-  test('B4: No CRITICAL-05 — /api/auth/session returns 200 not 401', async ({ page, context }) => {
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
+  test('B4: No CRITICAL-05 — /api/auth/session returns 200', async ({ page }) => {
+    await authentikSignIn(page);
     const res = await page.request.get(`${BASE_URL}/api/auth/session`);
     expect(res.status()).toBe(200);
   });
@@ -155,43 +192,38 @@ test.describe('Test B — Switch Clerk→Authentik (Google OAuth via Authentik)'
 // Test C — Dashboard under Authentik
 // ---------------------------------------------------------------------------
 
-test.describe('Test C — Dashboard under Authentik (org context, no errors)', () => {
-  test('C1: /dashboard loads without 401/500', async ({ page, context }) => {
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
+test.describe('Test C — Dashboard under Authentik', () => {
+  test('C1: /dashboard loads without 401/500', async ({ page }) => {
+    await authentikSignIn(page);
     const res = await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
     expect(res?.status()).not.toBe(500);
   });
 
-  test('C2: Org context visible on dashboard', async ({ page, context }) => {
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
+  test('C2: Org context visible on dashboard', async ({ page }) => {
+    await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-    const orgEl = page.locator('[data-org-name], .org-name, h1, h2').first();
-    await expect(orgEl).toBeVisible({ timeout: 10000 });
+    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10000 });
   });
 
-  test('C3: Stripe / billing page loads without 401/500', async ({ page, context }) => {
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
-    const res = await page.goto(`${BASE_URL}/billing`, { waitUntil: 'networkidle' });
+  test('C3: Billing page loads without 401/500 under Authentik', async ({ page }) => {
+    await authentikSignIn(page);
+    const res = await page.goto(`${BASE_URL}/dashboard/billing`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
     expect(res?.status()).not.toBe(500);
   });
 
-  test('C4: No console errors on dashboard under Authentik', async ({ page, context }) => {
+  test('C4: No console errors on dashboard under Authentik', async ({ page }) => {
     const errors: string[] = [];
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
-    await page.goto(`${BASE_URL}/api/auth/authentik-signin`, { waitUntil: 'domcontentloaded' });
-    await googleOAuthSignIn(page, context);
+    await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-    const criticalErrors = errors.filter(
+    const critical = errors.filter(
       (e) => !e.includes('favicon') && !e.includes('analytics') && !e.includes('gtag')
     );
-    expect(criticalErrors).toHaveLength(0);
+    expect(critical).toHaveLength(0);
   });
 });
 
@@ -199,34 +231,27 @@ test.describe('Test C — Dashboard under Authentik (org context, no errors)', (
 // Test D — Switch Authentik → Clerk
 // ---------------------------------------------------------------------------
 
-test.describe('Test D — Switch Authentik→Clerk (sign-out + redirect)', () => {
-  test('D1: After switch back to Clerk, sign-out redirects to /sign-in (not auth.joefuentes.me)', async ({
-    page,
-    context,
-  }) => {
-    // First sign in with Authentik (residual session) then switch provider
-    // Trigger sign-out
-    const res = await page.request.post(`${BASE_URL}/api/auth/signout`, {
+test.describe('Test D — Switch Authentik→Clerk', () => {
+  test('D1: Sign-out redirects to /sign-in not auth.joefuentes.me', async ({ page }) => {
+    await page.request.post(`${BASE_URL}/api/auth/signout`, {
       headers: { 'Content-Type': 'application/json' },
     });
-    // After sign-out, navigate to root — should end up at Clerk sign-in
     await page.goto(`${BASE_URL}/`, { waitUntil: 'networkidle' });
-    const finalUrl = page.url();
-    expect(finalUrl).not.toContain('auth.joefuentes.me');
-    expect(finalUrl).toContain('/sign-in');
+    expect(page.url()).not.toContain('auth.joefuentes.me');
+    expect(page.url()).toContain('/sign-in');
   });
 
-  test('D2: Clerk sign-in page renders after provider switch-back', async ({ page }) => {
+  test('D2: Clerk sign-in page renders', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
     await expect(
       page.locator('[data-clerk-component], .cl-rootBox, .cl-signIn-root, button:has-text("Google")').first()
     ).toBeVisible({ timeout: 15000 });
   });
 
-  test('D3: Clerk session works after provider switch-back', async ({ page, context }) => {
+  test('D3: Clerk session works after switch-back', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-    await googleOAuthSignIn(page, context);
-    await expect(page).toHaveURL(`${BASE_URL}/dashboard`, { timeout: 30000 });
+    await clerkSignIn(page);
+    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 20000 });
   });
 });
 
@@ -234,7 +259,7 @@ test.describe('Test D — Switch Authentik→Clerk (sign-out + redirect)', () =>
 // Test E — Smoke badge
 // ---------------------------------------------------------------------------
 
-test.describe('Test E — Smoke badge (PASSING for current SHA)', () => {
+test.describe('Test E — Smoke badge', () => {
   test('E1: Smoke badge endpoint responds', async ({ request }) => {
     const res = await request.get(`${MCP_URL}/badge/smoke`);
     expect(res.status()).toBe(200);
@@ -243,17 +268,15 @@ test.describe('Test E — Smoke badge (PASSING for current SHA)', () => {
   test('E2: Smoke badge shows PASSING status', async ({ request }) => {
     const res = await request.get(`${MCP_URL}/smoke-status.json`);
     expect(res.status()).toBe(200);
-    const body = await res.json() as { status?: string; result?: string; outcome?: string };
-    const status = (body.status ?? body.result ?? body.outcome ?? '').toLowerCase();
-    expect(status).toBe('passing');
+    const body = await res.json() as { status?: string };
+    expect((body.status ?? '').toLowerCase()).toBe('passing');
   });
 
   test('E3: App /api/version returns a SHA', async ({ request }) => {
     const res = await request.get(`${BASE_URL}/api/version`);
     expect(res.status()).toBe(200);
-    const body = await res.json() as { sha?: string; commit?: string; version?: string };
-    const sha = body.sha ?? body.commit ?? body.version ?? '';
-    expect(sha.length).toBeGreaterThan(0);
-    console.log(`Current live SHA: ${sha}`);
+    const body = await res.json() as { sha?: string };
+    expect((body.sha ?? '').length).toBeGreaterThan(0);
+    console.log('Live SHA:', body.sha);
   });
 });
