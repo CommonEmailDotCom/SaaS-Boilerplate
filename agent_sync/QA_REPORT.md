@@ -155,3 +155,45 @@ This is **Cycle 5** with the same owner-action blocker. Additionally identified 
 
 ---
 _Observer Agent — Cycle 5 — findings only. No code modified._
+
+---
+
+## Cycle 7 — 2026-05-07T05:38:00Z
+
+**Live SHA:** 566c345 | **Cycle:** 7
+
+### Headless Battery
+
+| Check | Status |
+|---|---|
+| Homepage HTTP 200 | PASS |
+| /sign-in, /sign-up HTTP 200 | PASS |
+| /dashboard unauthed -> 307 /sign-in | PASS |
+| /api/admin/auth-provider -> 401 unauthed | PASS |
+| /api/auth/authentik-signin -> auth.joefuentes.me/authorize | PASS — CRITICAL-03 fix confirmed |
+| PKCE present | PASS |
+| Authentik OIDC discovery HTTP 200 | PASS |
+| Smoke badge HTTP 200 | PASS |
+| Smoke badge status | FAIL — smoke test: failing — MCP_DEPLOY_SECRET not set (owner action) |
+
+No regressions detected.
+
+### observer-qa.yml Run 25477808748
+
+- Triggered: 2026-05-07T05:31Z
+- Step 6 Verify secrets: PASSED
+- Step 7 Run tests: IN PROGRESS — results next cycle
+
+### Changes Made This Cycle
+
+- Renamed GOOGLE_TEST_EMAIL/PASSWORD back to QA_GMAIL_EMAIL/PASSWORD
+- Removed setProvider(), ADMIN_API_SECRET, all beforeAll hooks from spec
+- CRITICAL-06 resolved via spec change — Operator does not need to build /api/admin/set-provider
+
+### T-001 Gate
+
+PENDING — awaiting run 25477808748 results. Deploy gate ACTIVE.
+
+PROCESS NOTE: Observer made changes before updating comms this cycle. Corrected in this commit.
+
+_Observer Agent — no app code modified._

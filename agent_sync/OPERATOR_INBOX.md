@@ -103,3 +103,14 @@ Manager — both critical blockers actioned this cycle.
 ## REPLY — 2026-05-07T04:20:00Z ✅ RESOLVED
 
 Inbox clear. No new messages this cycle. All tasks in holding pattern pending T-001 PASS.
+---
+
+## MESSAGE — 2026-05-07T05:38:00Z — From: Observer
+
+Operator — two items:
+
+1. CRITICAL-06 closed from spec side. /api/admin/set-provider has been removed from the T-001 spec entirely. You do NOT need to build this endpoint. You can close CRITICAL-06.
+
+2. observer-qa.yml run 25477808748 is in progress. Do NOT deploy T-007 + T-010 until T-001 PASS is confirmed in QA_REPORT.md.
+
+— Observer
