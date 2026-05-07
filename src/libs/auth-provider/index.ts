@@ -1,62 +1,89 @@
-import { cache } from 'react';
-import { db } from '@/libs/DB';
-import { appConfigSchema } from '@/models/Schema';
-import { eq } from 'drizzle-orm';
+/**
+ * Auth provider factory.
+ *
+ * Active provider is determined at runtime from the app_config DB table,
+ * with AUTH_PROVIDER env var as the fallback default.
+ * Switching providers is instant — no redeploy needed.
+ *
+ * IMPORTANT: Never import DB or Node.js modules from middleware.ts —
+ * use provider-constant.ts instead (Edge runtime safe).
+ *
+ * IMPORTANT: getAuthProvider() returns Promise<IAuthProvider> — NOT a string.
+ * Do not alias it to getActiveProvider (which returns a string).
+ */
+
+export type { AuthOrg, AuthSession, AuthUser, AuthProviderType, IAuthProvider } from './types';
+export { AUTH_PROVIDER } from './provider-constant';
 
 export type AuthProvider = 'clerk' | 'authentik';
 
-// Edge-safe constant — also exported from provider-constant.ts for middleware
-export const AUTH_PROVIDER = (process.env.NEXT_PUBLIC_AUTH_PROVIDER as AuthProvider) ?? 'clerk';
-
-let cachedProvider: AuthProvider | null = null;
-let cacheExpiry = 0;
+let _cachedProvider: AuthProvider | null = null;
+let _cacheTime = 0;
+const CACHE_TTL_MS = 5_000;
 
 export async function getActiveProvider(): Promise<AuthProvider> {
-  const now = Date.now();
-  if (cachedProvider && now < cacheExpiry) {
-    return cachedProvider;
+  if (process.env.NEXT_PHASE === 'phase-production-build') {
+    return (process.env.AUTH_PROVIDER as AuthProvider) ?? 'clerk';
   }
+
+  const now = Date.now();
+  if (_cachedProvider !== null && now - _cacheTime < CACHE_TTL_MS) {
+    return _cachedProvider;
+  }
+
   try {
+    const { db } = await import('@/libs/DB');
+    const { appConfigSchema } = await import('@/models/Schema');
+    const { eq } = await import('drizzle-orm');
+
     const rows = await db
       .select()
       .from(appConfigSchema)
       .where(eq(appConfigSchema.key, 'auth_provider'))
       .limit(1);
-    const val = rows[0]?.value as AuthProvider | undefined;
-    cachedProvider = val === 'authentik' ? 'authentik' : 'clerk';
-    cacheExpiry = now + 5000;
-    return cachedProvider;
+
+    if (rows[0]?.value === 'clerk' || rows[0]?.value === 'authentik') {
+      _cachedProvider = rows[0].value;
+      _cacheTime = now;
+      return _cachedProvider;
+    }
   } catch (err) {
-    console.error(err);
-    return 'clerk';
+    console.error('[getActiveProvider] DB error — falling back to env var:', err);
   }
+
+  _cachedProvider = (process.env.AUTH_PROVIDER as AuthProvider) ?? 'clerk';
+  _cacheTime = now;
+  return _cachedProvider;
 }
 
 export async function setActiveProvider(provider: AuthProvider): Promise<void> {
-  cachedProvider = null;
-  cacheExpiry = 0;
-  const existing = await db
-    .select()
-    .from(appConfigSchema)
-    .where(eq(appConfigSchema.key, 'auth_provider'))
-    .limit(1);
-  if (existing.length > 0) {
-    await db
-      .update(appConfigSchema)
-      .set({ value: provider })
-      .where(eq(appConfigSchema.key, 'auth_provider'));
-  } else {
-    await db.insert(appConfigSchema).values({
-      key: 'auth_provider',
-      value: provider,
+  const { db } = await import('@/libs/DB');
+  const { appConfigSchema } = await import('@/models/Schema');
+
+  await db
+    .insert(appConfigSchema)
+    .values({ key: 'auth_provider', value: provider, updatedAt: new Date() })
+    .onConflictDoUpdate({
+      target: appConfigSchema.key,
+      set: { value: provider, updatedAt: new Date() },
     });
-  }
+
+  _cachedProvider = provider;
+  _cacheTime = Date.now();
 }
 
-// getAuthProvider is an alias for getActiveProvider used by some components
-export const getAuthProvider = getActiveProvider;
+/** Returns the active IAuthProvider instance — NOT a string. */
+export async function getAuthProvider(): Promise<import('./types').IAuthProvider> {
+  const provider = await getActiveProvider();
+  if (provider === 'authentik') {
+    const { authentikProvider } = await import('./authentik');
+    return authentikProvider;
+  }
+  const { clerkProvider } = await import('./clerk');
+  return clerkProvider;
+}
 
-// getSession — always returns normalized AuthSession | null regardless of provider
+/** Returns the normalized current session regardless of provider. */
 export async function getSession(): Promise<import('./types').AuthSession | null> {
   const provider = await getActiveProvider();
 
@@ -72,9 +99,8 @@ export async function getSession(): Promise<import('./types').AuthSession | null
     };
   }
 
-  // Clerk
   const { auth } = await import('@clerk/nextjs/server');
-  const { userId, orgId, sessionId } = await auth();
+  const { userId, orgId } = await auth();
   if (!userId) return null;
   return {
     userId,
