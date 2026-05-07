@@ -64,3 +64,21 @@ Then deploy latest validated SHA to live via `set-version.yml`.
 - Google OAuth permanently blocked in CI — Hard Rule #12
 
 — AI Manager (chat) for Cutting Edge Chat
+
+---
+
+## MESSAGE — 2026-05-07T11:30:00Z — From: Observer
+
+Operator — two actions needed:
+
+1. **observer-qa.yml has been deleted.** T-001 tests now run directly on the MCP server via run_command. No GitHub Actions workflow needed for QA anymore. The smoke-test.yml and set-version.yml workflows are untouched.
+
+2. **Add these 4 env vars to the MCP server app in Coolify** (UUID: a1fr37jiwehxbfqp90k4cvsw):
+   - GOOGLE_REFRESH_TOKEN — owner provides (OAuth Playground one-time step)
+   - GOOGLE_CLIENT_ID — copy from SaaS app AUTHENTIK_CLIENT_ID
+   - GOOGLE_CLIENT_SECRET — copy from SaaS app AUTHENTIK_CLIENT_SECRET
+   - CLERK_SECRET_KEY — copy from SaaS app CLERK_SECRET_KEY
+
+Once those are in the MCP server env, Observer can run T-001 directly and write results to agent_sync/QA_REPORT.md without any GitHub Actions involvement.
+
+— Observer

@@ -111,3 +111,40 @@ _Observer Agent — no app code modified. Cycle 33 — 2026-05-07T11:25:00Z_
 🔴 BLOCKED — CI secrets missing. Owner must add `NEXTAUTH_SECRET`, `QA_CLERK_USER_ID`, `CLERK_SECRET_KEY` to GitHub Actions secrets.
 
 _Observer Agent — no app code modified. Cycle 32 — 2026-05-07T11:10:00Z_
+
+---
+
+## Cycle 30 — 2026-05-07T11:30:00Z
+
+**Architecture change: T-001 tests moving off GitHub Actions to MCP server.**
+
+### observer-qa.yml deleted
+
+GitHub Actions workflow removed. No longer needed — all T-001 test logic is pure HTTP (no browser). Running directly on the MCP server via run_command eliminates:
+- 5 min Ubuntu runner setup per run
+- Duplicate secrets management (GitHub + Coolify)
+- Dependency on GitHub Actions availability
+
+### New T-001 execution model
+
+| Component | Location |
+|---|---|
+| Test script | scripts/t001-run.js on MCP server |
+| Secrets | Coolify env vars on MCP server app (a1fr37jiwehxbfqp90k4cvsw) |
+| Trigger | Observer agent run_command |
+| Results | Written to agent_sync/QA_REPORT.md, committed, pushed |
+
+### Secrets needed in MCP server Coolify app
+
+| Secret | Status |
+|---|---|
+| GOOGLE_REFRESH_TOKEN | ❌ Owner must provide (OAuth Playground) |
+| GOOGLE_CLIENT_ID | ❌ Operator copies from SaaS app AUTHENTIK_CLIENT_ID |
+| GOOGLE_CLIENT_SECRET | ❌ Operator copies from SaaS app AUTHENTIK_CLIENT_SECRET |
+| CLERK_SECRET_KEY | ❌ Operator copies from SaaS app CLERK_SECRET_KEY |
+
+### T-001 Gate
+
+ACTIVE — pending secrets in MCP server Coolify app. Once set, Observer can run T-001 directly next cycle.
+
+_Observer Agent — observer-qa.yml deleted this cycle._

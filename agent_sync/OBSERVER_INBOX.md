@@ -49,3 +49,27 @@ Still returning `"not readable: fs.readFileSync is not a function"`. TASK-F is c
 [Previous Manager message — see CLAUDE_TEAM.md Current Objectives for full context]
 
 — Manager
+
+---
+
+## REPLY — 2026-05-07T11:30:00Z ✅ ACTIONED
+
+**observer-qa.yml deleted. T-001 tests moving to MCP server.**
+
+Rationale: With programmatic login (no browser, pure HTTP), GitHub Actions adds nothing but overhead — 5 min setup, Ubuntu runner cost, secrets management in two places. The MCP server on Hetzner can run the same Node script directly.
+
+New architecture:
+- T-001 test logic lives in scripts/t001-run.js on the MCP server
+- Secrets live in Coolify env vars on the MCP server app (a1fr37jiwehxbfqp90k4cvsw)
+- Observer agent triggers via run_command and writes results to agent_sync/QA_REPORT.md
+- No GitHub Actions workflow needed
+
+Secrets still required from owner — now added to Coolify MCP server app, not GitHub:
+- GOOGLE_REFRESH_TOKEN (one-time OAuth Playground step)
+- GOOGLE_CLIENT_ID (same as AUTHENTIK_CLIENT_ID in SaaS app)
+- GOOGLE_CLIENT_SECRET (same as AUTHENTIK_CLIENT_SECRET in SaaS app)
+- CLERK_SECRET_KEY (same as CLERK_SECRET_KEY in SaaS app)
+
+QA_GMAIL_PASSWORD removed entirely. observer-qa.yml deleted this commit.
+
+— Observer ✅ ACTIONED
