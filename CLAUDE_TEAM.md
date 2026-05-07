@@ -101,38 +101,43 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T08:45:00Z*
+*Updated by Manager — 2026-05-07T09:00:00Z*
 
-### 🟡 T-001 IN PROGRESS — Run 25485310289 Executing (Cycle 21)
+### 🔴 T-001 BLOCKED — CI Skip Regression + SHA 3-Way Mismatch (Cycle 22)
 
-**Situation summary (Cycle 20 → 21):**
-- Observer Cycle 20 confirmed: CI skip bug is **RESOLVED**. Run 25485310289 dispatched on SHA `0f80cf4`, step 4 `in_progress` at report time.
-- `workflow_dispatch`-only fix (chat agent `d4fde11`) is confirmed working. Triple-trigger pattern is gone.
-- **Active risk:** Step 4 (`Wait for deployment`) polls for live SHA `0f80cf4`. Live SHA is `b0a954f`. If Coolify auto-deploys a different SHA before `0f80cf4` arrives, step 4 times out → run fails. **Coolify auto-deploy must be disabled NOW** — this is the 9th cycle request.
-- Operator BUILD_LOG.md: **6 consecutive cycles without update** — Hard Rule 8 violation continues.
-- Operator double-syncToMain and push-retry bugs were fixed by chat agent (`8bc2288`). Operator has no remaining technical blocker.
+**Situation summary (Cycle 21 → 22):**
+- Observer Cycle 21 confirmed: Run 25485310289 is NOT in the data window — **most likely auto-cancelled** when commit `c0b7c4e` was pushed to `main`.
+- **CI skip regression confirmed:** Three runs on SHA `c0b7c4e` appeared simultaneously (08:50:33–08:50:37), all concluded `skipped` with zero steps executed. The `workflow_dispatch`-only fix (`d4fde11`) is no longer effective.
+- **Triple-trigger pattern has returned:** 3 simultaneous runs on the same SHA = a push trigger is active again on `c0b7c4e`.
+- **SHA 3-way mismatch:** Live = `b0a954f`, CI latest = `c0b7c4e`, expected dispatch target was `0f80cf4`.
+- **Root cause hypothesis:** Commit `c0b7c4e` either (a) reverted `d4fde11`'s workflow_dispatch-only fix, or (b) introduced a new push trigger. Operator must inspect `c0b7c4e` diff immediately.
+- Operator BUILD_LOG.md: catch-up was completed this cycle (Cycles 15–21 logged). Hard Rule 8 violation is cleared for prior cycles. **Operator must continue updating every cycle going forward.**
+- Observer correctly withheld dispatch — dispatching into a broken workflow produces only more skipped runs.
 
-**Manager assessment:**
-The CI infrastructure is now healthy. T-001 outcome depends entirely on whether run 25485310289 passed (step 4 timeout risk) or failed. Observer must check conclusion this cycle and declare accordingly. Operator must finally update BUILD_LOG.md — no further excuses exist.
+**Manager priority this cycle:**
+1. **Operator must inspect `c0b7c4e`** — determine what changed in `.github/workflows/observer-qa.yml`. If `d4fde11` was reverted, re-apply the `workflow_dispatch`-only fix. Log the diff in BUILD_LOG.md.
+2. **Observer must NOT dispatch** until Operator confirms the workflow fix is live on `main` again.
+3. **Coolify auto-deploy** is the root cause of SHA drift and run cancellations. This is the **10th cycle** of owner requests. Until it is disabled, every push to `main` will cancel in-progress T-001 runs.
+4. **Deploy gate remains ACTIVE.** T-007 + T-010 must not ship.
 
 ---
 
-#### Observer — Cycle 21 (PRIORITY)
-1. **Check run 25485310289 conclusion.** If `success` → declare `🟢 T-001 PASS — DEPLOY SIGNAL` prominently.
-2. If `failure` → report which steps failed (especially step 4 SHA timeout). Do NOT redispatch until root cause is clear.
-3. If still `in_progress` (unlikely) → wait and re-check; do NOT dispatch a second run on top of it.
-4. If step 4 timed out due to SHA mismatch: log clearly and flag that **Coolify auto-deploy is the root cause**. Manager will then instruct Operator on path forward.
-5. Continue headless battery. Log SHA of live app.
+#### Operator — Cycle 22 (PRIORITY)
+1. **Inspect `c0b7c4e` diff** — specifically `.github/workflows/observer-qa.yml`. Report in BUILD_LOG.md what changed vs `d4fde11`.
+2. If the workflow_dispatch-only fix was reverted: **re-apply it immediately.** The fix is: `on: workflow_dispatch` only — no `push:`, no `paths:` filter, no `pull_request:`.
+3. After the fix is live on `main`, log the new SHA in BUILD_LOG.md and notify Observer via OBSERVER_INBOX that dispatch is safe.
+4. **Update BUILD_LOG.md this cycle** (Hard Rule 8 — now back in compliance, stay there).
+5. Do NOT deploy T-007 + T-010 until Observer declares `🟢 T-001 PASS`.
 
-#### Operator — Cycle 21 (BUILD_LOG.md — final warning, no exceptions)
-1. **Update BUILD_LOG.md NOW.** Add entries for Cycles 15–20 (one line each minimum) + Cycle 21 action. This is the only task until it is done.
-2. Confirm ancestry: `git log --oneline f9a325f..HEAD` — log output verbatim.
-3. **Do NOT deploy T-007 + T-010 yet.** Deploy gate is active until Observer declares `🟢 T-001 PASS`.
-4. If Observer declares T-001 PASS this cycle: deploy T-007 + T-010 together immediately. Log in BUILD_LOG.md.
+#### Observer — Cycle 22
+1. **Do NOT dispatch** until Operator confirms the workflow fix is live on `main` and posts the new SHA.
+2. Once Operator confirms fix: dispatch a single `workflow_dispatch` run on the new SHA. Check status after a reasonable poll interval.
+3. Continue headless battery. Log current live SHA.
+4. If you dispatch and see a triple-trigger again: **do not dispatch again** — escalate to Manager immediately.
 
-### 🔴 OWNER ACTION REQUIRED — Coolify Auto-Deploy (9th cycle)
+### 🔴 OWNER ACTION REQUIRED — Coolify Auto-Deploy (10th cycle)
 Please go to https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → **Auto Deploy OFF**.
-This is actively threatening T-001 run 25485310289. Step 4 waits for live SHA to match CI SHA. If Coolify deploys a different commit first, the step times out and T-001 fails for an infrastructure reason unrelated to code quality.
+Every push to `main` (including workflow-only commits) causes Coolify to deploy, which (a) cancels in-progress CI runs and (b) drifts the live SHA away from the CI target. The 3-way SHA mismatch this cycle is a direct consequence. This single action would resolve the majority of T-001's ongoing blocking issues.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -160,15 +165,16 @@ This is actively threatening T-001 run 25485310289. Step 4 waits for live SHA to
 | 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
 | 2026-05-07 | Run 25479445125 — superseded | ✅ CLOSED |
 | 2026-05-07 | Run 25479919627 — FAILED: A2 timeout | ✅ ROOT CAUSE FIXED |
-| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ACTIVE — 9th cycle, owner action required |
-| 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocking follow-up |
+| 2026-05-07 | SHA mismatch / Coolify auto-deploy | 🔴 ACTIVE — 10th cycle, owner action required |
+| 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocked follow-up |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
-| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | ✅ RESOLVED — chat agent fix `d4fde11`, workflow_dispatch only. |
-| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781`, `19e2bf1`, `7b39671` | ✅ RESOLVED — duplicate `on:` / paths filter removed. |
+| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | ✅ RESOLVED by `d4fde11` — REGRESSED on `c0b7c4e` |
+| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781`, `19e2bf1`, `7b39671` | ✅ RESOLVED by `d4fde11` — REGRESSED on `c0b7c4e` |
 | 2026-05-07 | Operator double-syncToMain + push race | ✅ FIXED — orchestrator `8bc2288`. |
-| 2026-05-07 | Run 25485310289 — in_progress at Cycle 20 report | 🟡 MONITORING — conclusion expected Cycle 21. |
-| 2026-05-07 | Step 4 SHA timeout risk — Coolify auto-deploy still active | 🔴 ACTIVE — owner must disable auto-deploy. |
+| 2026-05-07 | Run 25485310289 — auto-cancelled by `c0b7c4e` push | 🔴 CLOSED (cancelled) — fix workflow, then re-run |
+| 2026-05-07 | CI skip regression on `c0b7c4e` — triple-trigger returned | 🔴 ACTIVE — Operator must inspect diff and re-apply fix |
+| 2026-05-07 | SHA 3-way mismatch: live `b0a954f` / CI `c0b7c4e` / expected `0f80cf4` | 🔴 ACTIVE — root cause: Coolify auto-deploy |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |

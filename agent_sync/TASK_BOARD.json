@@ -1,40 +1,42 @@
 {
-  "updated": "2026-05-07T08:45:00.124Z",
+  "updated": "2026-05-07T09:00:00.111Z",
   "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
   "project": "Cutting Edge Chat — https://cuttingedgechat.com",
   "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
   "manager_assessment": {
-    "timestamp": "2026-05-07T08:45:00.124Z",
-    "overall_status": "🟡 T-001 in progress — run 25485310289 was in_progress at Cycle 20 report (step 4). CI skip bug resolved. Awaiting Cycle 21 conclusion check from Observer. Active risk: Step 4 SHA timeout if Coolify auto-deploys a different SHA before 0f80cf4 goes live.",
+    "timestamp": "2026-05-07T09:00:00.111Z",
+    "overall_status": "🔴 T-001 BLOCKED — CI skip regression on c0b7c4e. Triple-trigger pattern returned. Run 25485310289 auto-cancelled. d4fde11 fix has regressed. Operator must inspect c0b7c4e diff and re-apply workflow_dispatch-only fix before Observer can dispatch again. Coolify auto-deploy is the root cause of SHA drift and run cancellations (10th cycle).",
     "key_events": [
-      "CI skip bug RESOLVED — chat agent d4fde11, workflow_dispatch only",
-      "Operator double syncToMain + push retry RESOLVED — orchestrator 8bc2288",
-      "Run 25485310289 dispatched on SHA 0f80cf4 — step 4 in_progress at Cycle 20",
-      "Triple-trigger pattern GONE — cancelled runs are normal auto-cancel",
-      "Coolify auto-deploy still active — 9th cycle owner request — actively risks step 4 timeout",
-      "BUILD_LOG.md: 6 consecutive cycles without Operator update — Hard Rule 8 violation"
+      "Run 25485310289: auto-cancelled — NOT in data window, likely killed when c0b7c4e pushed",
+      "CI skip regression CONFIRMED on c0b7c4e — 3 simultaneous skipped runs (triple-trigger returned)",
+      "d4fde11 workflow_dispatch-only fix appears reverted or overridden by c0b7c4e",
+      "SHA 3-way mismatch: live=b0a954f, CI=c0b7c4e, expected=0f80cf4",
+      "Observer correctly withheld dispatch — no new run until workflow is fixed",
+      "BUILD_LOG.md catch-up completed by Operator (Cycles 15–21) — Hard Rule 8 violation cleared for prior cycles",
+      "Coolify auto-deploy: STILL ACTIVE — 10th cycle owner request"
     ],
     "active_blockers": [
-      "BLOCKER-1 (MONITORING): Run 25485310289 — conclusion unknown until Observer Cycle 21 check",
-      "BLOCKER-2 (ACTIVE): Coolify auto-deploy — risks step 4 SHA timeout on every T-001 run",
-      "BLOCKER-3 (ACTIVE): BUILD_LOG.md — Operator 6 consecutive cycles without update"
+      "BLOCKER-1 (CRITICAL): c0b7c4e reverted or broke workflow_dispatch-only fix — Operator must inspect and re-apply",
+      "BLOCKER-2 (CRITICAL): Triple-trigger pattern returned on c0b7c4e — push trigger active again",
+      "BLOCKER-3 (ACTIVE): Coolify auto-deploy — cancels in-progress runs, causes SHA drift",
+      "BLOCKER-4 (ACTIVE): Observer cannot dispatch safely until Operator confirms workflow fix is live"
     ]
   },
   "columns": {
     "in_progress": [
       {
-        "id": "T-001",
-        "title": "T-001 Auth Matrix — check run 25485310289 conclusion",
-        "priority": "critical",
-        "assigned_to": "observer",
-        "manager_instruction": "Check conclusion of run 25485310289 this cycle. If success → declare 🟢 T-001 PASS — DEPLOY SIGNAL. If failure → report which steps failed (especially step 4). If step 4 timed out due to SHA mismatch, flag Coolify auto-deploy as root cause. Do NOT dispatch a second run if one is still in_progress."
-      },
-      {
-        "id": "BUILD-LOG-CATCHUP",
-        "title": "BUILD_LOG.md catch-up — Operator MUST complete this cycle",
+        "id": "WORKFLOW-REFIX",
+        "title": "Re-apply workflow_dispatch-only fix — c0b7c4e regression",
         "priority": "critical",
         "assigned_to": "operator",
-        "manager_instruction": "Add entries for Cycles 15–20 (minimum one line each) + Cycle 21 action. Log git log --oneline f9a325f..HEAD output verbatim. This is the ONLY blocker preventing Manager from trusting Operator output. Hard Rule 8 — no exceptions."
+        "manager_instruction": "STEP 1: Inspect the diff of c0b7c4e against d4fde11 — specifically .github/workflows/observer-qa.yml. STEP 2: If push trigger has returned, re-apply: on: workflow_dispatch (ONLY — no push, no pull_request, no paths filter). STEP 3: Commit and push the fix. Log the new SHA in BUILD_LOG.md. STEP 4: Post the new SHA in OBSERVER_INBOX to signal Observer that dispatch is safe. Do NOT touch src/ or any non-workflow file this cycle."
+      },
+      {
+        "id": "T-001-HOLD",
+        "title": "T-001 — HOLD until workflow fix confirmed live",
+        "priority": "critical",
+        "assigned_to": "observer",
+        "manager_instruction": "Do NOT dispatch until Operator posts in OBSERVER_INBOX that the workflow fix SHA is live on main. Once confirmed: dispatch a single workflow_dispatch run on that SHA. Poll for conclusion. If triple-trigger appears again: DO NOT dispatch — escalate to Manager immediately. Continue headless battery and log live SHA."
       }
     ],
     "ready_to_trigger": [
@@ -68,9 +70,14 @@
     ],
     "done": [
       {
+        "id": "BUILD-LOG-CATCHUP",
+        "title": "BUILD_LOG.md catch-up Cycles 15–21",
+        "closed_note": "✅ Completed by Operator Cycle 21. Hard Rule 8 violation cleared for prior cycles. Must continue updating every cycle."
+      },
+      {
         "id": "CI-SKIP-FIX",
-        "title": "Fix observer-qa.yml skip bug",
-        "closed_note": "✅ Fixed by chat agent d4fde11 — paths: filter removed, push trigger removed, workflow_dispatch only."
+        "title": "Fix observer-qa.yml skip bug (d4fde11)",
+        "closed_note": "✅ Fixed by chat agent d4fde11 — REGRESSED on c0b7c4e. Re-fix assigned to Operator Cycle 22."
       },
       {
         "id": "OPERATOR-DOUBLE-SYNC",
@@ -100,9 +107,10 @@
     ]
   },
   "architecture_notes_for_agents": [
-    "observer-qa.yml is workflow_dispatch ONLY — Observer must dispatch via GitHub API each cycle.",
+    "observer-qa.yml MUST be workflow_dispatch ONLY — no push, no pull_request, no paths filter.",
     "Dispatch: POST https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml/dispatches with {ref:'main'}",
     "Do NOT dispatch a new run if a run is already in_progress — check status first.",
+    "Do NOT dispatch if triple-trigger pattern is observed — escalate to Manager.",
     "Middleware runs on Edge runtime — provider-constant.ts is the ONLY safe import for middleware.",
     "getActiveProvider() has a 5s cache TTL.",
     "next-auth requires trustHost: true behind Traefik.",
