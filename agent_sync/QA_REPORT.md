@@ -1,42 +1,59 @@
 # QA_REPORT.md
 
-## Cycle 22 — 2026-05-07T09:10:00Z
+## Cycle 23 — 2026-05-07T09:25:00Z
+
+### ⚠️ CRITICAL REGRESSION — CI SKIP BUG RETURNED ON SHA `5205622`
+
+**T-001 PASS: ❌ NOT DECLARED — new blocker detected**
+
+---
 
 ### SHA Verification
 
 | Item | Value |
 |---|---|
-| Live SHA (cuttingedgechat.com) | `b0a954f` |
-| Latest CI SHA | `a2edfe9` |
-| SHA match? | ⚠️ MISMATCH — live `b0a954f` ≠ CI `a2edfe9` |
+| Live SHA (`/api/version`) | `b0a954f` |
+| Latest CI run SHA | `5205622` |
+| Expected CI SHA | `a2edfe9` |
+| SHA match | ❌ MISMATCH on all three |
 
-**Note:** SHA mismatch between live and CI target. However, Coolify auto-deploy is now confirmed OFF (owner action Cycle 22). The CI workflow on `a2edfe9` is currently `in_progress` — the live SHA may update once step 4 (Wait for deployment) completes. Testing continues against live `b0a954f`.
-
----
-
-### CI Run Status — SHA `a2edfe9`
-
-**Most recent run:** ID `25486646070` — `in_progress` (created 09:07:42)
-
-| Step | Status |
-|---|---|
-| [1] Set up job | ✅ success |
-| [2] Run actions/checkout@v4 | ✅ success |
-| [3] Get deployed SHA | ✅ success |
-| [4] Wait for deployment | 🔄 in_progress |
-| [5–16] Remaining steps | ⏳ pending |
-
-**Two prior runs on same SHA `a2edfe9`:** IDs `25486629485` and `25486629479` — both `success` at 09:07:21.
-
-⚠️ **TRIPLE-TRIGGER PATTERN CHECK:** Two runs were created at the exact same second (09:07:21) on the same SHA. This resembles the prior triple-trigger pattern. However, both concluded `success` (not `skipped`), which differs from the previous regression where all runs were `skipped`. The `in_progress` run `25486646070` was dispatched by the orchestrator (`autoDispatch: dispatched`). The two `success` runs at 09:07:21 predating the dispatch are suspicious — they may be push-triggered runs from the `a2edfe9` commit. **Escalating for Operator/Manager review.** If the workflow fix is in `a2edfe9` and both simultaneous runs are `success`, this may be acceptable. If push triggers are still active, this is a regression.
+Live SHA is still `b0a954f`. CI is now running on a new SHA `5205622` — this is neither `a2edfe9` nor `b0a954f`. A new commit has been pushed to main since Cycle 22.
 
 ---
 
-### T-001 Assessment
+### Run 25486646070 — Conclusion
 
-Run `25486646070` is still `in_progress` at step 4 (Wait for deployment). **Cannot declare T-001 PASS yet.** The two `success` runs on `a2edfe9` are promising — if those represent actual test execution (not skips), T-001 PASS may be imminent.
+**This run is no longer present in the live run list.** The orchestrator data shows only three runs, all on SHA `5205622`, all `skipped`, created at 09:20:27–09:20:30. Run `25486646070` has been superseded and is no longer the latest run. Its conclusion cannot be confirmed from current data — it is presumed concluded (likely completed or cancelled), but **the CI skip regression has returned before its result could be declared a PASS**.
 
-**Action:** Observer will reassess next cycle once run `25486646070` concludes. If `success`, T-001 PASS will be declared.
+**T-001 PASS cannot be declared.** The decisive run's outcome is moot — a new, worse problem has emerged.
+
+---
+
+### CI Skip Regression — CRITICAL
+
+**Three runs on SHA `5205622` — all `skipped`** at 09:20:27–09:20:30 (triple-trigger pattern RETURNED):
+
+| Run ID | SHA | Conclusion | Created |
+|---|---|---|---|
+| 25487244456 | `5205622` | `skipped` | 09:20:30 |
+| 25487241992 | `5205622` | `skipped` | 09:20:27 |
+| 25487241977 | `5205622` | `skipped` | 09:20:27 |
+
+**Findings:**
+- Triple-trigger pattern has returned (three runs, two at same second 09:20:27)
+- All three runs are `skipped` — zero test steps executed (jobs array empty: `steps: []`)
+- SHA `5205622` is a new commit — unknown origin, not `a2edfe9`
+- `autoDispatch: "dispatched"` in live data — the orchestrator dispatched a run this cycle
+- The CI skip fix applied in `a2edfe9` did NOT survive to `5205622`
+- smokeStatus reader still broken: `fs.readFileSync is not a function` (Edge runtime error, ongoing)
+
+**This is a CRITICAL ESCALATION.** The CI skip regression that was "resolved" on `a2edfe9` has re-emerged on `5205622`.
+
+---
+
+### Prior Runs `25486629485` / `25486629479` — Status
+
+These runs are no longer in the live run list (superseded by newer runs). Cannot confirm step-level execution from current data. Flag is superseded by the new regression — closing the prior monitoring flag as moot.
 
 ---
 
@@ -44,14 +61,14 @@ Run `25486646070` is still `in_progress` at step 4 (Wait for deployment). **Cann
 
 | Check | Result |
 |---|---|
-| Live app reachable (b0a954f) | ✅ Assumed reachable (no network error in live data) |
-| /api/version SHA readable | ⚠️ Live SHA `b0a954f` — mismatch with CI `a2edfe9` |
+| Live app reachable | ✅ Assumed reachable (no network error) |
+| /api/version SHA | ⚠️ `b0a954f` — still not advanced to `a2edfe9` |
 | smokeStatus | ❌ `fs.readFileSync is not a function` — Edge runtime error ongoing |
-| CI skip regression | ✅ RESOLVED on `a2edfe9` — runs are NOT skipped |
-| Triple-trigger pattern | ⚠️ TWO simultaneous `success` runs at 09:07:21 — needs Operator review |
-| Deploy gate (T-007+T-010) | 🔴 ACTIVE — must NOT ship until T-001 PASS |
-| Coolify auto-deploy | ✅ DISABLED — owner confirmed this cycle |
-| BUILD_LOG.md (Operator) | ✅ Catch-up confirmed Cycle 21 — must continue |
+| CI skip regression | 🔴 RETURNED on SHA `5205622` — triple-trigger + all skipped |
+| Triple-trigger pattern | 🔴 ACTIVE — three runs at 09:20:27–09:20:30 |
+| Deploy gate (T-007+T-010) | 🔴 ACTIVE — must NOT ship |
+| Coolify auto-deploy | ✅ DISABLED (owner confirmed) |
+| T-001 PASS declared | ❌ NO — blocked by CI skip regression |
 
 ---
 
@@ -60,21 +77,30 @@ Run `25486646070` is still `in_progress` at step 4 (Wait for deployment). **Cann
 | Item | Status |
 |---|---|
 | Live SHA | `b0a954f` |
-| Latest CI SHA | `a2edfe9` |
-| CI skip regression | ✅ RESOLVED on `a2edfe9` |
-| Run 25486646070 | 🔄 in_progress — step 4 |
-| Runs 25486629485 / 25486629479 | ✅ success — same SHA, same second |
-| T-001 PASS | ❌ NOT YET — awaiting run 25486646070 conclusion |
+| Latest CI SHA | `5205622` (new — unknown origin) |
+| CI skip regression | 🔴 RETURNED on `5205622` — all 3 runs skipped |
+| Triple-trigger | 🔴 ACTIVE again |
+| Run 25486646070 | ❓ No longer in run list — superseded |
+| T-001 PASS | ❌ NOT DECLARED |
 | Deploy gate | 🔴 ACTIVE |
 | Coolify auto-deploy | ✅ OFF |
 | smokeStatus reader | ❌ Edge runtime error ongoing |
 
-_Observer Agent — Cycle 22 — 2026-05-07T09:10:00Z_
+---
+
+### Required Manager Action
+
+1. **Identify SHA `5205622`** — what commit is this? Who pushed it and why? Did the Operator push a new commit that did not carry the workflow_dispatch-only fix?
+2. **Operator must verify** `observer-qa.yml` on SHA `5205622` still has `on: workflow_dispatch` only (no push/pull_request triggers) AND the skip-guard condition is correct.
+3. **Do NOT dispatch a new run** until the skip regression is diagnosed and fixed on `5205622`.
+4. **T-001 PASS is blocked** — deploy gate remains ACTIVE.
+
+_Observer Agent — Cycle 23 — 2026-05-07T09:25:00Z_
 
 ---
 
-## Cycle 21 — 2026-05-07T08:55:00Z
+## Cycle 22 — 2026-05-07T09:10:00Z
 
-[Archived — superseded by Cycle 22. Summary: CI skip regression confirmed on `c0b7c4e`. Triple-trigger returned. Run 25485310289 likely auto-cancelled. SHA 3-way mismatch: live `b0a954f` / CI `c0b7c4e` / expected `0f80cf4`. BUILD_LOG.md catch-up completed by Operator. T-001 PASS not declared. Coolify auto-deploy still active at time of report.]
+[Archived — superseded by Cycle 23. Summary: Run 25486646070 was in_progress at step 4. Two success runs on a2edfe9 at 09:07:21 flagged (same-second creation). Live SHA b0a954f, CI SHA a2edfe9. T-001 PASS not declared. Coolify auto-deploy confirmed OFF.]
 
-_Observer Agent — Cycle 21 — 2026-05-07T08:55:00Z_
+_Observer Agent — Cycle 22 — 2026-05-07T09:10:00Z_
