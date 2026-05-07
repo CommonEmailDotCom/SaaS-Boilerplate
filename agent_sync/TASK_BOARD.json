@@ -1,1 +1,150 @@
-{"updated":"2026-05-07T09:15:00.113Z","sprint":"Auth Provider Switching — Phase 5: End-to-End Validation","project":"Cutting Edge Chat — https://cuttingedgechat.com","repo":"https://github.com/CommonEmailDotCom/SaaS-Boilerplate","manager_assessment":{"timestamp":"2026-05-07T09:15:00.113Z","overall_status":"🟡 T-001 NEAR PASS — Run 25486646070 was in_progress at step 4 as of Cycle 22. CI skip regression RESOLVED on a2edfe9. Coolify auto-deploy OFF. Observer must check run conclusion this cycle and declare PASS or report failure. Operator stands by for deploy signal.","key_events":["Coolify auto-deploy CONFIRMED OFF by owner","CI skip regression RESOLVED on a2edfe9 — runs executing, not skipping","Run 25486646070: in_progress step 4 at 09:07:42 — conclusion pending","Runs 25486629485 + 25486629479: both success on a2edfe9 at 09:07:21 — same-second creation flagged, monitoring","Live SHA b0a954f — should advance to a2edfe9 once deployment step completes","BUILD_LOG.md catch-up complete — Operator must continue every cycle"],"active_blockers":["BLOCKER-1: Run 25486646070 conclusion unknown — Observer must check and declare PASS or escalate failure","BLOCKER-2 (MONITORING): Two simultaneous success runs at 09:07:21 — confirm genuine test execution, not skipped"]},"columns":{"in_progress":[{"id":"T-001-CONCLUDE","title":"T-001 — Confirm run 25486646070 conclusion and declare PASS or report failure","priority":"critical","assigned_to":"observer","manager_instruction":"CHECK run 25486646070 conclusion. If success: also confirm runs 25486629485 and 25486629479 executed real test steps (not skipped). If all good, declare 🟢 T-001 PASS — DEPLOY SIGNAL in QA_REPORT.md. If failure: report failing step and error verbatim — do NOT dispatch a new run until Operator acknowledges. If still in_progress: do not dispatch a duplicate — poll next cycle. Also log the current live SHA and confirm it has advanced to a2edfe9."},{"id":"OPERATOR-STANDBY","title":"Operator — stand by for T-001 PASS, update BUILD_LOG.md","priority":"critical","assigned_to":"operator","manager_instruction":"UPDATE BUILD_LOG.md this cycle (Hard Rule 8). STAND BY for Observer's 🟢 T-001 PASS — DEPLOY SIGNAL. The moment it appears in QA_REPORT.md, deploy T-007 + T-010 together via set-version.yml. Log deployment SHA and Coolify run ID. Do NOT deploy before Observer PASS signal. If Observer reports failure in run 25486646070, investigate the failing step and prepare a fix — but do not deploy."}],"ready_to_trigger":[{"id":"T-007-T-010-DEPLOY","title":"Deploy T-007 + T-010 together — gated on T-001 PASS","priority":"critical","assigned_to":"operator","manager_instruction":"Deploy immediately the moment Observer logs 🟢 T-001 PASS — DEPLOY SIGNAL. Both together. T-007 never ships without T-010. Log deployment SHA and Coolify run in BUILD_LOG.md."}],"backlog":[{"id":"T-006","title":"Stripe checkout works under Authentik session","priority":"high","manager_instruction":"HOLD — unblocks after T-001 PASS."},{"id":"T-009","title":"Sign-out from Authentik redirects correctly on provider switch-back","priority":"medium","manager_instruction":"HOLD — covered by T-001 Test D."},{"id":"T-002","title":"Smoke test polls correct SHA","priority":"high","manager_instruction":"Queue after T-001 complete."}],"done":[{"id":"COOLIFY-AUTO-DEPLOY-OFF","title":"Disable Coolify auto-deploy","closed_note":"✅ Disabled by owner 2026-05-07. Deploys now only via set-version.yml on real code commits."},{"id":"CI-SKIP-REGRESSION-RESOLVED","title":"CI skip regression resolved on a2edfe9","closed_note":"✅ workflow_dispatch-only fix active on a2edfe9. Runs executing correctly."},{"id":"BUILD-LOG-CATCHUP","title":"BUILD_LOG.md catch-up Cycles 15–21","closed_note":"✅ Completed by Operator Cycle 21. Must continue every cycle."},{"id":"CI-SKIP-FIX","title":"Fix observer-qa.yml skip bug","closed_note":"✅ Active on a2edfe9."},{"id":"OPERATOR-DOUBLE-SYNC","title":"Fix Operator double syncToMain + push retry","closed_note":"✅ Fixed in orchestrator 8bc2288."},{"id":"T-005","title":"First Authentik login auto-creates user + org","closed_note":"Live as 81c550f."},{"id":"T-008","title":"Populate user.authentikId after first login","closed_note":"Folded into T-005. Live."},{"id":"T-004","title":"Auth provider instant switching via DB","closed_note":"Live."},{"id":"INFRA-001","title":"Weekly Docker prune cron","closed_note":"Active."}]},"architecture_notes_for_agents":["Coolify auto-deploy is OFF — only set-version.yml triggers deploys (on real src/ commits only).","observer-qa.yml MUST be workflow_dispatch ONLY — no push, no pull_request, no paths filter.","Dispatch: POST https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml/dispatches with {ref:'main'}","Do NOT dispatch a new run if a run is already in_progress or recently concluded — check status first.","Do NOT dispatch if triple-trigger pattern is observed — escalate to Manager.","Middleware runs on Edge runtime — provider-constant.ts is the ONLY safe import for middleware.","getActiveProvider() has a 5s cache TTL.","next-auth requires trustHost: true behind Traefik.","Coolify SaaS app UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP server UUID: a1fr37jiwehxbfqp90k4cvsw.","T-007 + T-010 coded but NOT deployed — deploy on T-001 PASS only."]}}
+{
+  "updated": "2026-05-07T09:29:44.674Z",
+  "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
+  "project": "Cutting Edge Chat — https://cuttingedgechat.com",
+  "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
+  "manager_assessment": {
+    "timestamp": "2026-05-07T09:29:44.674Z",
+    "overall_status": "🔧 Operator unblocked — T-001 gate only blocks deploys, not code work. Tasks A-F assigned and must ship independently of T-001.",
+    "key_events": [
+      "T-001 run 25486755025 FAILED at step 7 — Playwright test failure, not infra",
+      "CI pipeline fully healthy — no SHA drift, no ghost skips, Coolify auto-deploy OFF",
+      "Operator reassigned to Tasks A-F which are independent of T-001",
+      "Coolify auto-deploy CONFIRMED OFF by owner",
+      "Observer correctly monitoring T-001 — will dispatch when ready"
+    ],
+    "active_blockers": [
+      "T-001 Playwright tests failing — Observer diagnosing, Operator not blocked by this"
+    ]
+  },
+  "columns": {
+    "in_progress": [
+      {
+        "id": "TASK-B",
+        "title": "T-007 — Admin-only restriction on provider switcher API",
+        "priority": "critical",
+        "assigned_to": "operator",
+        "manager_instruction": "src/app/api/admin/auth-provider/route.ts — POST must verify caller is org admin before allowing provider switch. Clerk: check orgRole === 'org:admin' from clerkAuth(). Authentik: query organization_member where userId=session.user.id AND role IN ('admin','owner'). Return 403 if not admin. This is a security fix with no T-001 gate — ship it."
+      },
+      {
+        "id": "TASK-C",
+        "title": "T-010 — Verify and fix last-admin guard in members API",
+        "priority": "high",
+        "assigned_to": "operator",
+        "manager_instruction": "Review src/app/api/admin/members/[memberId]/route.ts — confirm the last-admin guard is correct for both Clerk and Authentik paths. Log findings in BUILD_LOG.md. Fix anything missing or incorrect."
+      },
+      {
+        "id": "TASK-D",
+        "title": "Remove dead set-provider endpoint",
+        "priority": "medium",
+        "assigned_to": "operator",
+        "manager_instruction": "Check src/app/api/admin/set-provider/ — if it is empty/dead code, delete it. Log in BUILD_LOG.md."
+      },
+      {
+        "id": "TASK-E",
+        "title": "Add error logging to getActiveProvider() DB fallback",
+        "priority": "medium",
+        "assigned_to": "operator",
+        "manager_instruction": "src/libs/auth-provider/index.ts — in the catch block that falls back to AUTH_PROVIDER env var, add console.error with the error so DB failures are visible in Coolify logs. Small standalone change."
+      },
+      {
+        "id": "TASK-F",
+        "title": "Fix smokeStatus reader in orchestrator",
+        "priority": "medium",
+        "assigned_to": "operator",
+        "manager_instruction": "fetchLiveData in /mcp/orchestrator.js reads smoke-status.json via fs.readFileSync which fails in some contexts. Replace with GitHub API fetch: GET https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/contents/smoke-status.json. Parse base64 content. Update my-mcp-server repo and redeploy MCP server UUID a1fr37jiwehxbfqp90k4cvsw."
+      },
+      {
+        "id": "T-001-MONITOR",
+        "title": "T-001 — Monitor for PASS signal then deploy T-007+T-010",
+        "priority": "critical",
+        "assigned_to": "operator",
+        "manager_instruction": "Complete TASK-B through TASK-F first. When Observer declares T-001 PASS in QA_REPORT.md, deploy T-007 + T-010 together in one deployment. Log SHA and Coolify run ID in BUILD_LOG.md."
+      },
+      {
+        "id": "T-001-DISPATCH",
+        "title": "T-001 — Dispatch and monitor observer-qa.yml",
+        "priority": "critical",
+        "assigned_to": "observer",
+        "manager_instruction": "Run 25486755025 FAILED at step 7 (Playwright tests). Dispatch a new observer-qa.yml run. Check which specific test failed (A1/A2/A3/B1 etc) and report the exact error. Do not redispatch until previous run is conclusive."
+      }
+    ],
+    "ready_to_trigger": [
+      {
+        "id": "T-007-T-010-DEPLOY",
+        "title": "Deploy T-007 + T-010 together — gated on T-001 PASS",
+        "priority": "critical",
+        "assigned_to": "operator",
+        "manager_instruction": "Deploy immediately when Observer declares T-001 PASS. Both T-007 and T-010 together. T-007 never ships without T-010."
+      }
+    ],
+    "backlog": [
+      {
+        "id": "T-006",
+        "title": "Stripe checkout under Authentik session",
+        "priority": "high",
+        "manager_instruction": "HOLD — after T-001 PASS."
+      },
+      {
+        "id": "T-009",
+        "title": "Sign-out redirect on provider switch-back",
+        "priority": "medium",
+        "manager_instruction": "HOLD — covered by T-001 Test D."
+      },
+      {
+        "id": "T-002",
+        "title": "Smoke test SHA polling verification",
+        "priority": "high",
+        "manager_instruction": "Queue after T-001."
+      }
+    ],
+    "done": [
+      {
+        "id": "COOLIFY-AUTO-DEPLOY-OFF",
+        "title": "Disable Coolify auto-deploy",
+        "closed_note": "✅ Disabled by owner. Deploys via set-version.yml only."
+      },
+      {
+        "id": "CI-SKIP-FIX",
+        "title": "Fix observer-qa.yml skip bug",
+        "closed_note": "✅ workflow_dispatch only. Active."
+      },
+      {
+        "id": "OPERATOR-DOUBLE-SYNC",
+        "title": "Fix Operator double syncToMain + push retry",
+        "closed_note": "✅ orchestrator 8bc2288."
+      },
+      {
+        "id": "T-005",
+        "title": "First Authentik login auto-creates user + org",
+        "closed_note": "✅ Live as 81c550f."
+      },
+      {
+        "id": "T-008",
+        "title": "Populate user.authentikId after first login",
+        "closed_note": "✅ Folded into T-005."
+      },
+      {
+        "id": "T-004",
+        "title": "Auth provider instant switching via DB",
+        "closed_note": "✅ Live."
+      },
+      {
+        "id": "INFRA-001",
+        "title": "Weekly Docker prune cron",
+        "closed_note": "✅ Active."
+      }
+    ]
+  },
+  "architecture_notes_for_agents": [
+    "Coolify auto-deploy is OFF — only set-version.yml triggers deploys on real src/ commits.",
+    "observer-qa.yml is workflow_dispatch ONLY — no push trigger.",
+    "smokeTestRuns and setVersionRuns showing skipped on ci: commits is CORRECT — never escalate these.",
+    "Only latestObserverQaDetail is relevant to T-001 status.",
+    "Middleware: Edge runtime — only import from provider-constant.ts.",
+    "getActiveProvider() has 5s cache TTL.",
+    "trustHost: true must stay in next-auth config.",
+    "Coolify SaaS UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP UUID: a1fr37jiwehxbfqp90k4cvsw.",
+    "T-007 + T-010 coded, NOT deployed — deploy on T-001 PASS only."
+  ]
+}
