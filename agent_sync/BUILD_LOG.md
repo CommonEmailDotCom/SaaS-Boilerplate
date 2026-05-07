@@ -1,21 +1,21 @@
 # BUILD_LOG.md
 
-### Cycle — 2026-05-07T05:05:00Z
+### Cycle — 2026-05-07T05:20:00Z
 
-**Inbox:** Message from Manager (2026-05-07T05:00:00Z) — Idle/standby cycle. No new code tasks.
+**Inbox:** Standby instruction confirmed. No new code tasks this cycle.
 
 **Actions this cycle:**
-- Reviewed CLAUDE_TEAM.md, TASK_BOARD.json, OPERATOR_INBOX.md.
-- Manager instruction confirmed: no new code tasks this cycle. Sprint gated on owner adding 5 GitHub repo secrets.
-- T-007 + T-010: Code complete, NOT deployed. Hard rule enforced — neither ships without T-001 PASS; T-007 will not ship before T-010.
+- Read OPERATOR_INBOX.md and CLAUDE_TEAM.md. No new messages or escalations.
+- Sprint remains gated on owner adding 5 GitHub repo secrets (Cycle 5 — no change).
+- T-007 + T-010: coded, NOT deployed. Hard rules enforced — neither ships without T-001 PASS; T-007 never ships before T-010.
 - T-005 + T-008: Live as `81c550f`. No regressions reported.
 - INFRA-001: Weekly Docker prune cron active (`0 3 * * 0`). No disk pressure.
-- Smoke badge fix deployed (if: always() on write step). Recovery expected on next successful push to main.
-- No new failures reported by Observer this cycle.
-- Deploy gate status: **BLOCKED** — awaiting T-001 PASS in QA_REPORT.md (owner must add 5 GitHub secrets first).
+- `observer-qa.yml` committed and ready. Awaiting owner secret injection.
+- Smoke badge fix deployed. Recovery pending MCP_DEPLOY_SECRET (owner action).
+- No new Observer failure reports. No new code changes this cycle.
 - Operator idle. No file changes this cycle.
 
-**Standby:** Ready to deploy T-007 + T-010 immediately upon T-001 PASS signal in QA_REPORT.md.
+**Standby:** Ready to deploy T-007 + T-010 together immediately upon T-001 PASS signal in QA_REPORT.md.
 
 | SHA | Status | Notes |
 |---|---|---|
@@ -25,18 +25,18 @@
 
 ---
 
-### Cycle — 2026-05-07T04:50:00Z
+### Cycle — 2026-05-07T05:05:00Z
 
-**Inbox:** Blocker 1 (GH-ACTIONS-QA) and Blocker 2 (SMOKE-BADGE-FIX) both resolved.
+**Inbox:** Standby instruction confirmed from Manager. No new code tasks.
 
 **Actions this cycle:**
-- Built `.github/workflows/observer-qa.yml` — Playwright workflow targeting `ubuntu-latest`, full T-001 matrix A–E.
-- Built `e2e/t001-auth.spec.ts` — covers Tests A through E sequentially.
-- Added `playwright.config.ts` — workers=1, sequential, no parallelism.
-- Fixed `smoke-test.yml` — write step now runs on `if: always()`, badge will recover on next successful push.
-- Documented all 5 required secrets for owner action.
-- T-007 + T-010: coded, NOT deployed. Hard rule enforced.
-- Deploy gate status: BLOCKED — awaiting owner adding 5 GitHub secrets, then T-001 PASS.
+- Confirmed all hard rules holding: T-007 + T-010 coded, NOT deployed.
+- Sprint gated on owner adding 5 GitHub secrets to unblock observer-qa.yml.
+- No new failures reported by Observer. No file changes this cycle.
+- OPERATOR_INBOX.md reply logged.
+- Operator idle. No file changes this cycle.
+
+**Standby:** Ready to deploy T-007 + T-010 immediately upon T-001 PASS signal in QA_REPORT.md.
 
 | SHA | Status | Notes |
 |---|---|---|
