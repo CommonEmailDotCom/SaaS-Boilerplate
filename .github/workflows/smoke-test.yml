@@ -6,9 +6,13 @@ on:
     types: [completed]
     branches: [main]
 
+# Only cancel a running smoke test if a newer SUCCESSFUL set-version run comes in.
+# Using the triggering workflow run ID means each set-version run gets its own group —
+# stale ci: skips (conclusion != success) never reach the job due to the if: condition below,
+# so they don't cancel a running real smoke test.
 concurrency:
-  group: smoke-test-main
-  cancel-in-progress: true
+  group: smoke-test-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
 
 jobs:
   smoke-test:
