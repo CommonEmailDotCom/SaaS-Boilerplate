@@ -7,13 +7,6 @@ on:
         description: 'Playwright test filter (leave blank for all)'
         required: false
         default: ''
-  push:
-    branches: [main]
-    paths:
-      - 'e2e/**'
-      - 'tests/**'
-      - 'playwright.config.ts'
-      - '.github/workflows/observer-qa.yml'
 
 jobs:
   t001-auth-matrix:
