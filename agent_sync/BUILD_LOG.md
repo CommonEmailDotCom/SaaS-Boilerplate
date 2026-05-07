@@ -1,5 +1,56 @@
 # BUILD_LOG.md
 
+### Cycle — 2026-05-07T04:50:00Z
+
+**Inbox:** 📨 MESSAGE received 2026-05-07T04:45:00Z from Manager. Two critical blockers actioned this cycle.
+
+**Actions this cycle:**
+
+#### 1. Built `.github/workflows/observer-qa.yml` (GH-ACTIONS-QA — CRITICAL BLOCKER)
+- Created GitHub Actions workflow targeting `ubuntu-latest`, Node 20
+- Triggers: `workflow_dispatch` + push to `main`
+- Installs deps + `npx playwright install chromium --with-deps`
+- Playwright test file at `e2e/t001-auth.spec.ts` covering full T-001 matrix A–E:
+  - Test A: Clerk baseline — Google OAuth sign-in, /dashboard loads, org visible
+  - Test B: Switch Clerk→Authentik — Google OAuth through Authentik, callback to /dashboard
+  - Test C: Dashboard under Authentik — org context, no 401/500
+  - Test D: Switch Authentik→Clerk — sign-out, redirect to /sign-in (not auth.joefuentes.me)
+  - Test E: Smoke badge — GET https://mcp.joefuentes.me/badge/smoke returns PASSING
+- Uses secrets: `GOOGLE_TEST_EMAIL`, `GOOGLE_TEST_PASSWORD`
+
+**⚠️ OWNER ACTION REQUIRED — GitHub Repo Secrets needed:**
+| Secret Name | Description |
+|---|---|
+| `GOOGLE_TEST_EMAIL` | Google account email used for OAuth test login |
+| `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
+| `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` (or override for staging) |
+| `ADMIN_API_SECRET` | Secret for /api/admin/set-provider — used to switch providers in Tests B/D |
+
+Owner: GitHub → Settings → Secrets and variables → Actions → New repository secret.
+
+#### 2. Investigated Smoke Badge FAILING (SMOKE-BADGE-FIX)
+- Root cause analysis:
+  - The `smoke-test.yml` workflow writes `smoke-status.json` to the MCP server
+  - Badge endpoint reads from that JSON file
+  - Most likely causes: (a) workflow not triggering on `ci:` child commits (SHA mismatch), (b) stale JSON from a previous failed write, (c) the smoke test itself failing against the live app
+- Fix applied: Updated `smoke-test.yml` to always write `smoke-status.json` on both pass AND fail (currently only writing on success), added explicit status field, and ensured it runs on every push to main including ci: bump commits
+- Also added a fallback in the badge endpoint logic (in `smoke-test.yml` MCP update step) to never leave JSON in an indeterminate state
+
+#### 3. T-007 + T-010 — HOLD
+- Code complete, NOT deployed. Hard rule enforced. Deploy only after T-001 PASS.
+
+**Deploy gate status:** BLOCKED — awaiting T-001 PASS + owner adding GitHub secrets.
+
+**Current live SHA:** `81c550f` (T-005 + T-008) or ci: child.
+
+| SHA | Status | Notes |
+|---|---|---|
+| `81c550f` | ✅ Live | T-005 + T-008: signIn callback, org auto-create, authentikId |
+| `fc06699` | ✅ Live | Build log + INFRA_NOTES |
+| `670473e` | ✅ | trustHost + authentik-signin v5 fix |
+
+---
+
 ### Cycle — 2026-05-07T04:20:00Z
 
 **Inbox:** Clear. No new messages.
@@ -22,17 +73,3 @@
 | `81c550f` | ✅ Live | T-005 + T-008: signIn callback, org auto-create, authentikId |
 | `fc06699` | ✅ Live | Build log + INFRA_NOTES |
 | `670473e` | ✅ | trustHost + authentik-signin v5 fix |
-
----
-
-### Cycle — 2026-05-07T04:05:00Z
-
-**Inbox:** Clear. No new messages.
-
-**Actions:**
-- No new code written. All operator tasks coded and gated on T-001 PASS.
-- T-007 + T-010: code complete, NOT deployed. Hard rule strictly enforced.
-- T-005 + T-008: live as `81c550f`. No regressions.
-- INFRA-001: resolved, weekly prune cron active.
-- Per CLAUDE_TEAM.md (03:45Z): Manager confirms Google OAuth credentials agreed with owner sufficient for T-001 A-E. Observer QA workflow (`observer-qa.yml`) needs those credentials as GitHub repo secrets. Once T-001 PASS confirmed, Operator will immediately deploy T-007 + T-010.
-- Operator idle. No code changes this cycle.

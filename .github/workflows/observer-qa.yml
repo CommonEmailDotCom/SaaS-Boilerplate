@@ -1,96 +1,80 @@
-name: Observer QA — Auth Flow
+name: Observer QA — T-001 Auth Matrix
 
 on:
-  workflow_run:
-    workflows: ["Set commit SHA for build"]
-    types: [completed]
-    branches: [main]
   workflow_dispatch:
-
-concurrency:
-  group: observer-qa-main
-  cancel-in-progress: true
+    inputs:
+      test_filter:
+        description: 'Playwright test filter (leave blank for all T-001 tests)'
+        required: false
+        default: ''
+  push:
+    branches:
+      - main
 
 jobs:
-  auth-qa:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+  t001-auth-matrix:
+    name: T-001 Auth Matrix (A–E)
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
+    timeout-minutes: 30
+
+    env:
+      TEST_BASE_URL: ${{ secrets.TEST_BASE_URL || 'https://cuttingedgechat.com' }}
+      GOOGLE_TEST_EMAIL: ${{ secrets.GOOGLE_TEST_EMAIL }}
+      GOOGLE_TEST_PASSWORD: ${{ secrets.GOOGLE_TEST_PASSWORD }}
+      ADMIN_API_SECRET: ${{ secrets.ADMIN_API_SECRET }}
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          ref: main
-          fetch-depth: 0
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
         with:
-          node-version: 20.x
-          cache: npm
+          node-version: '20'
+          cache: 'npm'
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright + Chromium
+      - name: Install Playwright Chromium + system deps
         run: npx playwright install chromium --with-deps
 
-      - name: Create screenshots dir
-        run: mkdir -p agent_sync/screenshots
-
-      - name: Run T-001 auth flow tests
-        id: qa
-        env:
-          QA_GMAIL_EMAIL: ${{ secrets.QA_GMAIL_EMAIL }}
-          QA_GMAIL_PASSWORD: ${{ secrets.QA_GMAIL_PASSWORD }}
-          QA_AUTHENTIK_EMAIL: ${{ secrets.QA_AUTHENTIK_EMAIL }}
-          QA_AUTHENTIK_PASSWORD: ${{ secrets.QA_AUTHENTIK_PASSWORD }}
-          GITHUB_SHA: ${{ github.sha }}
+      - name: Verify secrets are present
         run: |
-          npx playwright test tests/e2e/auth.spec.ts \
-            --reporter=list \
-            2>&1 | tee /tmp/qa-output.txt
-          echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        continue-on-error: true
+          if [ -z "$GOOGLE_TEST_EMAIL" ]; then
+            echo "❌ GOOGLE_TEST_EMAIL secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
+            exit 1
+          fi
+          if [ -z "$GOOGLE_TEST_PASSWORD" ]; then
+            echo "❌ GOOGLE_TEST_PASSWORD secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
+            exit 1
+          fi
+          if [ -z "$ADMIN_API_SECRET" ]; then
+            echo "❌ ADMIN_API_SECRET secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
+            exit 1
+          fi
+          echo "✅ All required secrets present."
 
-      - name: Generate QA report for Observer loop
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_SHA: ${{ github.sha }}
-        run: node scripts/qa-report.js "${{ github.sha }}" "${{ steps.qa.outputs.exit_code }}" "/tmp/qa-output.txt"
-
-      - name: Commit QA report + screenshots to agent_sync
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Run T-001 Playwright tests
         run: |
-          git config user.name "observer-agent[bot]"
-          git config user.email "observer-agent[bot]@users.noreply.github.com"
+          if [ -n "${{ github.event.inputs.test_filter }}" ]; then
+            npx playwright test e2e/t001-auth.spec.ts --grep "${{ github.event.inputs.test_filter }}" --reporter=list
+          else
+            npx playwright test e2e/t001-auth.spec.ts --reporter=list
+          fi
 
-          # Hard reset to exact remote HEAD — clean slate, no local drift
-          git fetch origin main
-          git reset --hard origin/main
-
-          # Stage only QA output — nothing else
-          git add agent_sync/QA_REPORT_ACTIONS.md
-          git add agent_sync/screenshots/ 2>/dev/null || true
-
-          # Skip if nothing changed
-          git diff --staged --quiet && echo "No QA output to commit" && exit 0
-
-          git commit -m "ci: observer QA report ${{ github.sha }} [skip ci]"
-          git push origin HEAD:main
-
-      - name: Upload Playwright artifacts on failure
-        if: steps.qa.outputs.exit_code != '0'
+      - name: Upload Playwright report on failure
+        if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: qa-playwright-results
-          path: |
-            playwright-report/
-            agent_sync/screenshots/
+          name: playwright-report-${{ github.run_id }}
+          path: playwright-report/
           retention-days: 7
 
-      - name: Fail job if tests failed
-        if: steps.qa.outputs.exit_code != '0'
-        run: exit 1
+      - name: Upload Playwright traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces-${{ github.run_id }}
+          path: test-results/
+          retention-days: 7

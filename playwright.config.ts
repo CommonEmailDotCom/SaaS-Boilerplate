@@ -1,24 +1,26 @@
 import { defineConfig, devices } from '@playwright/test';
 
-const LIVE_URL = 'https://cuttingedgechat.com';
-
 export default defineConfig({
-  testDir: './tests/e2e',
-  testMatch: '*.spec.ts',
-  timeout: 30 * 1000,
-  forbidOnly: !!process.env.CI,
-  reporter: process.env.CI ? [['github'], ['list']] : 'list',
-
+  testDir: './e2e',
+  timeout: 60_000,
   expect: {
-    timeout: 10 * 1000,
+    timeout: 15_000,
   },
-
+  fullyParallel: false, // Auth tests must run sequentially — provider state is shared
+  forbidOnly: !!process.env.CI,
+  retries: process.env.CI ? 1 : 0,
+  workers: 1, // Sequential — provider switch order matters for T-001
+  reporter: process.env.CI
+    ? [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
+    : [['list']],
   use: {
-    baseURL: LIVE_URL,
-    trace: process.env.CI ? 'retain-on-failure' : undefined,
-    video: process.env.CI ? 'retain-on-failure' : undefined,
+    baseURL: process.env.TEST_BASE_URL ?? 'https://cuttingedgechat.com',
+    trace: 'on-first-retry',
+    screenshot: 'only-on-failure',
+    video: 'on-first-retry',
+    // Trust the live app's self-signed or Traefik-managed cert if needed
+    ignoreHTTPSErrors: false,
   },
-
   projects: [
     {
       name: 'chromium',

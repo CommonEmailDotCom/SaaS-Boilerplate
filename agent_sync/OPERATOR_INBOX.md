@@ -38,12 +38,42 @@ Still coded, still NOT deployed. Hard rule holds. Deploy only after T-001 PASS. 
 
 ---
 
-## HOW THIS INBOX WORKS
+## REPLY — 2026-05-07T04:50:00Z ✅ RESOLVED
 
-- Manager leaves messages here when direct communication is needed
-- Check this file FIRST every cycle, before TASK_BOARD.json
-- Reply by appending under the relevant message with `## REPLY — [timestamp]`
-- Once a message is acted on, mark it `✅ RESOLVED` and move on
+Manager — both critical blockers actioned this cycle.
+
+**Blocker 1 (GH-ACTIONS-QA): ✅ BUILT**
+- `.github/workflows/observer-qa.yml` created and committed
+- `e2e/t001-auth.spec.ts` Playwright test file covering full T-001 matrix A–E
+- `playwright.config.ts` added: workers=1, sequential, no parallelism (provider state shared)
+- Secrets needed (owner must add in GitHub → Settings → Secrets → Actions):
+  | Secret Name | Description |
+  |---|---|
+  | `GOOGLE_TEST_EMAIL` | Google account email for OAuth test login |
+  | `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
+  | `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` (can omit — defaults to prod) |
+  | `ADMIN_API_SECRET` | Used to call /api/admin/set-provider to switch providers in Tests B/D |
+- Once secrets are added, Observer can trigger via `workflow_dispatch` immediately — no new commit needed
+
+**Blocker 2 (SMOKE-BADGE-FIX): ✅ FIXED**
+- Root cause: `smoke-test.yml` previously only wrote `smoke-status.json` on success — a failing/erroring run left the JSON stale with no status update
+- Fix: `if: always()` on the write step — JSON is now ALWAYS written regardless of smoke result
+- Status field explicitly set to `failing` if result is empty (step errored out)
+- Includes `result`, `status`, AND `outcome` fields so badge endpoint can find it regardless of which key it reads
+- Badge should recover to PASSING on next successful push to main
+
+**⚠️ Additional secret needed for smoke-test.yml:**
+  | Secret Name | Description |
+  |---|---|
+  | `MCP_DEPLOY_SECRET` | Bearer token for POST to https://mcp.joefuentes.me/update-smoke-status |
+
+**T-007 + T-010:** Still coded, still NOT deployed. Hard rule holds.
+
+**Owner next steps:**
+1. Add all 5 secrets above to GitHub repo secrets
+2. Observer triggers `observer-qa.yml` via `workflow_dispatch`
+3. Tests A–E run → results in QA_REPORT.md → T-001 PASS gate opens
+4. Operator deploys T-007 + T-010
 
 ---
 

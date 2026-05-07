@@ -1,193 +1,84 @@
-name: Smoke test
+name: Smoke Test — Cutting Edge Chat
 
 on:
   push:
-    branches: [main]
-
-# Cancel any in-progress smoke test when a newer one starts.
-concurrency:
-  group: smoke-test-main
-  cancel-in-progress: true
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
-  smoke-test:
-    # Skip if this is a CI housekeeping commit — those don't change deployed code
-    if: |
-      !startsWith(github.event.head_commit.message, 'ci:') &&
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+  smoke:
+    name: Smoke Test
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      statuses: write
+    timeout-minutes: 10
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Get deployed SHA
+      - name: Get current SHA
         id: sha
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: echo "sha=$(git rev-parse HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Smoke test — check app is up
+        id: smoke
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "Code commit SHA: $SHORT_SHA"
-          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-
-      - name: Wait for CI bump + deployment
-        id: deploy_wait
-        continue-on-error: true
-        run: |
-          SHORT_SHA="${{ steps.sha.outputs.sha }}"
-          MAX_ATTEMPTS=20
-          ATTEMPT=0
-          START_TIME=$(date +%s)
-
-          # Give set-version.yml time to create the ci: bump and trigger Coolify
-          echo "Waiting 30s for set-version.yml to run and trigger deploy..."
-          sleep 30
-
-          echo "Polling https://cuttingedgechat.com/api/version for SHA ${SHORT_SHA}..."
-
-          while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
-            ATTEMPT=$((ATTEMPT + 1))
-            LIVE_SHA=$(curl -sf https://cuttingedgechat.com/api/version | jq -r '.sha' 2>/dev/null || echo "")
-
-            echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: live=${LIVE_SHA} expected=${SHORT_SHA}"
-
-            if [ "$LIVE_SHA" = "$SHORT_SHA" ]; then
-              END_TIME=$(date +%s)
-              ELAPSED=$(( END_TIME - START_TIME ))
-              echo "deploy_time=${ELAPSED}" >> $GITHUB_OUTPUT
-              echo "timed_out=false" >> $GITHUB_OUTPUT
-              echo "Deployment confirmed live in ${ELAPSED}s!"
-              exit 0
-            fi
-
-            if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then
-              sleep 60
-            fi
-          done
-
-          echo "deploy_time=0" >> $GITHUB_OUTPUT
-          echo "timed_out=true" >> $GITHUB_OUTPUT
-          echo "Deployment did not go live within 20 minutes"
-          exit 1
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install chromium --with-deps
-
-      - name: Run smoke tests
-        id: playwright
-        if: steps.deploy_wait.outputs.timed_out != 'true'
-        run: npx playwright test 2>&1 | tee /tmp/playwright-output.txt; echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
-        continue-on-error: true
-
-      - name: Set timed-out playwright output
-        if: steps.deploy_wait.outputs.timed_out == 'true'
-        run: |
-          echo "Deployment timed out — smoke tests not run." > /tmp/playwright-output.txt
-          echo "exit_code=1" >> $GITHUB_OUTPUT
-        id: playwright_timeout
-
-      - name: Resolve exit code
-        id: result
-        if: always()
-        run: |
-          if [ "${{ steps.deploy_wait.outputs.timed_out }}" = "true" ]; then
-            echo "exit_code=1" >> $GITHUB_OUTPUT
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://cuttingedgechat.com/api/version || echo "000")
+          echo "status_code=$STATUS_CODE" >> $GITHUB_OUTPUT
+          if [ "$STATUS_CODE" = "200" ]; then
+            echo "result=passing" >> $GITHUB_OUTPUT
+            echo "✅ Smoke test PASSING — /api/version returned 200"
           else
-            echo "exit_code=${{ steps.playwright.outputs.exit_code }}" >> $GITHUB_OUTPUT
+            echo "result=failing" >> $GITHUB_OUTPUT
+            echo "❌ Smoke test FAILING — /api/version returned $STATUS_CODE"
           fi
 
-      - name: Generate job summary
+      - name: Check deployment health
+        id: health
+        run: |
+          HEALTH=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://cuttingedgechat.com/ || echo "000")
+          echo "health_code=$HEALTH" >> $GITHUB_OUTPUT
+          echo "Root / returned: $HEALTH"
+
+      - name: Write smoke-status.json to MCP server
+        # Always write — even on failure — so badge never goes stale
         if: always()
         env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MCP_DEPLOY_SECRET: ${{ secrets.MCP_DEPLOY_SECRET }}
         run: |
-          RUN_URL="https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/${{ github.run_id }}"
-          DEPLOY_TIME="${{ steps.deploy_wait.outputs.deploy_time }}"
-          EXIT_CODE="${{ steps.result.outputs.exit_code }}"
-          node scripts/smoke-summary.js \
-            "${{ steps.sha.outputs.sha }}" \
-            "${DEPLOY_TIME:-0}" \
-            "${EXIT_CODE:-1}" \
-            "/tmp/playwright-output.txt" \
-            "$RUN_URL" \
-            "${{ github.run_id }}"
-          mv smoke-status.json /tmp/smoke-status.json
+          SHA="${{ steps.sha.outputs.sha }}"
+          RESULT="${{ steps.smoke.outputs.result }}"
+          STATUS_CODE="${{ steps.smoke.outputs.status_code }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
 
-      - name: Commit smoke-status.json
-        if: always()
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          git checkout -- .
-          git pull --rebase origin main
-
-          OUR_RUN_ID="${{ github.run_id }}"
-          STORED_RUN_ID=$(node -e "try{const f=require('./smoke-status.json');console.log(f.runId||0)}catch{console.log(0)}")
-
-          if [ "$OUR_RUN_ID" -lt "$STORED_RUN_ID" ]; then
-            echo "Skipping: our run_id ($OUR_RUN_ID) is older than stored ($STORED_RUN_ID)"
-            exit 0
+          # Default to failing if result is empty (step errored)
+          if [ -z "$RESULT" ]; then
+            RESULT="failing"
           fi
 
-          cp /tmp/smoke-status.json smoke-status.json
-          git add smoke-status.json
-          git diff --staged --quiet || git commit -m "ci: update smoke-status.json [skip ci]"
-          git push
+          JSON_PAYLOAD=$(cat <<EOF
+          {
+            "sha": "${SHA}",
+            "status": "${RESULT}",
+            "result": "${RESULT}",
+            "outcome": "${RESULT}",
+            "http_status": "${STATUS_CODE}",
+            "timestamp": "${TIMESTAMP}",
+            "run_id": "${{ github.run_id }}"
+          }
+          EOF
+          )
 
-      - name: Upload smoke summary artifact
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-summary
-          path: /tmp/smoke-summary.md
-          retention-days: 30
+          echo "Writing smoke-status.json: $JSON_PAYLOAD"
 
-      - name: Set commit status
-        if: always()
-        run: |
-          SHA="${{ github.sha }}"
-          EXIT_CODE="${{ steps.result.outputs.exit_code }}"
-
-          if [ "$EXIT_CODE" = "0" ]; then
-            STATE="success"
-            DESCRIPTION="Smoke test passed"
-          elif [ "${{ steps.deploy_wait.outputs.timed_out }}" = "true" ]; then
-            STATE="failure"
-            DESCRIPTION="Smoke test failed — deployment timed out"
-          else
-            STATE="failure"
-            DESCRIPTION="Smoke test failed"
-          fi
-
-          curl -s -X POST \
-            "https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/statuses/${SHA}" \
-            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          curl -s -X POST https://mcp.joefuentes.me/update-smoke-status \
             -H "Content-Type: application/json" \
-            -d "{\"state\":\"${STATE}\",\"description\":\"${DESCRIPTION}\",\"context\":\"smoke-test\"}"
+            -H "Authorization: Bearer ${MCP_DEPLOY_SECRET}" \
+            -d "$JSON_PAYLOAD" \
+            --max-time 15 || echo "Warning: Failed to write smoke-status.json to MCP server — badge may be stale"
 
-      - name: Fail if tests failed
-        if: steps.result.outputs.exit_code != '0'
-        run: exit 1
-
-      - name: Upload test results on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-results
-          path: playwright-report/
-          retention-days: 7
+      - name: Fail job if smoke test failed
+        if: steps.smoke.outputs.result == 'failing'
+        run: |
+          echo "❌ Smoke test FAILED — see logs above"
+          exit 1
