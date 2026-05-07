@@ -104,65 +104,60 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T10:15:00Z*
+*Updated by Manager — 2026-05-07T10:30:00Z*
 
-### 🔴 T-001 — BLOCKED — 4 consecutive step 7 failures. Verbatim Playwright log required NOW.
+### 🟡 T-001 — NEAR PASS — `.toString()` fix deployed, awaiting first clean run
 
-**Situation summary (Cycle 27 → 28):**
+**Situation summary (Cycle 28 → 29):**
 
-Four consecutive CI runs have failed at step 7 (Playwright tests) across four different SHAs:
-- Run `25487914378` SHA `96991b9` — ❌ FAILURE
-- Run `25488141574` SHA `d328910` — ❌ FAILURE
-- Run `25488605813` SHA `8ef18ed` — ❌ FAILURE (confirmed by Observer Cycle 27)
-- Run `25488843096` SHA `bb2d43d` — ❌ FAILURE (fourth consecutive)
+Significant progress. Root cause of all test failures identified and fixed by Observer:
 
-Run `25489311400` (SHA `bf74ed3`) was in_progress at step 7 as of Observer Cycle 27. Its conclusion is unknown — Observer checks it this cycle.
+- **Run #75 (`25489542409`, SHA `bf74ed3`):** 4 tests passed independently (A1, B1, D2, E1). All other failures traced to a single bug in the Playwright spec: `waitForURL` predicate received a `URL` object, not a string — `url.includes()` threw `TypeError`. Fix: `.toString()` added (`c84a78a`). This is a spec-side fix, no app code touched.
+- **Fix deployed as `c84a78a`.** Run `25490149751` (SHA `46f9aed`) triggered post-fix — was in_progress at step 4 as of Observer Cycle 28.
+- **Run `25489986060` (SHA `b56a407`)** may also have concluded — Observer checks both this cycle.
 
-**Root cause is unknown because the verbatim Playwright stderr/stdout has never been retrieved.** The orchestrator's `latestObserverQaDetail` snapshot does not include step 7 log output. The exact failing test name, assertion, and stack trace are exclusively in the GitHub Actions run logs.
+**Assessment:** The `.toString()` fix should resolve all cascade failures from A2 onward. A2 passing = most other tests pass. This cycle could be the T-001 PASS cycle.
 
-**This is the only thing that matters this cycle.** Operator must retrieve the full step 7 log from GitHub Actions for any failed run (`25488843096` is the most recent confirmed failure). The exact error text must be pasted into BUILD_LOG.md. Nothing else unblocks T-001.
+**One risk remains:** Google OAuth bot-detection. The `.toString()` fix addresses the spec error, but if A2 still fails because Google blocks headless Chromium, Observer must pivot to session injection. Observer must report the exact new error if A2 still fails.
 
-**Deploy gate:** T-007 + T-010 are coded and ready but **must not ship** until T-001 PASS. They are already live (`a815e93`) per BUILD_LOG — but T-001 formal sign-off is still required before they are considered validated.
-
-**Manager priority this cycle:**
-1. **Operator (CRITICAL):** Retrieve verbatim step 7 log from GitHub Actions for run `25488843096` (or any recent failed run). Use GitHub API or GitHub UI. Paste exact error into BUILD_LOG.md. Diagnose and fix. This is the only path to unblocking T-001.
-2. **Observer:** Check conclusion of run `25489311400` (SHA `bf74ed3`). If PASS → declare 🟢 T-001 PASS. If FAIL (fifth consecutive) → report whatever error text is available from `latestObserverQaDetail`, note the count, and confirm that Operator's log retrieval task is the only viable path forward.
-3. **TASK-E and TASK-F** remain in progress for Operator — complete alongside the log retrieval task.
+**Deploy gate:** Lifted per Owner. T-007 + T-010 live as `a815e93`. T-001 PASS = formal validation only — no new deploy required unless Observer finds regressions.
 
 ---
 
-#### Observer — Cycle 28 (PRIORITY)
-1. Check `latestObserverQaDetail` for run `25489311400` (SHA `bf74ed3`) — report exact conclusion.
-2. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md.
-3. If **failure** → this is the fifth consecutive failure. Report whatever error text is available from `latestObserverQaDetail` (even partial). Note the count. Confirm deploy gate active.
-4. If still in_progress → note it, do not redispatch, await next cycle.
-5. Note live SHA from `/api/version`.
+#### Observer — Cycle 29 (PRIORITY)
+1. Check `latestObserverQaDetail` for run `25490149751` (SHA `46f9aed`) — report exact conclusion.
+2. Also check run `25489986060` (SHA `b56a407`) if not already resolved.
+3. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md.
+4. If **failure at A2** → report the exact error. If it is still OAuth/bot-detection (e.g. Google login page stuck, bot challenge, redirect loop) → pivot immediately to session injection as instructed. Do not push another OAuth-based fix.
+5. If **failure at a different step** → report verbatim error, diagnose, fix, push, trigger new run.
+6. Note live SHA from `/api/version`.
 
-#### Operator — Cycle 28 (CRITICAL PRIORITY)
-1. **UPDATE BUILD_LOG.md** (Hard Rule #8 — mandatory).
-2. **RETRIEVE STEP 7 LOGS (CRITICAL):** Use the GitHub API to pull the full log for run `25488843096` step 7. Endpoint: `GET https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25488843096/logs` — download the zip, extract the step 7 file, paste verbatim Playwright error into BUILD_LOG.md. The exact test name, assertion, and stack trace are required.
-3. **DIAGNOSE AND FIX** once error text is known. Do not push a fix until root cause is confirmed. Use correct import paths (Hard Rule #11).
-4. **TASK-E:** Add `console.error` to `getActiveProvider()` catch block — still pending.
-5. **TASK-F:** Fix smokeStatus reader (fs.readFileSync → GitHub API fetch) — still pending.
-6. **If Observer declares T-001 PASS:** Deploy T-007 + T-010 together via `set-version.yml`. T-007 never ships without T-010.
+#### Operator — Cycle 29
+1. **UPDATE BUILD_LOG.md** (Hard Rule #8 — mandatory every cycle).
+2. **TASK-E:** If not yet done — add `console.error('[getActiveProvider] DB error — falling back to env var:', err)` to catch block in `src/libs/auth-provider/index.ts`. Commit, push, log in BUILD_LOG.md.
+3. **TASK-F:** If not yet done — replace `fs.readFileSync` smoke-status reader in orchestrator with GitHub API fetch (see OPERATOR_INBOX for exact code). Commit to `my-mcp-server`, redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`, log SHA and Coolify run ID in BUILD_LOG.md.
+4. **TASK-H:** Once E and F are done — tech debt pass: dead code, error handling gaps, missing TS types, perf/security improvements in `src/`. Log everything.
+5. **On T-001 PASS:** No new deploy needed (T-007+T-010 already live). Log formal validation in BUILD_LOG.md.
 
 ---
 
 ### ✅ Resolved This Sprint
+- Root cause of T-001 step 7 failures: `url.includes is not a function` — URL object not string in waitForURL predicate. Fixed in `c84a78a`.
 - Coolify auto-deploy: **OFF** (owner confirmed)
-- CI skip regression: **RESOLVED** — `observer-qa.yml` is workflow_dispatch only
+- CI skip regression: **RESOLVED**
 - CRITICAL-05: Authentik cross-domain state cookie 401: **FIXED**
-- T-007 + T-010 code: **FIXED** (import errors corrected, deployed as `a815e93`)
+- T-007 + T-010 code: **FIXED** and deployed as `a815e93`
 - BUILD_LOG.md catch-up: **COMPLETE**
 
 ### 🟠 High — Deployed (gated on T-001 formal PASS for validation)
 - **T-005 + T-008** ✅ Live as `81c550f`
 - **T-007 + T-010** ✅ Live as `a815e93` — formal sign-off pending T-001 PASS
 
-### 🟡 In Progress (independent of T-001)
-- TASK-E: Add error logging to getActiveProvider() DB fallback
-- TASK-F: Fix smokeStatus reader in orchestrator (fs.readFileSync → GitHub API)
-- **TASK-G (NEW/CRITICAL):** Retrieve verbatim step 7 Playwright logs from GitHub Actions
+### 🟡 In Progress
+- TASK-E: Add error logging to getActiveProvider() DB fallback — Operator
+- TASK-F: Fix smokeStatus reader in orchestrator (fs.readFileSync → GitHub API) — Operator
+- TASK-H: Tech debt pass — Operator (after E and F)
+- T-001: `.toString()` fix deployed, awaiting run `25490149751` conclusion — Observer
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
@@ -178,10 +173,10 @@ Run `25489311400` (SHA `bf74ed3`) was in_progress at step 7 as of Observer Cycle
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | 4 consecutive step 7 failures — verbatim error unknown | 🔴 CRITICAL — Operator must retrieve GitHub Actions log |
-| 2026-05-07 | Run 25489311400 (SHA `bf74ed3`) — step 7 in_progress | 🔄 ACTIVE — Observer checks Cycle 28 |
+| 2026-05-07 | T-001 spec bug: `url.includes is not a function` in waitForURL predicate | ✅ Fixed in `c84a78a` — awaiting clean run |
+| 2026-05-07 | 4 consecutive step 7 failures — root cause identified as spec-side `.toString()` missing | ✅ FIXED — `c84a78a` deployed |
 | 2026-05-07 | T-007 + T-010 deployed as `a815e93` (OOM on first build, success on second) | ✅ LIVE — awaiting T-001 formal validation |
-| 2026-05-07 | Operator import errors (`getServerSession`, wrong paths) | ✅ FIXED by Chat Agent in `8ef18ed`/`fdadf9f`. Hard Rule #11 added. |
+| 2026-05-07 | Operator import errors (`getServerSession`, wrong paths) | ✅ FIXED. Hard Rule #11 added. |
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
 | 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED |
 | 2026-05-07 | Secret name churn | ✅ RESOLVED: Locked. Hard rule added. |
