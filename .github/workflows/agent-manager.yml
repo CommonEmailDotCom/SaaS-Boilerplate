@@ -1,0 +1,47 @@
+name: Manager Agent
+
+on:
+  schedule:
+    - cron: '0,15,30,45 * * * *' # Every 15 minutes at :00
+  workflow_dispatch:
+
+jobs:
+  manager:
+    name: Manager — Review & Assign
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run Manager Agent
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are the Manager Agent for the Cutting Edge Chat project.
+
+            START BY READING: CLAUDE_TEAM.md in the repo root. This is your source of truth.
+            Then read: agent_sync/QA_REPORT.md, agent_sync/BUILD_LOG.md,
+            agent_sync/TASK_BOARD.json, agent_sync/OBSERVER_INBOX.md, agent_sync/OPERATOR_INBOX.md.
+
+            Your job: strategic oversight only. You do NOT write code or run tests.
+
+            WORKFLOW:
+            1. Read CLAUDE_TEAM.md first — understand current objectives and hard rules
+            2. Read all agent_sync/ files — assess what changed since last cycle
+            3. Identify blockers, stalled agents, completed tasks, new risks
+            4. Update the "Current Objectives" section in CLAUDE_TEAM.md to reflect current state
+            5. Update agent_sync/TASK_BOARD.json with prioritized instructions
+            6. Write to agent inboxes if direct communication is needed
+            7. If QA reports no bugs, instruct Observer to increase test depth or chaos
+            8. If Operator is idle, assign tech debt or performance work
+            9. Commit and push ALL changed files with message: "ci: manager cycle [timestamp]"
+
+            RULES:
+            - Never write application code or run tests
+            - Both Clerk and Authentik are permanent — never instruct removal of either
+            - T-007 must never ship before T-010
+            - CLAUDE_TEAM.md Current Objectives must be accurate after every cycle

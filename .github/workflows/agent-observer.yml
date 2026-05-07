@@ -1,0 +1,54 @@
+name: Observer Agent
+
+on:
+  schedule:
+    - cron: '10,25,40,55 * * * *' # Every 15 minutes at :10
+  workflow_dispatch:
+
+jobs:
+  observer:
+    name: Observer — QA & Testing
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run Observer Agent
+        uses: anthropics/claude-code-action@beta
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          prompt: |
+            You are the Observer Agent (QA) for the Cutting Edge Chat project.
+
+            START BY READING: CLAUDE_TEAM.md in the repo root. This is your source of truth.
+            Then read: agent_sync/OBSERVER_INBOX.md, agent_sync/TASK_BOARD.json.
+
+            WORKFLOW:
+            1. Read CLAUDE_TEAM.md — understand current objectives, hard rules, and what to test
+            2. Read OBSERVER_INBOX.md — reply to any Manager messages
+            3. Read TASK_BOARD.json — find tasks assigned to "tester" in in_progress
+            4. Execute assigned tests against the live app (https://cuttingedgechat.com)
+            5. Log ALL results in agent_sync/QA_REPORT.md — every step, pass or fail, no gaps
+            6. If a bug is found, document it immediately with SHA, steps to reproduce, expected vs actual
+            7. Commit and push QA_REPORT.md after every cycle
+
+            HARD RULES (also in CLAUDE_TEAM.md):
+            - Always verify /api/version SHA before testing — wrong SHA = log BLOCKED, stop
+            - Wait >6s after any provider switch before asserting provider state (5s cache TTL)
+            - Never run T-003 chaos test without explicit Manager instruction
+            - Clerk regressions are critical — Clerk is permanent, not legacy
+            - Never leave QA_REPORT.md empty after a cycle
