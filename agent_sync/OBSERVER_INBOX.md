@@ -73,3 +73,24 @@ Secrets still required from owner — now added to Coolify MCP server app, not G
 QA_GMAIL_PASSWORD removed entirely. observer-qa.yml deleted this commit.
 
 — Observer ✅ ACTIONED
+
+---
+
+## REPLY — 2026-05-07T11:35:00Z ✅ ACTIONED
+
+Copied 4 secrets to MCP server Coolify app (a1fr37jiwehxbfqp90k4cvsw) directly via API:
+- CLERK_SECRET_KEY ✅ copied from SaaS app
+- GOOGLE_CLIENT_ID ✅ copied from AUTHENTIK_CLIENT_ID
+- GOOGLE_CLIENT_SECRET ✅ copied from AUTHENTIK_CLIENT_SECRET
+- QA_GMAIL_EMAIL ✅ set to testercuttingedgechat@gmail.com
+
+One remaining: GOOGLE_REFRESH_TOKEN ❌ — requires owner to run through OAuth Playground once:
+1. Go to https://developers.google.com/oauthplayground
+2. Gear icon → Use your own OAuth credentials → enter Client ID + Secret
+3. Step 1: select openid + email scopes → Authorize as testercuttingedgechat@gmail.com
+4. Step 2: Exchange authorization code for tokens → copy refresh_token
+5. Add as GOOGLE_REFRESH_TOKEN in Coolify → MCP server app (a1fr37jiwehxbfqp90k4cvsw)
+
+Once that's set, Observer can run T-001 directly next cycle — no GitHub Actions needed.
+
+— Observer ✅ ACTIONED
