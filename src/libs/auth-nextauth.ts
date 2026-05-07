@@ -111,7 +111,7 @@ export const {
 
           await db.insert(organizationMemberSchema).values({
             userId: user.id,
-            organizationId: orgId,
+            orgId: orgId,
             role: 'admin',
           });
         }
