@@ -101,37 +101,35 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T06:00:00Z*
+*Updated by Manager — 2026-05-07T06:15:00Z*
 
-### 🔴 Critical — HARD BLOCK: Sprint Cannot Proceed Without Owner Input
+### 🔴 INDEFINITELY STALLED — Owner Action Required (Cycle 11)
 
-We have now completed **Cycle 10** with zero new information about run 25477808748. The Observer cannot access GitHub Actions. The Manager cannot access GitHub Actions. **The sprint is fully stalled on a single owner action.**
+The sprint has now reached **Cycle 11** with **four consecutive cycles** of no result from GitHub Actions run 25477808748. No agent can unblock this. The sprint is flagged as **indefinitely stalled** until the owner acts.
 
-#### Required Owner Action — No Agents Can Unblock This
+#### Required Owner Action — exactly one of the following
 
-The owner must do ONE of the following:
-
-**Option A — Check the run result:**
+**Option A — Check the existing run:**
 1. Go to https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25477808748
-2. Report whether it **PASSED** or **FAILED**
-3. If FAILED: paste the name of the failing step and the error message
+2. Report **PASSED** or **FAILED**
+3. If FAILED: paste the failing step name and error message
 
-**Option B — Re-trigger manually and watch:**
+**Option B — Re-trigger and watch:**
 1. Go to https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml
-2. Click "Run workflow" → Run on `main`
-3. Watch the run live and report the result (or share the new run URL)
+2. Click **Run workflow** → branch `main`
+3. Watch live and report result (or paste the new run URL here)
 
-**Option C — Grant the Observer a way to read results:**
-If the agent runtime can be given a `GITHUB_TOKEN` or equivalent, Observer can query the GitHub API for run results autonomously going forward.
+**Option C — Grant API access:**
+Provide a `GITHUB_TOKEN` with `actions:read` so Observer can query the GitHub API autonomously each cycle.
 
 #### What Happens Next
-- **If PASSED:** Observer declares T-001 PASS. Operator deploys T-007 + T-010 immediately. Sprint moves to Phase 6.
-- **If FAILED:** Observer reviews the specific failing step, applies a targeted fix, re-triggers, and reports the new run URL. Manager coordinates resolution.
+- **If PASSED:** Observer declares T-001 PASS → Operator deploys T-007 + T-010 immediately → Sprint moves to Phase 6.
+- **If FAILED:** Observer identifies specific failing step, applies targeted fix, re-triggers, logs new run URL. Sprint resumes.
 
 #### Agent Status This Cycle
-- **Observer:** No network access. Cannot determine run result. Cannot make progress on T-001 without external input. Headless battery carried forward — no regressions.
+- **Observer:** Holding. No network access. Headless battery carried forward — no regressions. Awaiting owner input.
 - **Operator:** Standby. No code tasks. BUILD_LOG.md updated. Ready to deploy T-007 + T-010 on signal.
-- **Manager:** All resolvable issues are closed. Sprint is blocked exclusively on owner providing run 25477808748 result.
+- **Manager:** All resolvable issues closed. Sprint indefinitely stalled — flagged for owner.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -152,13 +150,13 @@ If the agent runtime can be given a `GITHUB_TOKEN` or equivalent, Observer can q
 | Date | Incident | Resolution |
 |---|---|---|
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
-| 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED: Observer removed call from spec (Cycle 7). Operator built route anyway (unused but harmless). |
-| 2026-05-07 | Secret name churn: QA_GMAIL_* → GOOGLE_TEST_* → QA_GMAIL_* | ✅ RESOLVED: Locked as QA_GMAIL_EMAIL / QA_GMAIL_PASSWORD. Hard rule added. |
-| 2026-05-07 | NEW-RISK-01 — secret name mismatch (Observer Cycle 8 escalation) | ✅ CLOSED: Manager confirms QA_GMAIL_* matches what owner added. Spec matches. |
-| 2026-05-07 | MCP_DEPLOY_SECRET confusion — listed as owner action for 7 cycles | ✅ CLOSED: This secret does not exist. Removed from all action items permanently. |
-| 2026-05-07 | observer-qa.yml run 25477808748 — results unknown (Cycles 8, 9, 10) | 🔴 HARD BLOCK: Owner must check GitHub Actions and report. Agents cannot access. |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting Test B confirmation via observer-qa.yml. |
-| 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD added by owner (Cycle 7 confirmed). |
+| 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED |
+| 2026-05-07 | Secret name churn: QA_GMAIL_* → GOOGLE_TEST_* → QA_GMAIL_* | ✅ RESOLVED: Locked. Hard rule added. |
+| 2026-05-07 | NEW-RISK-01 — secret name mismatch | ✅ CLOSED |
+| 2026-05-07 | MCP_DEPLOY_SECRET confusion | ✅ PERMANENTLY CLOSED |
+| 2026-05-07 | observer-qa.yml run 25477808748 — results unknown (Cycles 8–11) | 🔴 INDEFINITELY STALLED: Owner must act. Agents cannot access GitHub Actions. |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting Test B via observer-qa.yml. |
+| 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | Fixed in `370c0c0` |
