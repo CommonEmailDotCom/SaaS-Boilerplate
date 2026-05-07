@@ -1,75 +1,65 @@
 # QA_REPORT.md
 
-## Cycle 25 — 2026-05-07T09:40:00Z
+## Cycle 26 — 2026-05-07T09:55:00Z
 
 ### SHA Verification
 
 | Item | Value |
 |---|---|
 | Live SHA (`/api/version`) | `b0a954f` |
-| Latest observer-qa.yml SHA | `d328910` |
-| SHA match | ⚠️ MISMATCH — live is `b0a954f`, CI running on `d328910` |
+| Latest observer-qa.yml run SHA | `8ef18ed` |
+| SHA match | ❌ NO — CI is testing `8ef18ed`, live is `b0a954f` |
 
-**Note:** Live SHA `b0a954f` differs from CI SHA `d328910`. This is expected if a new deploy is in flight or if `d328910` is a newer commit not yet deployed. The CI run is the source of truth for T-001 status per Hard Rule #10.
-
----
-
-### Observer-QA Run Status
-
-Run dispatched (autoDispatch: `dispatched`) this cycle.
-
-| Run ID | Conclusion | SHA | Created |
-|---|---|---|---|
-| 25488012786 | **in_progress** | `d328910` | 09:37:12 |
-| 25487999256 | success | `d328910` | 09:36:54 |
-| 25487999234 | failure | `d328910` | 09:36:54 |
-
-**Latest run `25488012786` is IN PROGRESS** — cannot declare T-001 PASS or FAIL yet.
+**Note:** `8ef18ed` is a newer commit than live `b0a954f`. The set-version runs show recent deployments (SHA `bb2d43d` at 09:52:59, `fdadf9f` at 09:51:44). Live SHA `b0a954f` may be stale from a prior deployment cycle. The observer-qa.yml run `25488605813` was dispatched against `8ef18ed` — this is the authoritative T-001 run for this cycle.
 
 ---
 
-### latestObserverQaDetail — Run 25488012786
+### Current Run Status
 
-Job: `smoke-test`  
-Conclusion: **in_progress**  
-Currently blocked at: **Step 4 — Wait for deployment**
+**Run ID:** `25488605813`  
+**SHA:** `8ef18ed`  
+**Created:** `09:50:03`  
+**Conclusion:** 🔄 **IN PROGRESS**
 
 | Step | Status |
 |---|---|
 | [1] Set up job | ✅ success |
 | [2] Run actions/checkout@v4 | ✅ success |
-| [3] Get deployed SHA | ✅ success |
-| [4] Wait for deployment | 🔄 in_progress |
-| [5] Run actions/setup-node@v4 | ⏳ pending |
-| [6] Install dependencies | ⏳ pending |
-| [7] Install Playwright browsers | ⏳ pending |
-| [8] Run smoke tests | ⏳ pending |
-| [9–16, 32] Remaining steps | ⏳ pending |
+| [3] Run actions/setup-node@v4 | ✅ success |
+| [4] Install dependencies | ✅ success |
+| [5] Install Playwright | ✅ success |
+| [6] Verify secrets | ✅ success |
+| [7] Run T-001 tests | 🔄 in_progress |
+| [8] Write result to QA_REPORT.md | ⏳ pending |
+| [9] Upload artifacts on failure | ⏳ pending |
+| [17] Post Run actions/setup-node@v4 | ⏳ pending |
+| [18] Post Run actions/checkout@v4 | ⏳ pending |
 
-Steps 5–16 all pending. No Playwright failure data available yet.
-
----
-
-### Observations on Prior Runs (Same SHA `d328910`)
-
-- Run `25487999234` (09:36:54) — **failure** — this is the most recent completed run, likely the same as the previous step-7 failure pattern. No detail available in `latestObserverQaDetail` (superseded by `25488012786`).
-- Run `25487999256` (09:36:54) — **success** — same-second creation as the failure run. This is anomalous: two runs created at the exact same second with different conclusions. This may indicate a retry/duplicate dispatch pattern. **The failure run is the operative result for T-001 purposes until `25488012786` completes.**
+**All infra steps (1–6) passed.** Playwright tests (step 7) are actively running. No result yet.
 
 ---
 
-### Headless Battery
+### Prior Run Results (for context)
 
-| Check | Result |
-|---|---|
-| Live app reachable | ✅ Assumed reachable |
-| /api/version SHA | `b0a954f` |
-| observer-qa.yml dispatched | ✅ `autoDispatch: dispatched` |
-| Latest run conclusion | 🔄 in_progress (25488012786) |
-| Previous completed run | ❌ failure (25487999234, same SHA `d328910`) |
-| smokeStatus reader | ❌ `fs.readFileSync is not a function` — ongoing Edge runtime error |
-| Deploy gate (T-007+T-010) | 🔴 ACTIVE — T-001 not yet PASS |
-| Coolify auto-deploy | ✅ DISABLED |
-| T-001 PASS declared | ❌ NO — run 25488012786 in_progress |
+| Run ID | SHA | Conclusion | Created |
+|---|---|---|---|
+| 25488605813 | `8ef18ed` | 🔄 in_progress | 09:50:03 |
+| 25488141574 | `d328910` | ❌ failure | 09:40:03 |
+| 25487914378 | `96991b9` | ❌ failure | 09:35:02 |
+
+Run `25488141574` (SHA `d328910`) FAILED — exact step not determinable from current live data snapshot (step detail not included). Run `25487914378` (SHA `96991b9`) also FAILED.
+
+**Pattern:** Two consecutive failures on different SHAs (`96991b9`, `d328910`) before the current in_progress run on `8ef18ed`. This suggests either (a) the Playwright tests have a persistent failure unrelated to SHA changes, or (b) the Operator has pushed fixes on `8ef18ed` to address the step 7 failure.
+
+---
+
+### Smoke / Deploy Status (NOT used for T-001)
+
+*Listed for awareness only per Hard Rule #10 — irrelevant to T-001.*
+
+- smokeStatus reader: ❌ `fs.readFileSync is not a function` — TASK-F ongoing
+- set-version runs: recent success on `bb2d43d` (09:52:59) and `fdadf9f` (09:51:44)
+- smokeTestRuns: `bb2d43d` in_progress (09:53:21), two cancelled
 
 ---
 
@@ -78,37 +68,29 @@ Steps 5–16 all pending. No Playwright failure data available yet.
 | Item | Status |
 |---|---|
 | Live SHA | `b0a954f` |
-| CI running SHA | `d328910` |
-| Run 25488012786 | 🔄 IN PROGRESS — step 4 (Wait for deployment) |
-| Prior run 25487999234 | ❌ failure on `d328910` |
-| Prior run 25487999256 | ✅ success on `d328910` (anomalous — same-second as failure) |
-| T-001 PASS | ❌ NOT DECLARED — awaiting run completion |
-| Deploy gate | 🔴 ACTIVE |
+| Active run SHA | `8ef18ed` |
+| Run 25488605813 | 🔄 IN PROGRESS — step 7 (Playwright tests) running |
+| T-001 PASS declared | ❌ NO — awaiting step 7 completion |
+| Deploy gate (T-007+T-010) | 🔴 ACTIVE — must not ship |
 | Coolify auto-deploy | ✅ OFF |
 | smokeStatus reader | ❌ Edge runtime error ongoing (TASK-F) |
 
 ---
 
-### Anomaly Flag — Dual Same-Second Runs
-
-Runs `25487999256` (success) and `25487999234` (failure) were created at the exact same second (09:36:54) on the same SHA `d328910`. This mirrors the prior triple-trigger pattern. **Not escalating** — this is on `d328910` and the in_progress run `25488012786` is the current authoritative run. Flagging for Manager awareness only.
-
----
-
 ### Next Cycle Action
 
-Run `25488012786` is in_progress at step 4 (deployment wait). Next cycle must:
-1. Check `latestObserverQaDetail` for `25488012786` completion.
+Run `25488605813` is in_progress at step 7 (Playwright tests). Next cycle must:
+1. Check `latestObserverQaDetail` for `25488605813` completion.
 2. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL**.
-3. If **failure at step 7 or 8** → report exact test name, assertion, and error text verbatim to Manager.
-4. Do NOT redispatch if failure — escalate only.
+3. If **failure at step 7** → report exact test name, assertion, and error text verbatim. Escalate to Manager. Do NOT redispatch.
+4. Note: if the run completed and a new run has been auto-dispatched, read the newest completed run's detail.
 
-_Observer Agent — Cycle 25 — 2026-05-07T09:40:00Z_
+_Observer Agent — Cycle 26 — 2026-05-07T09:55:00Z_
 
 ---
 
-## Cycle 24 — 2026-05-07T09:30:00Z
+## Cycle 25 — 2026-05-07T09:40:00Z
 
-[Archived — Cycle 23 false-alarm on CI skip regression closed per Manager correction. Hard Rule #10 confirmed. Run 25486755025 FAILED at step 7 (Playwright tests) — exact error unknown. New run dispatched this cycle (25488012786). T-001 not declared. Deploy gate active.]
+[Archived — Run 25488012786 was in_progress at step 4. Run 25487999234 (failure) and anomalous 25487999256 (success) on SHA `d328910` noted. Deploy gate active. Hard Rule #10 confirmed.]
 
-_Observer Agent — Cycle 24 — 2026-05-07T09:30:00Z_
+_Observer Agent — Cycle 25 — 2026-05-07T09:40:00Z_
