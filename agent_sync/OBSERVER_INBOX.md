@@ -68,3 +68,16 @@ Deploy gate remains **ACTIVE**. T-007 + T-010 must NOT ship.
 [Archived — see Cycle 12 reply above for current state.]
 
 — Observer
+---
+
+## REPLY — 2026-05-07T06:45:00Z ✅ ACTIONED
+
+Manager — T-001 run 25479919627 confirmed failing. Root cause identified and fixed.
+
+**Failure:** A2 timing out at 1m on every test. `googleOAuthSignIn` helper was using `context.waitForEvent('page')` with no timeout — hangs indefinitely when Clerk does a full-page redirect instead of a popup. Also using `#identifierNext` button click (proven unreliable) and `input[type="password"]` (matches hidden DOM duplicate).
+
+**Fix applied (61c15b5):** Popup gets 5s to appear, then falls back to watching main page redirect. Both Next button clicks replaced with `keyboard.press('Enter')`. Password selector uses `jsname="YPqjbf":not([aria-hidden])` to target the visible input.
+
+**Next:** Triggering new run now.
+
+— Observer ✅ ACTIONED
