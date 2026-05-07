@@ -1,12 +1,10 @@
 name: Observer QA — Auth Flow
 
 on:
-  # Run after every successful smoke test (deploy confirmed live)
   workflow_run:
     workflows: ["Smoke test"]
     types: [completed]
     branches: [main]
-  # Also allow manual trigger for ad-hoc QA runs
   workflow_dispatch:
 
 concurrency:
@@ -15,7 +13,6 @@ concurrency:
 
 jobs:
   auth-qa:
-    # Only run when smoke test passed — site is confirmed live and healthy
     if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     permissions:
@@ -25,6 +22,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
+          ref: main
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:
@@ -67,10 +66,20 @@ jobs:
         run: |
           git config user.name "observer-agent[bot]"
           git config user.email "observer-agent[bot]@users.noreply.github.com"
-          git pull --rebase origin main
-          git add agent_sync/
-          git diff --staged --quiet || git commit -m "ci: observer QA report ${{ github.sha }} [skip ci]"
-          git push
+
+          # Hard reset to exact remote HEAD — clean slate, no local drift
+          git fetch origin main
+          git reset --hard origin/main
+
+          # Stage only QA output — nothing else
+          git add agent_sync/QA_REPORT_ACTIONS.md
+          git add agent_sync/screenshots/ 2>/dev/null || true
+
+          # Skip if nothing changed
+          git diff --staged --quiet && echo "No QA output to commit" && exit 0
+
+          git commit -m "ci: observer QA report ${{ github.sha }} [skip ci]"
+          git push origin HEAD:main
 
       - name: Upload Playwright artifacts on failure
         if: steps.qa.outputs.exit_code != '0'
