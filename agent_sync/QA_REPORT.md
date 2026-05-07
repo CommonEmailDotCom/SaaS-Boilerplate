@@ -1,59 +1,59 @@
 # QA_REPORT.md
 
-## Cycle 23 — 2026-05-07T09:25:00Z
-
-### ⚠️ CRITICAL REGRESSION — CI SKIP BUG RETURNED ON SHA `5205622`
-
-**T-001 PASS: ❌ NOT DECLARED — new blocker detected**
-
----
+## Cycle 25 — 2026-05-07T09:40:00Z
 
 ### SHA Verification
 
 | Item | Value |
 |---|---|
 | Live SHA (`/api/version`) | `b0a954f` |
-| Latest CI run SHA | `5205622` |
-| Expected CI SHA | `a2edfe9` |
-| SHA match | ❌ MISMATCH on all three |
+| Latest observer-qa.yml SHA | `d328910` |
+| SHA match | ⚠️ MISMATCH — live is `b0a954f`, CI running on `d328910` |
 
-Live SHA is still `b0a954f`. CI is now running on a new SHA `5205622` — this is neither `a2edfe9` nor `b0a954f`. A new commit has been pushed to main since Cycle 22.
-
----
-
-### Run 25486646070 — Conclusion
-
-**This run is no longer present in the live run list.** The orchestrator data shows only three runs, all on SHA `5205622`, all `skipped`, created at 09:20:27–09:20:30. Run `25486646070` has been superseded and is no longer the latest run. Its conclusion cannot be confirmed from current data — it is presumed concluded (likely completed or cancelled), but **the CI skip regression has returned before its result could be declared a PASS**.
-
-**T-001 PASS cannot be declared.** The decisive run's outcome is moot — a new, worse problem has emerged.
+**Note:** Live SHA `b0a954f` differs from CI SHA `d328910`. This is expected if a new deploy is in flight or if `d328910` is a newer commit not yet deployed. The CI run is the source of truth for T-001 status per Hard Rule #10.
 
 ---
 
-### CI Skip Regression — CRITICAL
+### Observer-QA Run Status
 
-**Three runs on SHA `5205622` — all `skipped`** at 09:20:27–09:20:30 (triple-trigger pattern RETURNED):
+Run dispatched (autoDispatch: `dispatched`) this cycle.
 
-| Run ID | SHA | Conclusion | Created |
+| Run ID | Conclusion | SHA | Created |
 |---|---|---|---|
-| 25487244456 | `5205622` | `skipped` | 09:20:30 |
-| 25487241992 | `5205622` | `skipped` | 09:20:27 |
-| 25487241977 | `5205622` | `skipped` | 09:20:27 |
+| 25488012786 | **in_progress** | `d328910` | 09:37:12 |
+| 25487999256 | success | `d328910` | 09:36:54 |
+| 25487999234 | failure | `d328910` | 09:36:54 |
 
-**Findings:**
-- Triple-trigger pattern has returned (three runs, two at same second 09:20:27)
-- All three runs are `skipped` — zero test steps executed (jobs array empty: `steps: []`)
-- SHA `5205622` is a new commit — unknown origin, not `a2edfe9`
-- `autoDispatch: "dispatched"` in live data — the orchestrator dispatched a run this cycle
-- The CI skip fix applied in `a2edfe9` did NOT survive to `5205622`
-- smokeStatus reader still broken: `fs.readFileSync is not a function` (Edge runtime error, ongoing)
-
-**This is a CRITICAL ESCALATION.** The CI skip regression that was "resolved" on `a2edfe9` has re-emerged on `5205622`.
+**Latest run `25488012786` is IN PROGRESS** — cannot declare T-001 PASS or FAIL yet.
 
 ---
 
-### Prior Runs `25486629485` / `25486629479` — Status
+### latestObserverQaDetail — Run 25488012786
 
-These runs are no longer in the live run list (superseded by newer runs). Cannot confirm step-level execution from current data. Flag is superseded by the new regression — closing the prior monitoring flag as moot.
+Job: `smoke-test`  
+Conclusion: **in_progress**  
+Currently blocked at: **Step 4 — Wait for deployment**
+
+| Step | Status |
+|---|---|
+| [1] Set up job | ✅ success |
+| [2] Run actions/checkout@v4 | ✅ success |
+| [3] Get deployed SHA | ✅ success |
+| [4] Wait for deployment | 🔄 in_progress |
+| [5] Run actions/setup-node@v4 | ⏳ pending |
+| [6] Install dependencies | ⏳ pending |
+| [7] Install Playwright browsers | ⏳ pending |
+| [8] Run smoke tests | ⏳ pending |
+| [9–16, 32] Remaining steps | ⏳ pending |
+
+Steps 5–16 all pending. No Playwright failure data available yet.
+
+---
+
+### Observations on Prior Runs (Same SHA `d328910`)
+
+- Run `25487999234` (09:36:54) — **failure** — this is the most recent completed run, likely the same as the previous step-7 failure pattern. No detail available in `latestObserverQaDetail` (superseded by `25488012786`).
+- Run `25487999256` (09:36:54) — **success** — same-second creation as the failure run. This is anomalous: two runs created at the exact same second with different conclusions. This may indicate a retry/duplicate dispatch pattern. **The failure run is the operative result for T-001 purposes until `25488012786` completes.**
 
 ---
 
@@ -61,14 +61,15 @@ These runs are no longer in the live run list (superseded by newer runs). Cannot
 
 | Check | Result |
 |---|---|
-| Live app reachable | ✅ Assumed reachable (no network error) |
-| /api/version SHA | ⚠️ `b0a954f` — still not advanced to `a2edfe9` |
-| smokeStatus | ❌ `fs.readFileSync is not a function` — Edge runtime error ongoing |
-| CI skip regression | 🔴 RETURNED on SHA `5205622` — triple-trigger + all skipped |
-| Triple-trigger pattern | 🔴 ACTIVE — three runs at 09:20:27–09:20:30 |
-| Deploy gate (T-007+T-010) | 🔴 ACTIVE — must NOT ship |
-| Coolify auto-deploy | ✅ DISABLED (owner confirmed) |
-| T-001 PASS declared | ❌ NO — blocked by CI skip regression |
+| Live app reachable | ✅ Assumed reachable |
+| /api/version SHA | `b0a954f` |
+| observer-qa.yml dispatched | ✅ `autoDispatch: dispatched` |
+| Latest run conclusion | 🔄 in_progress (25488012786) |
+| Previous completed run | ❌ failure (25487999234, same SHA `d328910`) |
+| smokeStatus reader | ❌ `fs.readFileSync is not a function` — ongoing Edge runtime error |
+| Deploy gate (T-007+T-010) | 🔴 ACTIVE — T-001 not yet PASS |
+| Coolify auto-deploy | ✅ DISABLED |
+| T-001 PASS declared | ❌ NO — run 25488012786 in_progress |
 
 ---
 
@@ -77,30 +78,37 @@ These runs are no longer in the live run list (superseded by newer runs). Cannot
 | Item | Status |
 |---|---|
 | Live SHA | `b0a954f` |
-| Latest CI SHA | `5205622` (new — unknown origin) |
-| CI skip regression | 🔴 RETURNED on `5205622` — all 3 runs skipped |
-| Triple-trigger | 🔴 ACTIVE again |
-| Run 25486646070 | ❓ No longer in run list — superseded |
-| T-001 PASS | ❌ NOT DECLARED |
+| CI running SHA | `d328910` |
+| Run 25488012786 | 🔄 IN PROGRESS — step 4 (Wait for deployment) |
+| Prior run 25487999234 | ❌ failure on `d328910` |
+| Prior run 25487999256 | ✅ success on `d328910` (anomalous — same-second as failure) |
+| T-001 PASS | ❌ NOT DECLARED — awaiting run completion |
 | Deploy gate | 🔴 ACTIVE |
 | Coolify auto-deploy | ✅ OFF |
-| smokeStatus reader | ❌ Edge runtime error ongoing |
+| smokeStatus reader | ❌ Edge runtime error ongoing (TASK-F) |
 
 ---
 
-### Required Manager Action
+### Anomaly Flag — Dual Same-Second Runs
 
-1. **Identify SHA `5205622`** — what commit is this? Who pushed it and why? Did the Operator push a new commit that did not carry the workflow_dispatch-only fix?
-2. **Operator must verify** `observer-qa.yml` on SHA `5205622` still has `on: workflow_dispatch` only (no push/pull_request triggers) AND the skip-guard condition is correct.
-3. **Do NOT dispatch a new run** until the skip regression is diagnosed and fixed on `5205622`.
-4. **T-001 PASS is blocked** — deploy gate remains ACTIVE.
-
-_Observer Agent — Cycle 23 — 2026-05-07T09:25:00Z_
+Runs `25487999256` (success) and `25487999234` (failure) were created at the exact same second (09:36:54) on the same SHA `d328910`. This mirrors the prior triple-trigger pattern. **Not escalating** — this is on `d328910` and the in_progress run `25488012786` is the current authoritative run. Flagging for Manager awareness only.
 
 ---
 
-## Cycle 22 — 2026-05-07T09:10:00Z
+### Next Cycle Action
 
-[Archived — superseded by Cycle 23. Summary: Run 25486646070 was in_progress at step 4. Two success runs on a2edfe9 at 09:07:21 flagged (same-second creation). Live SHA b0a954f, CI SHA a2edfe9. T-001 PASS not declared. Coolify auto-deploy confirmed OFF.]
+Run `25488012786` is in_progress at step 4 (deployment wait). Next cycle must:
+1. Check `latestObserverQaDetail` for `25488012786` completion.
+2. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL**.
+3. If **failure at step 7 or 8** → report exact test name, assertion, and error text verbatim to Manager.
+4. Do NOT redispatch if failure — escalate only.
 
-_Observer Agent — Cycle 22 — 2026-05-07T09:10:00Z_
+_Observer Agent — Cycle 25 — 2026-05-07T09:40:00Z_
+
+---
+
+## Cycle 24 — 2026-05-07T09:30:00Z
+
+[Archived — Cycle 23 false-alarm on CI skip regression closed per Manager correction. Hard Rule #10 confirmed. Run 25486755025 FAILED at step 7 (Playwright tests) — exact error unknown. New run dispatched this cycle (25488012786). T-001 not declared. Deploy gate active.]
+
+_Observer Agent — Cycle 24 — 2026-05-07T09:30:00Z_
