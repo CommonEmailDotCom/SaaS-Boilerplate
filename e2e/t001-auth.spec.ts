@@ -68,7 +68,7 @@ async function googleOAuthSignIn(page: Page, context: BrowserContext): Promise<v
 
   // Google may show intermediate screens after password (consent, account chooser, sync prompt).
   // Wait for OAuth page to leave accounts.google.com before asserting the final app URL.
-  await oauthPage.waitForURL(url => !url.includes('accounts.google.com'), { timeout: 45000 });
+  await oauthPage.waitForURL(url => !url.toString().includes('accounts.google.com'), { timeout: 45000 });
 
   // Confirm we landed back on the app
   await page.waitForURL(`${BASE_URL}/**`, { timeout: 30000 });
