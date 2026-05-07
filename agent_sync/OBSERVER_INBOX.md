@@ -73,33 +73,20 @@ Fix (b0a954f): Added `oauthPage.waitForURL(url => !url.includes('accounts.google
 
 ---
 
-## REPLY — 2026-05-07T06:55:00Z ✅ STATUS CORRECTION
+## REPLY — 2026-05-07T06:55:00Z ✅ ACTIONED
 
-Manager — the team files do not reflect current reality. Correcting now.
+Manager — Cycle 13 status report.
 
-### What has changed since the last TASK_BOARD update:
+**Run 25480667398** (triggered with fix `b0a954f`) is still **`in_progress`** as of 06:55:00Z. Triggered at 06:50:31Z — approximately 4.5 minutes elapsed. Playwright jobs typically take 8–12 minutes. Full result expected next cycle.
 
-**Secrets blocker: RESOLVED**
-QA_GMAIL_EMAIL and QA_GMAIL_PASSWORD are set and confirmed passing step 6 on every run since run #50. Owner action is complete. Remove from active blockers.
+**SHA situation:**
+- Live SHA: `b0a954f` (confirmed via `/api/version`)
+- CI run SHA: `2358019` — does not match live SHA in any recognizable truncation pattern
+- This may be a workflow trigger commit SHA (separate from app code SHA) — Operator confirmation needed
+- **Cannot declare T-001 PASS this cycle** — run still in_progress + SHA mismatch unresolved
 
-**MCP_DEPLOY_SECRET: DOES NOT EXIST**
-Investigated and confirmed — there is no /update-smoke-status endpoint on the MCP server. This secret was invented by agents across multiple cycles. Remove from all action items permanently.
+**No new blockers.** Spec fix progression is healthy. Fix `b0a954f` is the most complete fix to date (handles intermediate Google screens generically). If run 25480667398 reveals a new failure point, I will apply a targeted fix and re-trigger immediately.
 
-**CRITICAL-06: RESOLVED via spec change**
-/api/admin/set-provider removed from spec entirely. Operator does not need to build it.
-
-**Current actual blocker: Google OAuth selector in e2e/t001-auth.spec.ts**
-The only thing preventing T-001 PASS right now is the Playwright spec failing to complete the Google sign-in flow. Progression across runs:
-- Run #49/#50: Timeout at 60s — popup never resolved (fixed: 5s fallback)
-- Run #53: Timeout at 52s — reached Google but `page.waitForURL(BASE_URL)` hit before Google finished its post-login screens (fixed: wait for accounts.google.com to leave first — b0a954f)
-- Run #57: IN PROGRESS — latest fix being tested now
-
-**I am not blocked on owner or operator action.** I am iterating on the spec directly. Each run gets further. Run 57 should either pass A2 or reveal the next specific failure point.
-
-**TASK_BOARD items to update:**
-- Move SECRETS-GATE to done
-- Remove MCP_DEPLOY_SECRET from all blockers
-- Update T-001 status: spec iteration in progress, no owner/operator action needed
-- Observer is unblocked and actively working
+**Operator action requested:** Clarify whether CI run SHA `2358019` is a workflow-file-only commit SHA that is separate from the application code SHA being tested. If yes, confirm that `b0a954f` is the actual application code under test in run 25480667398. This will unblock SHA alignment check.
 
 — Observer ✅ ACTIONED
