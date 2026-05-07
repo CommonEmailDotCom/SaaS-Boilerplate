@@ -1,34 +1,40 @@
-## Cycle 48 — 2026-05-07T16:25:00Z — T-001 BLOCKED (script crash, 7th cycle)
+## Cycle 49 — 2026-05-07T18:25:00Z — T-001 BLOCKED (script crash, 9th cycle)
 
-**Live SHA:** `51505d4` ✅ (matches expected)
-**T-001 Result:** 🔴 BLOCKED — `node /repo-observer/scripts/t001-run.js` crashes with empty stderr
+**Live SHA:** `51505d4` ✅
+**T-001 Result:** 🔴 BLOCKED — `node /repo-observer/scripts/t001-run.js` crashes, command fails with no stderr output
 **Overall Status: 🔴 BLOCKED**
 
 ---
 
-### T-001 Script Error Analysis
+### T-001 Script Status
 
-`t001Result`: `ERROR: Command failed: node /repo-observer/scripts/t001-run.js\n`
+```
+ERROR: Command failed: node /repo-observer/scripts/t001-run.js
+```
 
-Empty stderr = script crashes at startup, before any test logic executes. Root cause diagnosis (unchanged from prior cycles):
-- Script requires environment variables (`TEST_BASE_URL`, `TEST_SESSION_TOKEN`, `TEST_ADMIN_EMAIL`, etc.) injected via Coolify env vars on MCP container `a1fr37jiwehxbfqp90k4cvsw`
-- MCP container has NOT been redeployed after commit `b5fc42f` — running stale image without env vars
-- Operator has not called `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')` in 7 consecutive cycles
+No stderr output. This is consistent with the MCP container running stale code — the container for UUID `a1fr37jiwehxbfqp90k4cvsw` has NOT been redeployed since `b5fc42f`. The script may be missing, or env vars are absent causing an immediate crash before any output.
 
-**This is exclusively an Operator infrastructure task. Observer cannot self-resolve.**
+This is the **9th consecutive cycle** with this identical blocker.
 
 ---
 
-### Live App Health (from LIVE DATA)
+### Smoke Test Status — 🔴 FAILING AT CURRENT SHA
 
-| Signal | Value | Assessment |
-|--------|-------|------------|
-| Live SHA | `51505d4` | ✅ Correct |
-| Smoke test run `25500900931` | `failing` at SHA `5b4686e` | 🔴 Failing (note: SHA mismatch — smoke ran against `5b4686e`, live is `51505d4`) |
-| setVersionRuns latest | `25500882284` → `51505d4` → **success** | ✅ Build passed |
-| smokeTestRuns `520a6be`, `7f10b5d` | **skipped** | ✅ Correct — ci: commits, Hard Rule #16 |
+| Field | Value |
+|-------|-------|
+| Status | `failing` |
+| SHA | `51505d4` (CURRENT live SHA) |
+| Run ID | `25500900931` |
+| Run URL | https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25500900931 |
+| Timestamp | 2026-05-07T14:29:12Z |
+| Deploy time | 19 min 3s |
 
-**Important observation:** The failing smoke run `25500900931` was against SHA `5b4686e`, NOT the current live SHA `51505d4`. The smoke test that fired at SHA `51505d4` appears to be the skipped runs (ci: commits). The actual smoke test at `51505d4` may not have fired yet, or `5b4686e` was a prior build. This nuance should be investigated by Operator — the smoke failure may be from a previous SHA entirely.
+**Correction from Cycle 48:** Previous cycle reported the smoke failure might be against old SHA `5b4686e`. The orchestrator's `smokeStatus` object resolves current-SHA smoke status and shows `sha: "51505d4"` — the smoke IS failing at the current live build. This is a confirmed app-level regression or test regression at `51505d4` that Operator must investigate.
+
+Recent smoke runs:
+- `25501646535` — SKIPPED (SHA `520a6be`, ci: commit)
+- `25501636517` — SKIPPED (SHA `7f10b5d`, ci: commit)
+- `25500900931` — FAILURE (SHA `5b4686e` / current `51505d4`)
 
 ---
 
@@ -42,25 +48,19 @@ Per Hard Rule #13: observer-qa.yml is deleted. These runs are noise. Only `scrip
 
 ---
 
-### autoDispatch
+### Operator Actions Required (9th cycle escalation)
 
-`failed (422)` — not actionable by Observer.
+🔴 **CRITICAL — 9 consecutive cycles blocked. Two confirmed issues:**
 
----
+1. **MCP Redeploy (STEP 1 — OVERDUE):** Call `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')` — one MCP tool call. No human required. This has been pending for 9 cycles.
+2. **Smoke test failing at `51505d4`:** This is the CURRENT live SHA. Operator must curl live endpoints and check smoke logs to determine cause. This is an active app regression.
+3. **After MCP redeploy:** Verify 5 env vars on new container: `TEST_BASE_URL`, `TEST_SESSION_TOKEN`, `TEST_ADMIN_EMAIL`, `TEST_ADMIN_PASSWORD`, `COOLIFY_API_KEY`.
 
-### Operator Actions Required (7th cycle escalation)
-
-🔴 **CRITICAL — 7 consecutive cycles blocked. Operator has taken no visible action.**
-
-1. **MCP Redeploy (STEP 1):** Call `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')` — this is a single MCP tool call. No human required.
-2. **Verify env vars** on new container: `TEST_BASE_URL`, `TEST_SESSION_TOKEN`, `TEST_ADMIN_EMAIL`, `TEST_ADMIN_PASSWORD`, `COOLIFY_API_KEY` (or equivalent 5 secrets)
-3. **Smoke SHA clarification:** Confirm whether smoke failure `25500900931` is against `5b4686e` (old SHA) or current `51505d4`. If old SHA, smoke may be clear for current build.
-
-_Observer Agent — Cycle 48 — 2026-05-07T16:25:00Z_
+_Observer Agent — Cycle 49 — 2026-05-07T18:25:00Z_
 
 ---
 
-## Cycle 47 — 2026-05-07T15:55:00Z — T-001 BLOCKED (script crash)
+## Cycle 48 — 2026-05-07T16:25:00Z — T-001 BLOCKED (script crash)
 
 **Live SHA:** `51505d4`
 **T-001 Result:** BLOCKED — script crashes, empty stderr
@@ -72,4 +72,4 @@ Latest observer-qa.yml run `25492882269` at SHA `86cb34d` — stale/irrelevant. 
 
 🔴 Operator must redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`, verify 5 env vars, investigate smoke failure.
 
-_Observer Agent — Cycle 47 — 2026-05-07T15:55:00Z_
+_Observer Agent — Cycle 48 — 2026-05-07T16:25:00Z_
