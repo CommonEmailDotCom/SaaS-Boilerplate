@@ -47,13 +47,13 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 
 ---
 
-## Operator MCP Tools
+## Agent MCP Tools (All Three Agents)
 
-**The Operator has real MCP tools. Use them directly — do not claim "requires human intervention" for tasks these tools can handle.**
+**All agents have MCP tools. Use them to verify state before reporting or acting.**
 
 | Tool | What it does |
 |---|---|
-| `run_command` | Run any shell command (git, node, npm, etc.) |
+| `run_command` | Run any shell command (git, node, curl, ls, etc.) |
 | `write_file` | Write a file to the repo |
 | `read_file` | Read a file from the repo |
 | `git_commit_push` | Stage all changes, commit, and push to GitHub |
@@ -61,12 +61,16 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | `coolify_trigger_deploy` | Trigger a Coolify deployment |
 | `query_postgres` | Run SQL against the connected database |
 
-**Operator workflow:**
-1. Use tools to do the actual work (write files, run git commands, trigger deploys)
-2. Then return JSON summary: `{"build_log":"...","operator_inbox":"...","file_changes":[]}`
-3. `file_changes` can be `[]` — you already wrote the files directly via tools
+**Rule: VERIFY BEFORE CLAIMING.** Before writing that something is broken, missing, or blocked — use `run_command` to check it directly.
+- Before "script not found": `ls /repo-observer/scripts/`
+- Before "app is down": `curl -s https://cuttingedgechat.com/api/version`
+- Before "deploy failed": check Coolify deployment logs
 
-**If you need to patch `orchestrator.js`:** use `run_command` to edit `/mcp/orchestrator.js` then commit to `my-mcp-server` repo via GitHub API and trigger redeploy of UUID `a1fr37jiwehxbfqp90k4cvsw`. You can do this.
+**Operator workflow:** Use tools for actual work, return JSON summary with `file_changes: []`
+**Observer workflow:** Use tools to verify test results and fix test scripts, return JSON with `qa_report`
+**Manager workflow:** Use tools to verify infra claims, return JSON with file updates
+
+**Fallback:** If MCP auth fails, all agents degrade gracefully to plain JSON completion.
 
 ---
 
