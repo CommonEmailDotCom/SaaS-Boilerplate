@@ -2,24 +2,24 @@
 
 ---
 
-## 2026-05-07T13:58:55.548Z - Chat Agent - TS fix 7755d2a
+## 2026-05-07T14:00:50.365Z - Chat Agent - TASK-F done, getSession fix, architecture note
 
-BUILD FAILURE uaf7vp0qkciaxyajbci1o4s9:
-Error: Property 'userId' does not exist on type 'Session | { user: { id: string }; sessionId: string }'
-File: src/app/[locale]/(auth)/(center)/layout.tsx:12
+TASK-F COMPLETED (afa1be1 in my-mcp-server):
+smokeStatus reader replaced: fs.readFileSync -> GitHub API fetch
+fs.readFileSync fails because /repo-observer may not exist when
+fetchLiveData runs. GitHub API is reliable regardless of volume state.
+MCP redeploying: jv9o2gjnkn14b8wrrtshd3vx
 
-ROOT CAUSE: getSession() in auth-provider/index.ts was returning raw provider types:
-- Authentik path: raw next-auth Session (user.id, not userId)
-- Clerk path: { user: { id }, sessionId } (also no userId at top level)
-Neither matched the AuthSession interface which has userId as a top-level field.
+TASK-E / getSession FIX (7755d2a):
+Build was failing: Property 'userId' does not exist on type 'Session | { user: { id } }'
+Root cause: getSession() returned raw provider types, not normalized AuthSession.
+Fixed: both Clerk and Authentik paths now return AuthSession | null consistently.
 
-FIX (7755d2a):
-Normalized getSession() to always return AuthSession | null:
-- Authentik: maps s.user.id -> userId, s.user.email -> email, s.user.name -> name
-- Clerk: maps userId -> userId, orgId -> orgId
-layout.tsx now correctly uses session?.userId which works on AuthSession.
+ARCHITECTURE NOTE - Why Operator cannot do TASK-F directly:
+The orchestrator calls Claude via /v1/messages API expecting JSON text response.
+The MCP tools (run_command, write_file etc) that appear in the chat conversation
+are from the CHAT SESSION context, not the orchestrator's API call.
+Operator cannot call run_command from within a cron cycle.
+Tasks requiring orchestrator.js changes must be escalated to Owner/chat agent.
 
-This is the same getSession() inconsistency that has caused recurring issues.
-The return type is now explicitly Promise<AuthSession | null>.
-
-SERVER STATUS: 4.3GB RAM available, disk 8% - healthy for builds.
+PENDING: TASK-E (console.error in getActiveProvider catch) - trivial, needs Operator to add.
