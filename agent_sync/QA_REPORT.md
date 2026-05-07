@@ -1,72 +1,80 @@
-## Cycle 36 — 2026-05-07T12:40:00Z — AWAITING DEPLOY CONFIRMATION
+# QA_REPORT.md
 
-**Run method:** Live data analysis (pre-fetched by orchestrator)
-**Live SHA:** `b0a954f` — unchanged, no new deploy confirmed live yet
-**T-001 Status:** HOLD — cannot re-run until new SHA is confirmed live
+## Cycle 37 — 2026-05-07T13:25:00Z — T-001 STATUS CHECK + TASK-F
 
----
+### SHA Verification
 
-### SHA / Deploy Status
+**Live SHA: `b0a954f`** — SHA has NOT moved off `b0a954f`.
 
-| SHA | Workflow | Result | Time |
-|---|---|---|---|
-| `7c706d5` | set-version | skipped (ci: commit) | 12:35:32 |
-| `be52ee6` | set-version | ✅ success | 12:23:21 |
-| `96757be` | set-version | ✅ success | 12:20:22 |
-| `4358dd8` | smoke | in_progress | 12:24:07 |
-| `96757be` | smoke | in_progress | 12:20:34 |
-| `7c706d5` | smoke | skipped (ci: commit) | 12:35:46 |
+set-version run `25496667685` completed SUCCESS for SHA `143383c` at 12:47:22. This means TASK-E commit `143383c` has been deployed via set-version. However, `/api/version` still reports `b0a954f`.
 
-Two set-version runs completed successfully (`be52ee6`, `96757be`). However, `/api/version` still returns `b0a954f`. Either:
-1. Coolify deploy is still in flight for one of these SHAs, OR
-2. The UUID fix is still pending and deploys are still hitting the wrong target
+**BLOCKED — cannot run T-001 yet.**
 
-Smoke runs for `4358dd8` and `96757be` are in_progress — cannot assess E2 status yet.
+The live SHA does not match the set-version target SHA (`143383c`). Coolify build may still be in flight (smoke run `25496677857` for `143383c` shows `in_progress` at 12:47:34). This is consistent with a deploy that just triggered but hasn't propagated to `/api/version` yet.
 
-**autoDispatch:** `failed (422)` — MCP orchestrator auto-dispatch still broken. Not a new issue.
+**Assessment:** set-version succeeded for `143383c` — Coolify build is in flight. SHA should move soon. Will re-run T-001 immediately when SHA moves.
 
 ---
 
-### observerQaRuns — NOT A REGRESSION
+### Smoke Run 25494148608 (SHA e6d0fbd) — Final Status
 
-Three recent runs show failure (`86cb34d`, `f8b312e`, `f5eed1c`) — all failing at step [6] "Verify secrets". These are runs of the **deleted** `observer-qa.yml` workflow. Per Hard Rule #10 and #13, these are irrelevant artifacts from the old system. Step [6] failure is expected — secrets no longer exist for this deleted workflow. **Not escalating.** T-001 is MCP-server-native.
-
----
-
-### TASK-F Status
-
-`smokeStatus`: `"not readable: fs.readFileSync is not a function"` — **TASK-F still unshipped.** Operator action required. This is the 7th+ cycle this has been flagged.
+Run `25494148608` for SHA `e6d0fbd` is NOT present in the current smokeTestRuns data (latest runs are for `143383c`, `7c706d5`, `4358dd8`). This run has either completed and aged out of the top results, or the run ID belongs to an older cycle. It is no longer relevant — the active build is now `143383c`.
 
 ---
 
-### headless checks
+### set-version / Smoke Run Analysis
 
-- **cuttingedgechat.com:** ✅ Responding (liveSha fetchable, deploy pipeline active)
-- **/api/version:** ✅ Responding — returns `b0a954f`
-- **/dashboard redirect:** ✅ Confirmed 307 → /sign-in (from prior T-001 C1, no regression signals)
+| Run ID | Type | SHA | Result | Time |
+|---|---|---|---|---|
+| 25496677857 | smoke | 143383c | in_progress | 12:47:34 |
+| 25496667685 | set-version | 143383c | success | 12:47:22 |
+| 25496108338 | smoke | 7c706d5 | skipped (ci: commit) | 12:35:46 |
+| 25496097675 | set-version | 7c706d5 | skipped (ci: commit) | 12:35:32 |
+| 25495554987 | smoke | 4358dd8 | failure | 12:24:07 |
+| 25495520385 | set-version | be52ee6 | success | 12:23:21 |
 
----
-
-### T-001 Re-Run Gate
-
-Not running T-001 this cycle. Gate conditions not met:
-- [ ] Live SHA must move off `b0a954f` to confirm a real SaaS deploy landed
-- [ ] Smoke run for new SHA must complete (not in_progress) so E2 badge can be assessed
-
-Once both conditions are met, T-001 will be re-run immediately. E2 is expected to clear → 18/18.
+**Note:** `7c706d5` skipping is CORRECT — ci: commit (Hard Rule #10). `143383c` smoke in_progress = build in flight. This is normal.
 
 ---
 
-### Open Operator Actions (from Observer perspective)
+### TASK-F: orchestrator.js smokeStatus Fix
 
-1. **CRITICAL:** Confirm set-version.yml UUID fix status — live SHA has not moved despite 2 successful set-version runs. Is Coolify still deploying? Or is UUID still wrong?
-2. **TASK-F:** `smokeStatus` still broken — 7th+ cycle. Ship the GitHub API fetch fix.
-3. **BUILD_LOG.md:** Still not confirmed updated. Hard Rule #8.
-4. **TASK-E:** Unconfirmed shipped.
+**Status: BLOCKED — cannot execute.**
+
+Task-F requires editing `CommonEmailDotCom/my-mcp-server orchestrator.js`. As the Observer Agent, I can write to `agent_sync/QA_REPORT.md` and `agent_sync/OBSERVER_INBOX.md` only. I do not have write access to `my-mcp-server/orchestrator.js` or any file in the `my-mcp-server` repo — these are outside my permitted file paths.
+
+The current live data confirms the error: `smokeStatus: "not readable: fs.readFileSync is not a function"`.
+
+**Required fix (specification for whoever can execute it):**
+In `fetchLiveData()` in `orchestrator.js`, replace the `fs.readFileSync` block that reads `smoke-status.json` locally with a GitHub API fetch:
+```
+const resp = await fetch('https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/contents/smoke-status.json', {
+  headers: { Authorization: `token ${process.env.GITHUB_TOKEN}`, Accept: 'application/vnd.github.v3.raw' }
+});
+const smokeStatus = await resp.json();
+```
+After commit + push, trigger Coolify redeploy of MCP UUID `a1fr37jiwehxbfqp90k4cvsw`.
+
+**Escalating to Manager:** TASK-F cannot be executed by Observer within hard file-ownership rules. Manager must either grant explicit file-path exception or reassign to a human/agent with my-mcp-server write access.
 
 ---
 
-_Observer Agent — Cycle 36 (mid-cycle) — awaiting deploy stabilization_
+### T-001 Pre-Run Gate
+
+- [ ] Live SHA must move off `b0a954f` — set-version succeeded for `143383c`, Coolify build in flight
+- [ ] Smoke run `25496677857` for `143383c` must complete (currently in_progress)
+
+**T-001 will be executed immediately upon SHA stabilization.** E2 is expected to clear → 18/18 FULL PASS.
+
+---
+
+### Observer Status
+
+- T-001: CONDITIONAL PASS (17/18) — awaiting SHA `143383c` to go live
+- TASK-F: BLOCKED — file outside Observer write permissions — escalated to Manager
+- Smoke run 25494148608 (e6d0fbd): no longer in data window — superseded by active build 143383c
+
+_Observer Agent — Cycle 37 — SHA poll pending_
 
 ---
 
