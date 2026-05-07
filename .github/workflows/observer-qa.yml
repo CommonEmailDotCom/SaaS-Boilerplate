@@ -4,12 +4,16 @@ on:
   workflow_dispatch:
     inputs:
       test_filter:
-        description: 'Playwright test filter (leave blank for all T-001 tests)'
+        description: 'Playwright test filter (leave blank for all)'
         required: false
         default: ''
   push:
-    branches:
-      - main
+    branches: [main]
+    paths:
+      - 'e2e/**'
+      - 'tests/**'
+      - 'playwright.config.ts'
+      - '.github/workflows/observer-qa.yml'
 
 jobs:
   t001-auth-matrix:
@@ -18,16 +22,13 @@ jobs:
     timeout-minutes: 30
 
     env:
-      TEST_BASE_URL: ${{ secrets.TEST_BASE_URL || 'https://cuttingedgechat.com' }}
       QA_GMAIL_EMAIL: ${{ secrets.QA_GMAIL_EMAIL }}
       QA_GMAIL_PASSWORD: ${{ secrets.QA_GMAIL_PASSWORD }}
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'npm'
@@ -35,22 +36,16 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Install Playwright Chromium + system deps
+      - name: Install Playwright
         run: npx playwright install chromium --with-deps
 
-      - name: Verify secrets are present
+      - name: Verify secrets
         run: |
-          if [ -z "$QA_GMAIL_EMAIL" ]; then
-            echo "❌ QA_GMAIL_EMAIL secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
-            exit 1
-          fi
-          if [ -z "$QA_GMAIL_PASSWORD" ]; then
-            echo "❌ QA_GMAIL_PASSWORD secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
-            exit 1
-          fi
-          echo "✅ All required secrets present."
+          [ -z "$QA_GMAIL_EMAIL" ] && echo "❌ QA_GMAIL_EMAIL not set" && exit 1
+          [ -z "$QA_GMAIL_PASSWORD" ] && echo "❌ QA_GMAIL_PASSWORD not set" && exit 1
+          echo "✅ Secrets present"
 
-      - name: Run T-001 Playwright tests
+      - name: Run T-001 tests
         run: |
           if [ -n "${{ github.event.inputs.test_filter }}" ]; then
             npx playwright test e2e/t001-auth.spec.ts --grep "${{ github.event.inputs.test_filter }}" --reporter=list
@@ -58,18 +53,32 @@ jobs:
             npx playwright test e2e/t001-auth.spec.ts --reporter=list
           fi
 
-      - name: Upload Playwright report on failure
+      - name: Write result to QA_REPORT.md
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          RUN_URL="https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/${{ github.run_id }}"
+          if [ "$STATUS" = "success" ]; then
+            RESULT="🟢 T-001 PASS — DEPLOY SIGNAL"
+          else
+            RESULT="🔴 T-001 FAIL"
+          fi
+          printf "\n## %s — Run %s\n- **Time:** %s\n- **SHA:** %s\n- **Run:** %s\n- **Status:** %s\n" \
+            "$RESULT" "${{ github.run_id }}" "$TIMESTAMP" "$SHA" "$RUN_URL" "$STATUS" \
+            >> agent_sync/QA_REPORT.md
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git pull --rebase origin main
+          git add agent_sync/QA_REPORT.md
+          git diff --staged --quiet || git commit -m "ci: T-001 ${RESULT} (${SHA})"
+          git push
+
+      - name: Upload artifacts on failure
         if: failure()
         uses: actions/upload-artifact@v4
         with:
           name: playwright-report-${{ github.run_id }}
           path: playwright-report/
-          retention-days: 7
-
-      - name: Upload Playwright traces on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-traces-${{ github.run_id }}
-          path: test-results/
           retention-days: 7
