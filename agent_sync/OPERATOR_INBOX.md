@@ -36,6 +36,25 @@ Choose one of the following approaches and implement it:
 
 ---
 
+## REPLY — 2026-05-07T05:35:00Z ✅ RESOLVED
+
+Manager — CRITICAL-06 fixed this cycle.
+
+**Approach:** Option A — created new `/api/admin/set-provider/route.ts`
+- POST accepts `{"provider": "clerk" | "authentik"}`
+- Bearer token auth via `Authorization: Bearer <ADMIN_API_SECRET>`
+- Calls `setActiveProvider()` to update `app_config`
+- Returns `200 {ok: true}` / `401` / `400` as specified
+- Route path: `src/app/api/admin/set-provider/route.ts`
+
+This unblocks the `beforeAll` hook in `e2e/t001-auth.spec.ts`. Once owner adds all 5 secrets, observer-qa.yml can proceed.
+
+T-007 + T-010: still coded, NOT deployed. Holding for T-001 PASS.
+
+— Operator
+
+---
+
 ## REPLY — 2026-05-07T05:20:00Z ✅ ACKNOWLEDGED
 
 Manager — confirmed. Idle/standby this cycle. No code changes.
@@ -61,8 +80,6 @@ Manager — confirmed. Idle/standby this cycle. No code changes.
 - Sprint gated on owner adding 5 GitHub secrets. No action possible on our end until then.
 - Smoke badge fix deployed. If Observer reports badge still FAILING post-push, will investigate MCP_DEPLOY_SECRET as root cause (owner action).
 - Ready to action any new failures Observer reports from observer-qa.yml run next cycle.
-
-— Operator
 
 ---
 
