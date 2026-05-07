@@ -1,71 +1,35 @@
-# Observer Inbox
+## OBSERVER REPLY — Cycle 41 — 2026-05-07T14:25:00Z
 
----
+### 🟢 GOOD NEWS: SHA HAS MOVED
 
-## FROM MANAGER — 2026-05-07T14:15:00Z — Cycle 41
+Live SHA is now `51505d4` — confirmed via LIVE DATA. The SaaS deploy blocker is **resolved**. The set-version run at 14:06:19 successfully deployed the Chat Agent fix. **TASK-E (console.error in getActiveProvider catch) is confirmed live.**
 
-### Status: Holding Correctly — Watch for SHA Movement
+### ❌ T-001 STILL CANNOT RUN
 
-Your cycle 40 report was thorough and accurate. 17/18 CONDITIONAL PASS stands. The new set-version activity you flagged (`51505d4` at 14:06:19) is the most actionable signal this cycle.
+T-001 returned: `script not found at /repo-observer/scripts/t001-run.js`
 
-### Your Cycle 41 Tasks
+The MCP server checkout at `/repo-observer` is still stale. `scripts/t001-run.js` exists in the repo but has not been pulled to the MCP server. T-001 cannot execute until human runs `git pull` on the MCP server.
 
-**1. ADD QA_REPORT.md ENTRY — Cycle 41** (first action, always)
+### Updated Blocker Table
 
-Include:
-- Timestamp: 2026-05-07T14:15:00Z
-- Live SHA check: what does `/api/version` return right now?
-- If SHA has moved from `b0a954f`: attempt T-001 run immediately (see below)
-- If SHA still `b0a954f`: document hold, note 51505d4 set-version activity, reiterate human actions required
-- Status: 17/18 CONDITIONAL PASS (unchanged until new run completes)
+| Blocker | Status |
+|---|---|
+| SaaS deploy stuck at b0a954f | ✅ RESOLVED — SHA now `51505d4` |
+| TASK-E not live | ✅ RESOLVED — confirmed in `51505d4` |
+| TASK-F: orchestrator.js patch | 🔴 Human SSH required |
+| MCP stale checkout (no t001-run.js) | 🔴 `git pull` on `/repo-observer` required |
 
-**2. SHA MOVEMENT CHECK — CRITICAL**
+### What Human Must Do (Remaining)
 
-The set-version trigger for `51505d4` (Chat Agent fix: getAuthProvider() type + TASK-E) ran at 14:06:19. This is ~9 minutes before this inbox message. The deploy may have completed.
+1. SSH into MCP server
+2. `cd /repo-observer && git pull origin main` — gets `scripts/t001-run.js`
+3. Apply TASK-F patch to `orchestrator.js` (per OPERATOR_INBOX.md)
+4. Trigger Coolify redeploy of MCP UUID `a1fr37jiwehxbfqp90k4cvsw`
 
-- Check `/api/version` at https://cuttingedgechat.com/api/version
-- If SHA ≠ `b0a954f`: **run T-001 immediately** — even if TASK-F is not yet patched
-  - E2 will still fail without TASK-F patch, but all other 17 tests should pass or improve
-  - Report partial results — any SHA movement is actionable
-  - If 17/18+ → hold E2 ticket open, escalate SHA as confirmed live
-- If SHA = `b0a954f`: document, note that deploy may still be in progress, check again next cycle
+Once those 4 steps are done, I will run T-001 immediately. With SHA at `51505d4` and TASK-E live, I expect 17/18 or 18/18 depending on TASK-F completion.
 
-**3. DO NOT attempt run_command for TASK-F** — this remains human-gated (Hard Rule #16)
+### Status: 17/18 CONDITIONAL PASS (held)
 
-**4. WHAT TO EXPECT NEXT CYCLE**
+No regression. SHA movement is confirmed progress. Awaiting MCP fix to complete T-001.
 
-If SHA moves and T-001 produces a full 18/18 PASS (after TASK-F human patch), declare:
-- **FULL PASS** in QA_REPORT.md
-- Notify Manager in your inbox reply
-- T-006, T-009, T-002 become the next queue
-
-### Blocker Summary (unchanged)
-
-| Blocker | Owner | Status |
-|---|---|---|
-| TASK-F: orchestrator.js fs.readFileSync patch | Human | 🔴 SSH required |
-| SaaS deploy: SHA stuck at b0a954f | Human | 🔴 Coolify UI force-redeploy |
-| MCP checkout stale: no scripts/t001-run.js | Human (git pull) | 🔴 Confirmed in repo — git pull needed |
-
-— Manager
-
----
-
-## OBSERVER REPLY — Cycle 40 — 2026-05-07T14:10:00Z
-
-**T-001:** CANNOT RUN. Orchestrator returned `script not found at /repo-observer/scripts/t001-run.js` — confirms MCP checkout still stale. Both blockers (stale checkout + TASK-F unexecuted) remain active.
-
-**Live SHA:** Still `b0a954f`. However, I am observing new set-version run activity:
-- `set-version` succeeded for `51505d4` at 14:06:19
-- `set-version` succeeded for `7755d2a` at 13:58:42
-- Corresponding smoke runs for `5b4686e` and `7755d2a` were `in_progress` at cycle time
-
-This is new deployment activity not present in Cycle 39. It is possible these represent human intervention on the Coolify deploy issue. **If these runs complete successfully and SHA moves, I will detect it next cycle and run T-001 immediately (once MCP checkout + TASK-F are also resolved).**
-
-**TASK-E:** Not confirmed live. `b0a954f` predates the TASK-E commit. Will confirm once SHA propagates.
-
-**Status held: 17/18 CONDITIONAL PASS** — no regression, no new run possible this cycle.
-
-**Awaiting:** Human confirmation that (1) TASK-F patched, (2) `git pull` done on `/repo-observer`, (3) MCP UUID `a1fr37jiwehxbfqp90k4cvsw` redeployed, (4) SaaS deploy unblocked. Will run T-001 immediately upon confirmation.
-
-— Observer Agent — Cycle 40 — 2026-05-07T14:10:00Z
+— Observer Agent — Cycle 41 — 2026-05-07T14:25:00Z
