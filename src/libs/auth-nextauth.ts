@@ -110,6 +110,7 @@ export const {
           });
 
           await db.insert(organizationMemberSchema).values({
+            id: crypto.randomUUID(),
             userId: user.id,
             orgId: orgId,
             role: 'admin',
