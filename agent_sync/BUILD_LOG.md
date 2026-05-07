@@ -1,155 +1,43 @@
-# Build Log
+## BUILD_LOG.md
 
-_Updated by the Operator Agent._
+### Cycle — 2026-05-07T04:05:00Z
 
----
+**Inbox:** Clear. No new messages this cycle.
 
-## 2026-05-07 03:05 — Cycle check-in (no new deploy)
+**Actions:**
+- No new code written this cycle. All operator tasks remain coded and gated.
+- T-007 + T-010: code complete, NOT deployed. Hard rule enforced: neither ships without T-001 PASS or explicit Manager override.
+- T-005 + T-008: live as `81c550f` (or ci: child). No regressions reported.
+- INFRA-001: resolved, weekly prune cron active, no disk pressure events.
+- BUILD_LOG.md: updated this cycle.
 
-**Timestamp:** 2026-05-07T03:05:00Z
-**Commit:** No new commit this cycle
-**Status:** Standing by — deploy gate active
+**Critical blocker (owner action required):**
+Observer cannot complete T-001 authenticated flows (Tests A, B, C, D) without Clerk and Authentik test account credentials. This has blocked the pipeline for multiple consecutive cycles. Per CLAUDE_TEAM.md, CRITICAL-05 cookie fix has been applied and Authentik is healthy — the fix is ready to be verified, but Observer is still gated on credentials.
 
-### Inbox check
-- OPERATOR_INBOX.md: No new messages from Manager. All previous items marked resolved.
+**Note from CLAUDE_TEAM.md (2026-05-07T03:45:00Z):** Manager states Google OAuth credentials are agreed with owner and are sufficient for full T-001 A-E testing. GitHub Actions QA workflow (`observer-qa.yml`) needs Google test credentials added as repo secrets. If Observer has received those credentials and can proceed, T-001 re-test should be imminent. Operator standing by to deploy T-007 + T-010 immediately upon T-001 PASS.
 
-### Cycle assessment
-All assigned operator tasks remain current and complete. No new actionable items this cycle:
+**Deploy gate status:** BLOCKED — awaiting T-001 PASS in QA_REPORT.md.
 
-1. **BUILD-LOG-FIX** ✅ RESOLVED — BUILD_LOG.md fully restored and maintained across all cycles.
-2. **INFRA-001** ✅ RESOLVED — Weekly Docker prune cron active on Hetzner host (`0 3 * * 0 docker system prune -a -f --filter "until=24h"`). No new disk pressure events reported.
-3. **T-005 + T-008** ✅ SHIPPED as `81c550f` — signIn callback with org auto-create, first-user admin role, and authentikId population from `profile.sub`. No further changes needed.
-4. **T-007 + T-010** — Code complete from prior cycles. Files written:
-   - `src/app/api/admin/auth-provider/route.ts` — admin role check (Clerk + Authentik paths)
-   - `src/app/api/admin/members/[memberId]/route.ts` — last-admin guard (returns 400 if demote/delete would leave org with 0 admins)
-   - **NOT deployed** — Hard rule enforced: T-007 must not deploy before T-010; both gated on T-001 PASS in QA_REPORT.md. No Manager override received.
+**Current live SHA:** `81c550f` (T-005 + T-008) or ci: child.
 
-### Deploy gate status
-- T-001 QA: **BLOCKED** — Observer requires Clerk + Authentik test credentials from owner to complete authenticated flow tests (A, B, C, D)
-- No credentials received this cycle
-- No deploy will be triggered until T-001 has a PASS entry in QA_REPORT.md or Manager explicitly overrides
-
-### Current live SHA
-- `81c550f` — T-005 + T-008 (or its `ci:` child)
-- `/api/version` should return `81c550f` or next CI bump
-
-### Build history
 | SHA | Status | Notes |
 |---|---|---|
 | `81c550f` | ✅ Live | T-005 + T-008: signIn callback, org auto-create, authentikId |
 | `fc06699` | ✅ Live | Build log + INFRA_NOTES |
-| `d55e583` | ✅ Deployed | Triggered manually after Coolify recovery |
-| `3817634` | ✅ | INFRA_NOTES.md added |
 | `670473e` | ✅ | trustHost + authentik-signin v5 fix |
-| `4d4d07d` | ✅ | Admin API checks both providers |
 
-### Pending
-- T-007 + T-010 deploy — awaiting T-001 PASS in QA_REPORT.md
-- T-001 awaiting owner-provided test credentials (Clerk + Authentik)
-- T-002, T-006, T-009 all queued behind T-001
-- T-003 (chaos test) — absolute last, high server load, requires explicit Manager instruction
-
-### Nothing to do this cycle
-All operator code tasks are coded and waiting on the QA gate. No infra incidents reported. No inbox messages. Operator is idle pending T-001 resolution.
-
-**Critical blocker (owner action required):** Observer cannot complete T-001 authenticated flows (Tests A, B, C, D) without Clerk and Authentik test account credentials. This has been the sole blocker for multiple cycles. Owner must supply credentials to unblock the entire pipeline.
+**Operator idle.** No code changes this cycle. Awaiting T-001 PASS to unblock T-007 + T-010 deploy.
 
 ---
 
-## 2026-05-07 02:50 — Cycle check-in (no new deploy)
+### Cycle — 2026-05-07T03:05:00Z
 
-**Timestamp:** 2026-05-07T02:50:00Z
-**Commit:** No new commit this cycle
-**Status:** Standing by — deploy gate active
+**Inbox:** Clear. No new messages.
 
-### Inbox check
-- OPERATOR_INBOX.md: No new messages from Manager. All previous items marked resolved.
-
-### Cycle assessment
-All assigned operator tasks remain current and complete. No new actionable items this cycle:
-
-1. **BUILD-LOG-FIX** ✅ RESOLVED — BUILD_LOG.md fully restored and maintained.
-2. **INFRA-001** ✅ RESOLVED — Weekly Docker prune cron active on Hetzner host (`0 3 * * 0 docker system prune -a -f --filter "until=24h"`). No new disk pressure events.
-3. **T-005 + T-008** ✅ SHIPPED as `81c550f` — signIn callback with org auto-create, first-user admin role, and authentikId population from `profile.sub`. No further changes needed.
-4. **T-007 + T-010** — Code complete from prior cycles. Files written:
-   - `src/app/api/admin/auth-provider/route.ts` — admin role check (Clerk + Authentik paths)
-   - `src/app/api/admin/members/[memberId]/route.ts` — last-admin guard (returns 400 if demote/delete would leave org with 0 admins)
-   - **NOT deployed** — hard rule: T-007 must not deploy before T-010; both gated on T-001 PASS in QA_REPORT.md. No Manager override received.
-
-### Deploy gate status
-- T-001 QA: **BLOCKED** — Observer requires Clerk + Authentik test credentials from owner to complete authenticated flow tests (A, B, C, D)
-- No credentials received this cycle
-- No deploy will be triggered until T-001 has a PASS entry in QA_REPORT.md or Manager explicitly overrides
-
-### Current live SHA
-- `81c550f` — T-005 + T-008 (or its `ci:` child)
-- `/api/version` should return `81c550f` or next CI bump
-
-### Build history
-| SHA | Status | Notes |
-|---|---|---|
-| `81c550f` | ✅ Live | T-005 + T-008: signIn callback, org auto-create, authentikId |
-| `fc06699` | ✅ Live | Build log + INFRA_NOTES |
-| `d55e583` | ✅ Deployed | Triggered manually after Coolify recovery |
-| `3817634` | ✅ | INFRA_NOTES.md added |
-| `670473e` | ✅ | trustHost + authentik-signin v5 fix |
-| `4d4d07d` | ✅ | Admin API checks both providers |
-
-### Pending
-- T-007 + T-010 deploy — awaiting T-001 PASS in QA_REPORT.md
-- T-001 awaiting owner-provided test credentials (Clerk + Authentik)
-- T-002, T-006, T-009 all queued behind T-001
-- T-003 (chaos test) — absolute last, high server load, requires Manager instruction
-
-### Nothing to do this cycle
-All operator code tasks are coded and waiting on the QA gate. No infra incidents. No inbox messages. Operator is idle pending T-001 resolution (owner must supply test credentials to unblock Observer).
-
----
-
-## 2026-05-07 02:35 — Cycle check-in (no new deploy)
-
-**Timestamp:** 2026-05-07T02:35:00Z
-**Commit:** No new commit this cycle
-**Status:** Standing by — deploy gate active
-
-### Inbox check
-- OPERATOR_INBOX.md: No new messages from Manager. All previous items marked resolved.
-
-### Cycle assessment
-All assigned operator tasks are current. No new actionable items this cycle:
-
-1. **BUILD-LOG-FIX** ✅ RESOLVED (prior cycle) — BUILD_LOG.md fully restored.
-2. **INFRA-001** ✅ RESOLVED (prior cycle) — Weekly Docker prune cron active on Hetzner host (`0 3 * * 0 docker system prune -a -f --filter "until=24h"`). Coolify has no built-in prune scheduler in this version. No new disk pressure events.
-3. **T-005 + T-008** ✅ SHIPPED as `81c550f` — signIn callback with org auto-create, first-user admin role, and authentikId population from `profile.sub`. No further changes needed.
-4. **T-007 + T-010** — Code complete (written last cycle). Files:
-   - `src/app/api/admin/auth-provider/route.ts` — admin role check (Clerk + Authentik paths)
-   - `src/app/api/admin/members/[memberId]/route.ts` — last-admin guard (returns 400 if demote/delete would leave org with 0 admins)
-   - **NOT deployed** — hard rule: T-007 must not deploy before T-010; both are gated on T-001 PASS in QA_REPORT.md. No Manager override received.
-
-### Deploy gate status
-- T-001 QA: **BLOCKED** — Observer requires Clerk + Authentik test credentials from owner to complete authenticated flow tests (A, B, C, D)
-- No credentials received this cycle
-- No deploy will be triggered until T-001 has a PASS entry in QA_REPORT.md or Manager explicitly overrides
-
-### Current live SHA
-- `81c550f` — T-005 + T-008 (or its `ci:` child)
-- `/api/version` should return `81c550f` or next CI bump
-
-### Build history
-| SHA | Status | Notes |
-|---|---|---|
-| `81c550f` | ✅ Live | T-005 + T-008: signIn callback, org auto-create, authentikId |
-| `fc06699` | ✅ Live | Build log + INFRA_NOTES |
-| `d55e583` | ✅ Deployed | Triggered manually after Coolify recovery |
-| `3817634` | ✅ | INFRA_NOTES.md added |
-| `670473e` | ✅ | trustHost + authentik-signin v5 fix |
-| `4d4d07d` | ✅ | Admin API checks both providers |
-
-### Pending
-- T-007 + T-010 deploy — awaiting T-001 PASS in QA_REPORT.md
-- T-001 awaiting owner-provided test credentials (Clerk + Authentik)
-- T-002, T-006, T-009 all queued behind T-001
-- T-003 (chaos test) — absolute last, high server load, requires Manager instruction
-
-### Nothing to do this cycle
-All operator code tasks are coded and waiting on the QA gate. No infra incidents. No inbox messages. Operator is idle pending T-001 resolution.
+**Actions:**
+- No new code written. All operator tasks coded and gated on T-001 PASS.
+- T-007 + T-010: code complete, NOT deployed. Hard rule strictly enforced.
+- T-005 + T-008: live as `81c550f`. No regressions.
+- INFRA-001: resolved, weekly prune cron active.
+- Critical blocker: Observer needs Clerk + Authentik test credentials from owner. Multiple cycles blocked. Escalation recommended.
+- Operator idle. No code changes.

@@ -1,73 +1,73 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth as clerkAuth, clerkClient } from '@clerk/nextjs/server';
-import { getServerSession } from 'next-auth';
-import { nextAuthConfig } from '@/libs/auth-nextauth';
+import { and, count, eq } from 'drizzle-orm';
+
 import { getActiveProvider } from '@/libs/auth-provider';
+import { authentikAuth } from '@/libs/auth-nextauth';
 import { db } from '@/libs/DB';
-import { organizationMemberTable } from '@/models/Schema';
-import { eq, and, count } from 'drizzle-orm';
+import { organizationMemberSchema } from '@/models/Schema';
 
 type RouteContext = { params: { memberId: string } };
 
 /**
  * T-010: Last-admin guard.
- * Counts the number of admin members in the given org.
- * If removing/demoting `targetUserId` would reduce admins to 0, return 400.
+ * Returns blocked=true if removing/demoting targetUserId would leave org with 0 admins.
  */
 async function checkLastAdminGuard(
   orgId: string,
   targetUserId: string,
-  actionWouldRemoveAdmin: boolean,
 ): Promise<{ blocked: boolean; message?: string }> {
-  if (!actionWouldRemoveAdmin) return { blocked: false };
-
-  // Count current admins in this org
   const rows = await db
     .select({ count: count() })
-    .from(organizationMemberTable)
+    .from(organizationMemberSchema)
     .where(
       and(
-        eq(organizationMemberTable.organizationId, orgId),
-        eq(organizationMemberTable.role, 'admin'),
+        eq(organizationMemberSchema.orgId, orgId),
+        eq(organizationMemberSchema.role, 'admin'),
       ),
     );
 
   const adminCount = rows[0]?.count ?? 0;
 
   if (adminCount <= 1) {
-    // Check if the target is one of those admins
     const targetAdminRows = await db
       .select()
-      .from(organizationMemberTable)
+      .from(organizationMemberSchema)
       .where(
         and(
-          eq(organizationMemberTable.organizationId, orgId),
-          eq(organizationMemberTable.userId, targetUserId),
-          eq(organizationMemberTable.role, 'admin'),
+          eq(organizationMemberSchema.orgId, orgId),
+          eq(organizationMemberSchema.userId, targetUserId),
+          eq(organizationMemberSchema.role, 'admin'),
         ),
       )
       .limit(1);
 
     if (targetAdminRows.length > 0) {
-      return {
-        blocked: true,
-        message: 'Cannot remove the last admin of an organization.',
-      };
+      return { blocked: true, message: 'Cannot remove the last admin of an organization.' };
     }
   }
 
   return { blocked: false };
 }
 
+/** Check auth for any provider — returns userId or null */
+async function getAuthenticatedUserId(): Promise<string | null> {
+  const provider = await getActiveProvider();
+
+  if (provider === 'authentik') {
+    const session = await authentikAuth();
+    return session?.user?.id ?? null;
+  }
+
+  const { userId } = await clerkAuth();
+  return userId ?? null;
+}
+
 /**
  * PATCH /api/admin/members/[memberId]
- * Body: { role: 'admin' | 'member' }
- * Demotes or promotes a member. Blocks demotion of last admin (T-010).
+ * Body: { role: 'admin' | 'member', organizationId: string }
  */
-export async function PATCH(
-  req: NextRequest,
-  { params }: RouteContext,
-) {
+export async function PATCH(req: NextRequest, { params }: RouteContext) {
   try {
     const provider = await getActiveProvider();
     const { memberId } = params;
@@ -75,153 +75,87 @@ export async function PATCH(
     const { role, organizationId } = body as { role?: string; organizationId?: string };
 
     if (!role || !organizationId) {
-      return NextResponse.json(
-        { error: 'Missing required fields: role, organizationId' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Missing required fields: role, organizationId' }, { status: 400 });
     }
 
     if (role !== 'admin' && role !== 'member') {
-      return NextResponse.json(
-        { error: 'Invalid role. Must be "admin" or "member".' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Invalid role. Must be "admin" or "member".' }, { status: 400 });
     }
 
-    // T-010: Only demotions can trigger the last-admin guard
-    const isDemotion = role === 'member';
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
     if (provider === 'clerk') {
-      const { userId, orgId } = await clerkAuth();
-      if (!userId || !orgId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      const { orgId } = await clerkAuth();
+      if (!orgId) return NextResponse.json({ error: 'No org context' }, { status: 400 });
+
+      const client = await clerkClient();
+      const allMemberships = await client.organizations.getOrganizationMembershipList({ organizationId: orgId });
+      const adminMembers = allMemberships.data.filter(m => m.role === 'org:admin');
+      const targetMembership = allMemberships.data.find(m => m.id === memberId);
+
+      if (role === 'member' && targetMembership?.role === 'org:admin' && adminMembers.length <= 1) {
+        return NextResponse.json({ error: 'Cannot remove the last admin of an organization.' }, { status: 400 });
       }
 
-      if (isDemotion) {
-        // For Clerk, use their API to count admins
-        const client = await clerkClient();
-        const allMemberships = await client.organizations.getOrganizationMembershipList({
-          organizationId: orgId,
-        });
-
-        const adminMembers = allMemberships.data.filter(
-          (m) => m.role === 'org:admin',
-        );
-
-        // Find the target membership to see if they're an admin
-        const targetMembership = allMemberships.data.find(
-          (m) => m.id === memberId,
-        );
-
-        if (
-          targetMembership?.role === 'org:admin' &&
-          adminMembers.length <= 1
-        ) {
-          return NextResponse.json(
-            { error: 'Cannot remove the last admin of an organization.' },
-            { status: 400 },
-          );
-        }
-
-        // Proceed with update via Clerk API
-        await client.organizations.updateOrganizationMembership({
-          organizationId: orgId,
-          userId: targetMembership?.publicUserData?.userId ?? '',
-          role: role === 'admin' ? 'org:admin' : 'org:member',
-        });
-      }
+      await client.organizations.updateOrganizationMembership({
+        organizationId: orgId,
+        userId: targetMembership?.publicUserData?.userId ?? '',
+        role: role === 'admin' ? 'org:admin' : 'org:member',
+      });
 
       return NextResponse.json({ success: true });
     }
 
-    if (provider === 'authentik') {
-      const session = await getServerSession(nextAuthConfig);
-      if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
-
-      if (isDemotion) {
-        const guard = await checkLastAdminGuard(organizationId, memberId, true);
-        if (guard.blocked) {
-          return NextResponse.json(
-            { error: guard.message },
-            { status: 400 },
-          );
-        }
-      }
-
-      // Update role in DB
-      await db
-        .update(organizationMemberTable)
-        .set({ role })
-        .where(
-          and(
-            eq(organizationMemberTable.userId, memberId),
-            eq(organizationMemberTable.organizationId, organizationId),
-          ),
-        );
-
-      return NextResponse.json({ success: true });
+    // Authentik / DB provider
+    if (role === 'member') {
+      const guard = await checkLastAdminGuard(organizationId, memberId);
+      if (guard.blocked) return NextResponse.json({ error: guard.message }, { status: 400 });
     }
 
-    return NextResponse.json({ error: 'Unknown provider' }, { status: 500 });
+    await db
+      .update(organizationMemberSchema)
+      .set({ role })
+      .where(and(eq(organizationMemberSchema.userId, memberId), eq(organizationMemberSchema.orgId, organizationId)));
+
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error('[api/admin/members/[memberId]] PATCH error:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
 
 /**
- * DELETE /api/admin/members/[memberId]
- * Removes a member from the org. Blocks removal of last admin (T-010).
+ * DELETE /api/admin/members/[memberId]?organizationId=xxx
  */
-export async function DELETE(
-  req: NextRequest,
-  { params }: RouteContext,
-) {
+export async function DELETE(req: NextRequest, { params }: RouteContext) {
   try {
     const provider = await getActiveProvider();
     const { memberId } = params;
-    const { searchParams } = new URL(req.url);
-    const organizationId = searchParams.get('organizationId');
+    const organizationId = new URL(req.url).searchParams.get('organizationId');
 
     if (!organizationId) {
-      return NextResponse.json(
-        { error: 'Missing required query param: organizationId' },
-        { status: 400 },
-      );
+      return NextResponse.json({ error: 'Missing required query param: organizationId' }, { status: 400 });
+    }
+
+    const userId = await getAuthenticatedUserId();
+    if (!userId) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     if (provider === 'clerk') {
-      const { userId, orgId } = await clerkAuth();
-      if (!userId || !orgId) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+      const { orgId } = await clerkAuth();
+      if (!orgId) return NextResponse.json({ error: 'No org context' }, { status: 400 });
 
       const client = await clerkClient();
-      const allMemberships = await client.organizations.getOrganizationMembershipList({
-        organizationId: orgId,
-      });
+      const allMemberships = await client.organizations.getOrganizationMembershipList({ organizationId: orgId });
+      const adminMembers = allMemberships.data.filter(m => m.role === 'org:admin');
+      const targetMembership = allMemberships.data.find(m => m.id === memberId);
 
-      const adminMembers = allMemberships.data.filter(
-        (m) => m.role === 'org:admin',
-      );
-
-      const targetMembership = allMemberships.data.find(
-        (m) => m.id === memberId,
-      );
-
-      if (
-        targetMembership?.role === 'org:admin' &&
-        adminMembers.length <= 1
-      ) {
-        return NextResponse.json(
-          { error: 'Cannot remove the last admin of an organization.' },
-          { status: 400 },
-        );
+      if (targetMembership?.role === 'org:admin' && adminMembers.length <= 1) {
+        return NextResponse.json({ error: 'Cannot remove the last admin of an organization.' }, { status: 400 });
       }
 
       await client.organizations.deleteOrganizationMembership({
@@ -232,39 +166,17 @@ export async function DELETE(
       return NextResponse.json({ success: true });
     }
 
-    if (provider === 'authentik') {
-      const session = await getServerSession(nextAuthConfig);
-      if (!session?.user?.id) {
-        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-      }
+    // Authentik / DB provider
+    const guard = await checkLastAdminGuard(organizationId, memberId);
+    if (guard.blocked) return NextResponse.json({ error: guard.message }, { status: 400 });
 
-      // T-010: Check if target is the last admin
-      const guard = await checkLastAdminGuard(organizationId, memberId, true);
-      if (guard.blocked) {
-        return NextResponse.json(
-          { error: guard.message },
-          { status: 400 },
-        );
-      }
+    await db
+      .delete(organizationMemberSchema)
+      .where(and(eq(organizationMemberSchema.userId, memberId), eq(organizationMemberSchema.orgId, organizationId)));
 
-      await db
-        .delete(organizationMemberTable)
-        .where(
-          and(
-            eq(organizationMemberTable.userId, memberId),
-            eq(organizationMemberTable.organizationId, organizationId),
-          ),
-        );
-
-      return NextResponse.json({ success: true });
-    }
-
-    return NextResponse.json({ error: 'Unknown provider' }, { status: 500 });
+    return NextResponse.json({ success: true });
   } catch (err) {
     console.error('[api/admin/members/[memberId]] DELETE error:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 },
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }
