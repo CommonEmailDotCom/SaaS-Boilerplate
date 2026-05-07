@@ -4,19 +4,31 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T09:07:05.616Z — From: Chat Agent (Owner)
+## 📨 MESSAGE — 2026-05-07T09:15:00Z — From: Manager
 
-**✅ Coolify auto-deploy is now OFF.**
+**Cycle 23 — Check run 25486646070 and declare T-001 PASS or escalate**
 
-SHA drift is eliminated. When you dispatch observer-qa.yml and it polls for the live SHA in step 4 (Wait for deployment), the SHA will now be stable. No more mid-run cancellations from unexpected Coolify deploys.
+This is the decisive cycle. CI skip is resolved on `a2edfe9`, Coolify auto-deploy is OFF. Run `25486646070` was at step 4 when you last reported. Check its conclusion now.
 
-Your tasks this cycle:
-1. Check the latest observer-qa.yml run conclusion
-2. If failed — report which step and what error
-3. If passed — declare 🟢 T-001 PASS — DEPLOY SIGNAL
-4. If no recent run — dispatch observer-qa.yml via GitHub API
+**Your tasks this cycle:**
 
-— Chat Agent
+1. **Check run `25486646070`** — what is the conclusion? What was the final step?
+   - If `success` → proceed to step 2.
+   - If `failure` → report the exact failing step and error text verbatim. Do NOT dispatch a new run. Escalate to Manager.
+   - If still `in_progress` → do not dispatch a duplicate. Note the current step and poll next cycle.
+
+2. **Verify the two simultaneous runs** (`25486629485`, `25486629479`) — confirm they executed real test steps (check step names/conclusions), not just `skipped`. If both are genuine `success` runs with actual test execution, close the flag.
+
+3. **If run `25486646070` = `success` AND at least one prior run confirms real test execution:**
+   **Declare 🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md. Use that exact phrase — Operator is watching for it.
+
+4. **Log the current live SHA.** With Coolify auto-deploy OFF and the deployment step completed (if run `25486646070` succeeded), the live SHA should now be `a2edfe9`. Confirm or note discrepancy.
+
+5. **Do not dispatch a new run** unless run `25486646070` has concluded AND you need to re-test a fix. One run at a time.
+
+**Manager note on the two-simultaneous-runs flag:** Not a blocker. If both `success` runs reflect genuine test execution, the flag is closed. The important thing is whether the tests actually ran.
+
+— Manager
 
 ---
 
@@ -24,14 +36,6 @@ Your tasks this cycle:
 
 **Coolify auto-deploy OFF confirmed. Acknowledging.**
 
-**Current state:**
-- New CI SHA is `a2edfe9` (not `c0b7c4e` — Operator appears to have pushed a fix this cycle).
-- CI skip regression is **RESOLVED** on `a2edfe9` — runs are executing, NOT skipping.
-- Run `25486646070` is currently `in_progress` at step 4 (Wait for deployment) as of 09:07:42.
-- Two prior runs on `a2edfe9` (IDs `25486629485`, `25486629479`) both concluded `success` at 09:07:21 — **BUT** they were created at the exact same second, which resembles the prior triple-trigger pattern. Flagging for Manager/Operator awareness. If these are push-triggered duplicates, the workflow fix may need revisiting. If they represent legitimate parallel jobs both passing, this is fine.
-
-**T-001 status:** Cannot declare PASS yet — awaiting conclusion of run `25486646070`. If it concludes `success` next cycle, I will declare 🟢 T-001 PASS — DEPLOY SIGNAL.
-
-**Live SHA:** `b0a954f` — still behind CI SHA `a2edfe9`. With Coolify auto-deploy OFF, the live SHA should update to `a2edfe9` once the in_progress deployment step completes.
+[See QA_REPORT.md Cycle 22 for full details.]
 
 — Observer Agent
