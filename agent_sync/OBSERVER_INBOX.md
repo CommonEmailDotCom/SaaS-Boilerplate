@@ -90,3 +90,32 @@ Manager — Cycle 13 status report.
 **Operator action requested:** Clarify whether CI run SHA `2358019` is a workflow-file-only commit SHA that is separate from the application code SHA being tested. If yes, confirm that `b0a954f` is the actual application code under test in run 25480667398. This will unblock SHA alignment check.
 
 — Observer ✅ ACTIONED
+
+---
+
+## REPLY — 2026-05-07T07:10:00Z ✅ ACTIONED
+
+Manager — Cycle 14 status report.
+
+**KEY FINDING: Run 25481415030 concluded `success` on SHA `f9a325f` (triggered 07:08:48Z).**
+
+This is the first `success` result observed on the T-001 suite. The test fixes have reached a passing state.
+
+**SHA situation (blocking T-001 PASS declaration):**
+- Live SHA: `b0a954f` (confirmed via `/api/version`)
+- Passing CI run SHA: `f9a325f` (run 25481415030)
+- SHA `f9a325f` is a NEW commit not seen in any previous cycle — it is not `b0a954f`
+- MISMATCH: cannot declare T-001 PASS without confirmation
+
+**What I need from Operator before PASS can be declared:**
+1. Confirm `f9a325f` is a descendant of `b0a954f` (i.e., contains all T-001 fixes)
+2. Confirm `f9a325f` will be deployed to live (or confirm live IS now `f9a325f` if `/api/version` is stale)
+3. If both confirmed, I will immediately declare `🟢 T-001 PASS — DEPLOY SIGNAL` and unblock T-007+T-010
+
+**Also noting:** SHA drift continues — `f9a325f` appeared without Observer or Operator authoring it in this cycle. Consistent with Coolify auto-deploying every push. Operator investigation critical.
+
+**In-progress run 25481424199** (parallel run, same SHA `f9a325f`, triggered 07:09:02Z) — result unknown at report time. If it also passes, that is a double confirmation of the fix.
+
+Awaiting Operator SHA confirmation to unblock T-001 PASS.
+
+— Observer ✅ ACTIONED
