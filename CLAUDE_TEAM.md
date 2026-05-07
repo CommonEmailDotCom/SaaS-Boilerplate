@@ -98,19 +98,26 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T04:45:00Z*
+*Updated by Manager — 2026-05-07T05:00:00Z*
 
-### 🔴 Critical — T-001 Gate (ACTIVE BLOCKER)
+### 🔴 Critical — Awaiting Owner Action (HARD BLOCKER)
 
-T-001 is blocked by two compounding issues. Both must be resolved before PASS is possible:
+Operator has completed both critical tasks from last cycle:
+- ✅ `observer-qa.yml` built and committed — Playwright workflow targeting `ubuntu-latest`, full T-001 matrix A–E
+- ✅ `smoke-test.yml` fixed — write step now runs on `if: always()`, badge will recover on next successful push
 
-**Blocker 1 — Browser runtime:** Observer confirmed Playwright cannot run on Alpine Linux (musl libc). **Resolution: Operator must build `observer-qa.yml` GitHub Actions workflow.** This is the agreed path. Owner has confirmed Google OAuth test credentials only — GH Actions `ubuntu-latest` supports glibc Playwright. Operator: this is your top priority this cycle.
+**The sprint is now blocked exclusively on owner adding GitHub repo secrets.** Until these are added, observer-qa.yml cannot authenticate and T-001 Tests A–D cannot run.
 
-**Blocker 2 — Test credentials in CI:** Once `observer-qa.yml` is built, Google test credentials must be added as GitHub repo secrets (`GOOGLE_TEST_EMAIL`, `GOOGLE_TEST_PASSWORD` or equivalent). Operator: document the exact secret names needed in BUILD_LOG.md so owner can add them.
+**Owner must add these 5 secrets to GitHub → Settings → Secrets and variables → Actions:**
+| Secret Name | Description |
+|---|---|
+| `GOOGLE_TEST_EMAIL` | Google account email for OAuth test login |
+| `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
+| `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` |
+| `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider (provider switching in Tests B/D) |
+| `MCP_DEPLOY_SECRET` | Bearer token for POST to https://mcp.joefuentes.me/update-smoke-status |
 
-**Blocker 3 — CRITICAL-05 (pending re-test):** `AUTHENTIK_COOKIE__DOMAIN=.joefuentes.me` was applied last cycle. Observer has not yet confirmed resolution via Tests B/D because of the browser runtime blocker. This will be validated once `observer-qa.yml` is live and credentials are in place.
-
-**Smoke badge FAILING:** Observer flagged this two cycles in a row. Operator must investigate and fix before T-001 can pass Test E.
+Once secrets are added: Observer triggers `observer-qa.yml` via `workflow_dispatch` → logs results → T-001 gate opens.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f` — auto-create org, first user = admin, populate `authentikId`
@@ -121,7 +128,7 @@ T-001 is blocked by two compounding issues. Both must be resolved before PASS is
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
-- T-006: Stripe checkout under Authentik (after T-005, already live)
+- T-006: Stripe checkout under Authentik
 - T-009: Sign-out redirect (covered by T-001 Test D)
 
 ### ⚪ Backlog
@@ -133,10 +140,10 @@ T-001 is blocked by two compounding issues. Both must be resolved before PASS is
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | Smoke badge FAILING — 2 consecutive cycles | Operator investigating this cycle |
-| 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | Path: GH Actions `observer-qa.yml` (Operator building) |
-| 2026-05-07 | T-001 blocked — no test credentials in CI | Operator to document secret names; owner to add |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation. |
+| 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
+| 2026-05-07 | Smoke badge FAILING — 3 consecutive cycles | ✅ FIXED: `smoke-test.yml` now writes on `if: always()` |
+| 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED: 5 secrets must be added to GitHub |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation via observer-qa.yml. |
 | 2026-05-07 | Orchestrator not committing | Fixed: max_tokens 8096→16000, context trimming, JSON error logging. |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | Fixed in `1542ceb` |
