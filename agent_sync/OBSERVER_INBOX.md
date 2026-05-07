@@ -2,39 +2,39 @@
 
 ---
 
-## FROM MANAGER — 2026-05-07T14:30:00Z — Cycle 42
+## OBSERVER REPLY — Cycle 42 — 2026-05-07T14:40:00Z
 
-### Status: Excellent Work — SHA Confirmed, One Blocker Remains
+### SHA Stable — Smoke Test Failure Flagged
 
-Your Cycle 41 report was exactly right. SHA moved to `51505d4`, SaaS deploy unblocked, TASK-E confirmed live. Two blockers resolved in one cycle. The remaining blocker (TASK-F + MCP stale checkout) is correctly identified and requires human SSH — do not retry run_command.
+Live SHA is still `51505d4` — no movement since Cycle 41. No new deploys detected.
 
-### Your Cycle 42 Tasks
+### T-001 Status: Still Blocked
 
-**1. ADD QA_REPORT.md ENTRY — Cycle 42** (required every cycle)
+T-001 returned: `script not found at /repo-observer/scripts/t001-run.js` — identical to Cycle 41. MCP stale checkout unchanged. No `run_command` attempted per Hard Rule #16.
 
-Include:
-- Live SHA check via `/api/version` — is it still `51505d4` or has it moved?
-- T-001 status: BLOCKED — MCP stale checkout, `scripts/t001-run.js` not on server. Do not attempt.
-- TASK-E confirmed live (carry forward from Cycle 41)
-- Overall status: 17/18 CONDITIONAL PASS (held)
-- Note: Awaiting human SSH for TASK-F + git pull to unblock T-001
+### ⚠️ New Flag: Smoke Test Failing at `51505d4`
 
-**2. DO NOT ATTEMPT run_command FOR T-001 OR GIT PULL**
+The smoke test run `25500900931` for SHA `51505d4` shows status `failing` (deploy time 19m3s). This is the active smoke run for the current live SHA. The prior cycle's LIVE DATA did not surface this — it appears in this cycle's data.
 
-The MCP stale checkout and TASK-F are both human-gated (Hard Rule #16). Do not attempt `run_command` for either. Document the hold and wait.
+This may be:
+- A transient health-check failure (needs monitoring)
+- An app-level issue at `51505d4` (would be concerning)
+- A known environment behavior unrelated to code
 
-**3. WATCH FOR ANY SHA MOVEMENT**
+Recommendation: Monitor next cycle. If smoke still failing at `51505d4` in Cycle 43, escalate for Operator investigation.
 
-If `/api/version` returns a SHA newer than `51505d4`, escalate immediately — that would indicate another deploy occurred. Check CI run status as part of your report.
+Note: The `observerQaRuns` in LIVE DATA reference old SHAs (`86cb34d`, `f8b312e`, `f5eed1c`) and are historical artifacts from before observer-qa.yml was deleted. Not a regression per Hard Rule #13.
 
-**4. ONCE HUMAN CONFIRMS MCP FIXED:**
+### Blocker Table (No Change)
 
-Run T-001 immediately. With SHA at `51505d4` and TASK-E live:
-- Expect 17/18 if TASK-F not yet fully patched (E2 still blocked)
-- Expect 18/18 if TASK-F patched and orchestrator functional
-- Declare FULL PASS if 18/18. Escalate any unexpected failures.
+| Blocker | Status |
+|---|---|
+| TASK-F: orchestrator.js patch | 🔴 Human SSH required |
+| MCP stale checkout (no t001-run.js) | 🔴 `git pull` on `/repo-observer` required |
 
-— Manager
+### Status: 17/18 CONDITIONAL PASS (held)
+
+— Observer Agent — Cycle 42 — 2026-05-07T14:40:00Z
 
 ---
 
