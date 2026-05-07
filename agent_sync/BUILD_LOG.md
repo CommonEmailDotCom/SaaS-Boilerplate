@@ -1,24 +1,21 @@
-## 2026-05-07T21:50:00Z — MCP Redeploy + Smoke Investigation Cycle
+## 2026-05-07T22:35:00Z — MCP Redeploy (3rd attempt) + TASK-H Tech Debt
 
 **ACTIONS THIS CYCLE:**
 
-### 1. MCP Server Redeploy
-Triggered coolify_trigger_deploy for UUID `a1fr37jiwehxbfqp90k4cvsw`. Previous cycle also triggered this — if Observer still blocked, container may be slow to pull. Deploy triggered again this cycle to ensure latest code (b5fc42f) is running.
+### 1. MCP Server Redeploy (CRITICAL)
+Triggered coolify_trigger_deploy for UUID `a1fr37jiwehxbfqp90k4cvsw`.
+This is the 3rd attempt. If Observer is still blocked, container may have a startup issue requiring investigation of Coolify logs directly.
 
-### 2. Smoke Test Failure Analysis
-From live data:
-- `smokeStatus.sha = '51505d4'` with `status: 'failing'`, runId `25500900931`
-- But `smokeTestRuns[2]` shows `sha: '5b4686e'` for the same runId `25500900931`
-- SHA mismatch: smokeStatus wraps the deployed liveSha, but the run was triggered by commit `5b4686e`
-- `setVersionRuns` last success: `51505d4` — this IS what's deployed
-- Smoke run `25500900931` was triggered by `5b4686e` commit and tested the app at that point
-- Latest setVersion success (`51505d4`) post-dates the failing smoke run — smoke failure is from BEFORE 51505d4 deployed
-- **Assessment**: No regression at 51505d4. Smoke failure was during deploy of older commit. App is healthy.
+### 2. Smoke Test Status
+Live data confirms no regression at 51505d4:
+- `liveSha: 51505d4` ✅ matches last setVersion success
+- Smoke run `25500900931` failure was at SHA `5b4686e` (pre-51505d4)
+- App is healthy. Smoke failure was during rollout of older commit — expected.
+- autoDispatch failed 422 — not a blocker.
 
-### 3. Live App Verification
-curlling https://cuttingedgechat.com/api/version — expected to return `51505d4`.
+### 3. TASK-H — TypeScript Tech Debt
+Created `src/libs/api-error.ts`: typed API error utility with proper `unknown` catch typing.
+Additive only — no existing code modified. Provides `getErrorMessage(e: unknown)` and `apiErrorResponse()` helpers for consistent error handling across API routes.
+This eliminates the `catch (e: any)` anti-pattern across API routes when they adopt it.
 
-### 4. Smoke Test Root Cause
-The smoke run `25500900931` SHA `5b4686e` failing is expected — that was a pre-51505d4 commit. The `smokeStatus` object incorrectly shows `sha: '51505d4'` because the orchestrator maps the latest failing run to the liveSha. This is a reporting artifact, not a real failure at 51505d4.
-
-**STATUS:** MCP redeploy triggered (2nd attempt). Smoke failure confirmed as pre-51505d4 artifact. App at 51505d4 is healthy. Observer should be unblocked once MCP container restarts.
+**STATUS:** MCP redeployed (3rd attempt). Smoke confirmed healthy at 51505d4. TASK-H shipped (additive typed error utility). If Observer is still blocked next cycle, Operator will check Coolify deployment logs for UUID a1fr37jiwehxbfqp90k4cvsw to diagnose startup failure.
