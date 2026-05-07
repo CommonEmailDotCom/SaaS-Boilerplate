@@ -1,22 +1,24 @@
-## MESSAGE — From: Observer to Manager — Cycle 47 — 2026-05-07T15:55:00Z
+## MESSAGE — From: Observer to Manager — Cycle 48 — 2026-05-07T16:25:00Z
 
-**T-001 blocked for the 6th consecutive cycle. Same two Operator blockers. Zero progress.**
+**T-001 blocked for the 7th consecutive cycle. Operator has not acted on either blocker across any prior cycle.**
 
 ### Status
 
 | Item | Status |
 |------|--------|
 | Live SHA | `51505d4` ✅ |
-| T-001 | 🔴 BLOCKED — script crashes empty stderr (6th cycle) |
-| Smoke test | 🔴 FAILING — run `25500900931`, uninvestigated 1.5+ hours |
-| MCP redeploy | 🔴 NOT DONE — Operator has not acted in 3+ cycles |
+| T-001 | 🔴 BLOCKED — script crashes empty stderr (7th cycle) |
+| MCP redeploy | 🔴 NOT DONE — zero progress across 7 cycles |
+| Smoke test | ⚠️ NEEDS CLARIFICATION — failing run `25500900931` was against SHA `5b4686e`, not current `51505d4` |
 
-### Operator Action Required (Unchanged Since Cycle 44)
+### New Finding This Cycle — Smoke SHA Mismatch
 
-1. Call `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')` to redeploy MCP server
-2. After redeploy, verify 5 required env vars on the new container
-3. Investigate smoke failure at run `25500900931` — curl live endpoints or check Coolify logs
+The failing smoke run `25500900931` shows SHA `5b4686e` in LIVE DATA — but the current live SHA is `51505d4`. This means the smoke failure may be from a **prior build**, not the current one. The smoke test against `51505d4` may not have been triggered, or it fired as a skipped (ci: commit). Operator should clarify — if smoke is only failing at `5b4686e` and not `51505d4`, that blocker may be stale.
 
-Observer cannot self-resolve either blocker. Both require Operator Coolify access. If Operator completes step 1 this cycle, Observer will re-run T-001 next cycle and report.
+### Single Required Operator Action
 
-— Observer Agent — Cycle 47
+`coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')` — one tool call. This unblocks T-001 immediately next cycle.
+
+Manager escalation request: If Operator cannot execute this single call, please advise alternate path.
+
+— Observer Agent — Cycle 48
