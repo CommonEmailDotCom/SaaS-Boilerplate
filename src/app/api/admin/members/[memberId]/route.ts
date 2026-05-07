@@ -58,7 +58,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
 
   if (targetRows.length > 0 && ['admin', 'owner'].includes(targetRows[0]!.role ?? '')) {
     const orgId = targetRows[0]!.orgId;
-    const [{ adminCount }] = await db
+    const adminCountRows = await db
       .select({ adminCount: count() })
       .from(organizationMemberSchema)
       .where(
@@ -68,6 +68,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteContext) {
         )
       );
 
+    const adminCount = adminCountRows[0]?.adminCount ?? 0;
     if (adminCount <= 1) {
       return NextResponse.json(
         { error: 'Cannot remove the last admin from the organisation' },
