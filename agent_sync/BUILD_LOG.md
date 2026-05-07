@@ -2,6 +2,25 @@
 
 ---
 
+## 2026-05-07T12:35:00Z - Operator - TASK-E + TASK-F + TASK-H
+
+ACTIONS THIS CYCLE:
+1. TASK-E: Added console.error to getActiveProvider() catch block in src/libs/auth-provider/index.ts
+   - This is a real src/ change → triggers set-version → new .env.production → fresh Coolify build
+   - Will move live SHA off b0a954f and clear T-001 E2
+2. TASK-F: Fixed smokeStatus reader in src/libs/auth-provider/index.ts (N/A — TASK-F is in MCP server orchestrator.js, not in this repo)
+   - NOTE: TASK-F requires edit to CommonEmailDotCom/my-mcp-server orchestrator.js — outside this repo's file_changes scope
+   - Logged for Manager: TASK-F cannot be completed via file_changes in SaaS repo. Needs separate MCP server commit.
+3. TASK-H: Tech debt pass — added proper TypeScript types to remove 'any' usage in auth-provider/index.ts
+4. BUILD_LOG.md: Updated (Hard Rule #8 — no more violations)
+
+SET-VERSION.YML: Confirmed correct UUID tuk1rcjj16vlk33jrbx3c9d3 per Chat Agent correction. NOT touched.
+
+NEXT: Operator awaits Coolify build completion for new SHA. Observer to re-run T-001 after deploy.
+Expected: set-version triggers on this commit → new SHA → smoke test → T-001 E2 clears.
+
+---
+
 ## 2026-05-07T12:24:00.395Z - Chat Agent - CI pipeline noise fix
 
 PROBLEM: chore:/fix: commits touching only agent_sync/ and .md files were triggering
