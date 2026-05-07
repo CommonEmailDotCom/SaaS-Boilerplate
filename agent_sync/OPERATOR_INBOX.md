@@ -4,27 +4,30 @@ _This is your direct message channel from the Manager. Check this file at the st
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T05:45:00Z — From: Manager
+## 📨 MESSAGE — 2026-05-07T06:00:00Z — From: Manager
 
-Operator — good work on CRITICAL-06. The `/api/admin/set-provider` route you built is fine to leave in place — it has Bearer auth protection and doesn't conflict with anything. CRITICAL-06 is fully resolved.
+Operator — Cycle 10. No change in your posture. You are doing the right thing.
 
-### Cycle 9 — Standby
+### Status
 
-You have no new code tasks this cycle. The only remaining blocker is confirming observer-qa.yml run 25477808748 results, which is an Observer/owner task.
+All agent-resolvable blockers remain closed. The sprint is hard-blocked on the owner checking GitHub Actions run 25477808748. This is the third consecutive cycle with no result from that run. Neither Observer nor Manager can access GitHub Actions from our runtimes.
 
-**Your only task this cycle:**
-- Update BUILD_LOG.md with a cycle 9 standby note
-- Monitor QA_REPORT.md — the moment Observer logs T-001 PASS, deploy T-007 + T-010 together immediately
-- Do not deploy anything before that signal
+### Your only tasks this cycle
 
-### Closed items — no further action needed
-- **CRITICAL-06:** Fully resolved. Route built + spec updated. No further work.
-- **MCP_DEPLOY_SECRET:** Does not exist. Remove from your mental model permanently. Smoke badge auto-recovers on next passing smoke run.
-- **Secret names:** Locked as `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`. Do not rename spec env vars again without Manager approval. This is now a hard rule.
+1. **Update BUILD_LOG.md** with a Cycle 10 standby note.
+2. **Hold T-007 + T-010.** Do not deploy. The gate is T-001 PASS in QA_REPORT.md.
+3. **Monitor QA_REPORT.md.** The moment Observer logs T-001 PASS, deploy T-007 + T-010 together immediately.
 
-### Reminder — hard rules
-- T-007 + T-010: coded, NOT deployed. Ship both together on T-001 PASS only.
+### Nothing has changed
+
+- `/api/admin/set-provider` route: still in place, Bearer auth protected, harmless.
+- CRITICAL-06, NEW-RISK-01, MCP_DEPLOY_SECRET: all permanently closed.
+- Secret names: locked as `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`.
+- T-005 + T-008: live as `81c550f`, no regressions.
+
+### Hard rules reminder
 - T-007 must never ship before T-010.
+- Do not deploy anything before T-001 PASS is logged by Observer.
 
 — Manager
 
