@@ -98,37 +98,37 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T05:15:00Z*
+*Updated by Manager — 2026-05-07T05:30:00Z*
 
-### 🔴 Critical — Awaiting Owner Action (HARD BLOCKER — Cycle 5)
+### 🔴 Critical — DUAL BLOCKER (Cycle 7)
 
-All agent-side infrastructure is complete. The sprint has been blocked on the same single owner action for **5 consecutive cycles**.
+Two blockers must BOTH be resolved before T-001 can pass. Resolving only one is insufficient.
 
-**Owner must add these 5 secrets to GitHub → Settings → Secrets and variables → Actions:**
+#### Blocker 1 — OWNER ACTION (Cycle 7): 5 GitHub repo secrets
+Owner must add these secrets to GitHub → Settings → Secrets and variables → Actions:
 
 | Secret Name | Description |
 |---|---|
 | `GOOGLE_TEST_EMAIL` | Google account email for OAuth test login |
 | `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
 | `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` |
-| `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider (Tests B/D) |
+| `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider |
 | `MCP_DEPLOY_SECRET` | Bearer token for POST to https://mcp.joefuentes.me/update-smoke-status |
 
-Once secrets are added: Observer triggers `observer-qa.yml` via `workflow_dispatch` → logs results → T-001 gate opens → Operator deploys T-007 + T-010.
-
-**⚠️ Manager escalation note:** This is now Cycle 5 with the same blocker. If owner has not seen the prior notices, direct human intervention is required to communicate the urgency. No agent action can substitute for this.
+#### Blocker 2 — OPERATOR ACTION: CRITICAL-06 — `/api/admin/set-provider` endpoint missing
+Observer identified in Cycle 5 that the Playwright spec's `beforeAll` hook calls `/api/admin/set-provider`, which does not exist. This endpoint must be created (or the spec updated to use the correct existing endpoint `/api/admin/auth-provider`) **before** owner adding secrets will unblock T-001. This is now in its second cycle unresolved. **Operator must action this cycle.**
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
-- **T-005 + T-008** ✅ Live as `81c550f` — auto-create org, first user = admin, populate `authentikId`
+- **T-005 + T-008** ✅ Live as `81c550f`
 - **T-007 + T-010** ✅ Coded, NOT deployed — ships together after T-001 PASS
 
 ### 🟠 High — Infra
-- **INFRA-001** ✅ Done — weekly Docker prune cron active (`0 3 * * 0`)
+- **INFRA-001** ✅ Done — weekly Docker prune cron active
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
 - T-006: Stripe checkout under Authentik
-- T-009: Sign-out redirect (covered by T-001 Test D)
+- T-009: Sign-out redirect
 
 ### ⚪ Backlog
 - T-003: Smoke concurrency chaos — absolute last, high load
@@ -140,8 +140,9 @@ Once secrets are added: Observer triggers `observer-qa.yml` via `workflow_dispat
 | Date | Incident | Resolution |
 |---|---|---|
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
-| 2026-05-07 | Smoke badge FAILING — 3 consecutive cycles | ✅ FIXED: `smoke-test.yml` now writes on `if: always()` |
-| 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED (Cycle 5): 5 secrets must be added to GitHub |
+| 2026-05-07 | Smoke badge FAILING — 6 consecutive cycles | ⏳ Code fix deployed. Gated on `MCP_DEPLOY_SECRET` (owner action) |
+| 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED (Cycle 7): 5 secrets must be added |
+| 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ⏳ OPERATOR ACTION REQUIRED (Cycle 7, 2nd cycle unresolved) |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation via observer-qa.yml. |
 | 2026-05-07 | Orchestrator not committing | Fixed: max_tokens 8096→16000, context trimming, JSON error logging. |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
