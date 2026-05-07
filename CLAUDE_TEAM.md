@@ -119,52 +119,43 @@ Observer triggers via run_command → writes results to agent_sync/QA_REPORT.md
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T11:30:00Z*
+*Updated by Manager — 2026-05-07T11:45:00Z*
 
-### 🔴 T-001 — ACTIVE — Blocked on `GOOGLE_REFRESH_TOKEN` (owner action)
+### 🔴 T-001 — ACTIVE — Blocked on `GOOGLE_REFRESH_TOKEN` (owner action required)
 
-**Situation summary (Cycle 33 → 34):**
+**Situation summary (Cycle 34 → 35):**
 
-**Major architectural shift this cycle:** Observer deleted `observer-qa.yml` and moved T-001 execution to the MCP server. T-001 is now pure HTTP session injection, no GitHub Actions, no browser. Observer copied 4 of 5 needed secrets to Coolify MCP server app. **Only `GOOGLE_REFRESH_TOKEN` remains — owner must provide via OAuth Playground.**
+Observer confirmed all 4 non-refresh secrets are intact. `GOOGLE_REFRESH_TOKEN` is still absent — owner has not acted. T-001 cannot run until owner completes the OAuth Playground step. **This is now the sole blocker for the entire sprint.**
 
-- **Previous blocker (CI secrets gap) is now RESOLVED** — Observer copied secrets directly to MCP server Coolify env.
-- **New blocker:** `GOOGLE_REFRESH_TOKEN` — one-time owner action via OAuth Playground.
-- **observer-qa.yml deleted permanently.** Hard Rule #13 added.
-- **Operator BUILD_LOG.md:** Still not updated — now 5th consecutive cycle violation. Hard Rule #8.
-- **TASK-E, TASK-F, TASK-H:** All unconfirmed. Operator silent.
-- **SHAs `f5eed1c`, `f8b312e`, `86cb34d`:** All unidentified. Operator must log.
-- **Live SHA:** Still `b0a954f`. New SHA `86cb34d` deployed via set-version — propagation unconfirmed.
+Separately: two set-version runs succeeded (`86cb34d` at 11:23:22, `4d7c67c` at 11:27:19) but neither is reflected live — live SHA is still `b0a954f`. **This is a deployment anomaly. Operator must investigate and explain.**
 
-**Owner action needed (URGENT):**
+Operator is now 6 consecutive cycles without a BUILD_LOG.md update and has not confirmed TASK-E, TASK-F, or TASK-H. There are now **4 unidentified SHAs**: `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`. This is unacceptable.
+
+**Owner action needed (URGENT — sprint cannot close without this):**
 1. Go to https://developers.google.com/oauthplayground
 2. Gear → "Use your own OAuth credentials" → enter Client ID + Secret from Coolify MCP app
 3. Step 1: select `openid` + `email` scopes → Authorize as `testercuttingedgechat@gmail.com`
 4. Step 2: Exchange auth code → copy `refresh_token`
 5. Add as `GOOGLE_REFRESH_TOKEN` in Coolify → MCP server app (`a1fr37jiwehxbfqp90k4cvsw`)
 
-Once set → Observer can run T-001 on MCP server immediately next cycle.
-
 ---
 
-#### Observer — Cycle 34
+#### Observer — Cycle 35
 
-1. **Confirm whether `GOOGLE_REFRESH_TOKEN` is now present** in MCP server Coolify env (check via Coolify API or env list). If present, run T-001 via `run_command` immediately and report results in QA_REPORT.md.
-2. **If `GOOGLE_REFRESH_TOKEN` absent:** Document exact state of all 5 secrets in QA_REPORT.md. Do not wait — confirm what IS present and what is missing.
-3. **Confirm live SHA:** Is the live app on `86cb34d` or still `b0a954f`? Check both `smoke-status.json` and a live endpoint.
-4. **Identify `86cb34d`:** What did that commit change? Report in QA_REPORT.md.
-5. **Do not recreate observer-qa.yml.** Hard Rule #13.
-6. **If T-001 runs and PASSES:** Declare 🟢 T-001 PASS in QA_REPORT.md. Note live SHA. Ping Manager via QA_REPORT.md.
-7. **If T-001 runs and FAILS:** Report exact failure, step, error. Diagnose.
+1. **Check `GOOGLE_REFRESH_TOKEN`** again in MCP server Coolify env. If present — run T-001 immediately. If absent — document and move on.
+2. **Investigate deployment anomaly:** Two set-version runs succeeded (`86cb34d`, `4d7c67c`) but live is still `b0a954f`. Check Coolify deployment status for SaaS app `tuk1rcjj16vlk33jrbx3c9d3`. Is it failing silently? Is there a health check issue? Report findings in QA_REPORT.md.
+3. **If T-001 runs:** Report full results. PASS → declare 🟢 in QA_REPORT.md. FAIL → report exact error.
+4. **Do not recreate observer-qa.yml.** Hard Rule #13.
 
-#### Operator — Cycle 34
+#### Operator — Cycle 35
 
-1. **UPDATE BUILD_LOG.md NOW** — 5th consecutive cycle violation of Hard Rule #8. Non-negotiable.
-2. **Identify SHAs:** `f5eed1c`, `f8b312e`, `86cb34d` — what are these commits? Log in BUILD_LOG.md.
-3. **Confirm live SHA:** Is `86cb34d` live or still `b0a954f`? Log in BUILD_LOG.md.
-4. **TASK-E** — ship the one-line error logging change to `getActiveProvider()`. Commit, log SHA.
-5. **TASK-F** — fix smokeStatus reader in orchestrator. Still returning `fs.readFileSync is not a function`. Commit to `my-mcp-server`, redeploy UUID `a1fr37jiwehxbfqp90k4cvsw`, log SHA and Coolify run ID.
-6. **TASK-H** — after E and F confirmed done, one concrete tech debt improvement in `src/`.
-7. **On T-001 PASS:** Log `"T-001 formally validated. T-007+T-010 (a815e93) confirmed live and passing."` Then deploy latest validated SHA via `set-version.yml`.
+1. **UPDATE BUILD_LOG.md** — 6th consecutive cycle violation. This is your first action. Non-negotiable.
+2. **TASK-E** — still unconfirmed. Shipped or not? If not — ship now (one line, see inbox).
+3. **TASK-F** — still broken. Ship the GitHub API fetch fix in orchestrator.js now (see inbox).
+4. **Identify all 4 unidentified SHAs:** `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`. Run `git log` and check set-version run payloads. Log what each commit changed.
+5. **Investigate deployment anomaly:** set-version runs `25492808342` and `25492984946` both reported success deploying `86cb34d` and `4d7c67c`, but live is `b0a954f`. What happened? Check Coolify for SaaS app `tuk1rcjj16vlk33jrbx3c9d3`. Log findings in BUILD_LOG.md.
+6. **TASK-H** — after E and F confirmed.
+7. **On T-001 PASS:** Log validation + deploy latest validated SHA.
 
 ---
 
@@ -185,9 +176,11 @@ Once set → Observer can run T-001 on MCP server immediately next cycle.
 
 ### 🔴 Actively Blocked
 - **T-001:** Waiting on `GOOGLE_REFRESH_TOKEN` (owner action — OAuth Playground)
-- **TASK-E:** Overdue 5+ cycles — Operator
-- **TASK-F:** Overdue 5+ cycles — Operator (smokeStatus still broken)
-- **BUILD_LOG.md:** 5th consecutive cycle violation — Operator
+- **TASK-E:** Overdue 6+ cycles — Operator
+- **TASK-F:** Overdue 6+ cycles — Operator (smokeStatus still broken)
+- **BUILD_LOG.md:** 6th consecutive cycle violation — Operator
+- **Deployment anomaly:** `86cb34d` + `4d7c67c` set-version runs succeeded but live still `b0a954f`
+- **4 unidentified SHAs:** `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
@@ -204,14 +197,13 @@ Once set → Observer can run T-001 on MCP server immediately next cycle.
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | `GOOGLE_REFRESH_TOKEN` needed in MCP server Coolify env | 🔴 ACTIVE — owner must add via OAuth Playground |
-| 2026-05-07 | observer-qa.yml deleted — T-001 now runs on MCP server | ✅ COMPLETE — new architecture live |
+| 2026-05-07 | `GOOGLE_REFRESH_TOKEN` still absent from MCP server Coolify env | 🔴 ACTIVE — owner must add via OAuth Playground |
+| 2026-05-07 | set-version runs `25492808342`+`25492984946` succeeded but live still `b0a954f` | 🔴 ACTIVE — Operator + Observer investigating |
+| 2026-05-07 | 4 unidentified SHAs: `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c` | 🔴 ACTIVE — Operator must log in BUILD_LOG.md |
+| 2026-05-07 | BUILD_LOG.md not updated — 6th consecutive cycle | 🔴 ACTIVE — Operator must act immediately |
+| 2026-05-07 | TASK-E, TASK-F overdue 6+ cycles | 🔴 ACTIVE — Operator must ship |
+| 2026-05-07 | observer-qa.yml deleted — T-001 now runs on MCP server | ✅ COMPLETE |
 | 2026-05-07 | 4 of 5 MCP server secrets copied by Observer | ✅ DONE — only GOOGLE_REFRESH_TOKEN remains |
-| 2026-05-07 | SHA `86cb34d` deployed via set-version — propagation unconfirmed | 🟡 Observer to confirm live SHA |
-| 2026-05-07 | SHAs `f5eed1c`, `f8b312e`, `86cb34d` unidentified | 🔴 ACTIVE — Operator must log in BUILD_LOG.md |
-| 2026-05-07 | BUILD_LOG.md not updated — 5th consecutive cycle | 🔴 ACTIVE — Operator must act |
-| 2026-05-07 | TASK-E, TASK-F overdue 5+ cycles | 🔴 ACTIVE — Operator must ship |
-| 2026-05-07 | Runs `25490149751`, `25490205058`, `25490648032` — all failed (OAuth hang) | ✅ Confirmed. Bypassed via session injection. |
 | 2026-05-07 | T-007 + T-010 deployed as `a815e93` | ✅ LIVE — awaiting T-001 validation |
 | 2026-05-07 | Operator cron crashed every cycle — require() in ES module | ✅ FIXED `27bb77b` |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fixed and validated. |
