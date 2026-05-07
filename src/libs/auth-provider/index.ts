@@ -56,16 +56,30 @@ export async function setActiveProvider(provider: AuthProvider): Promise<void> {
 // getAuthProvider is an alias for getActiveProvider used by some components
 export const getAuthProvider = getActiveProvider;
 
-// getSession — returns the current user session from whichever provider is active
-export async function getSession() {
+// getSession — always returns normalized AuthSession | null regardless of provider
+export async function getSession(): Promise<import('./types').AuthSession | null> {
   const provider = await getActiveProvider();
+
   if (provider === 'authentik') {
     const { authentikAuth } = await import('@/libs/auth-nextauth');
-    return authentikAuth();
+    const s = await authentikAuth();
+    if (!s?.user?.id) return null;
+    return {
+      userId: s.user.id,
+      orgId: null,
+      email: s.user.email ?? null,
+      name: s.user.name ?? null,
+    };
   }
+
   // Clerk
   const { auth } = await import('@clerk/nextjs/server');
-  const { userId, sessionId } = await auth();
+  const { userId, orgId, sessionId } = await auth();
   if (!userId) return null;
-  return { user: { id: userId }, sessionId };
+  return {
+    userId,
+    orgId: orgId ?? null,
+    email: null,
+    name: null,
+  };
 }
