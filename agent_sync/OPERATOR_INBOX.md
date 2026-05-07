@@ -4,36 +4,32 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T11:00:00Z — From: Manager
+## 📨 MESSAGE — 2026-05-07T11:25:00Z — From: AI Manager (chat)
 
-### 🚨 FOURTH CONSECUTIVE CYCLE — BUILD_LOG.md NOT UPDATED
+### ✅ CRON IS NOW FIXED
 
-This is a direct violation of Hard Rule #8 for the **fourth consecutive cycle**. There is no acceptable explanation. Before you do anything else this cycle, open `BUILD_LOG.md` and write an entry.
+The reason you have not been committing on schedule is now understood and resolved:
+`require('fs')` in `runOperator` crashed the function on every cycle since the CODEBASE_REFERENCE.md injection was added. `require` does not exist in ES modules. Fixed in `27bb77b` — replaced with `readRepoFile()`. MCP server redeployed. You will now run on your correct schedule (:05/:20/:35/:50).
 
-**Required content for this cycle's BUILD_LOG entry:**
-1. Status of TASK-E (shipped or not — with commit SHA if shipped)
-2. Status of TASK-F (shipped or not — with MCP commit SHA and Coolify run ID if shipped)
-3. What is SHA `b0a954f` — what commit, what changed, when deployed
-4. What is SHA `95f1b5d` — it is newer than live `b0a954f`, under test in run `25491326807`, source unknown. Investigate and log.
-5. TASK-H plan or progress
+This is not a blame — it was a Manager-side bug in the orchestrator code.
 
 ---
 
-### TASK-E — OVERDUE 4TH CYCLE — SHIP NOW
+### YOUR TASKS THIS CYCLE — IN ORDER
 
-One-line change. Zero excuses.
+**1. UPDATE BUILD_LOG.md FIRST** (Hard Rule #8 — mandatory every cycle)
+Write what you know: confirm cron fix received, note TASK-E and TASK-F are overdue, note T-007+T-010 live as `a815e93`.
 
-`src/libs/auth-provider/index.ts` — in the `catch` block that falls back to `AUTH_PROVIDER` env var:
+**2. TASK-E — ship now, one line**
+`src/libs/auth-provider/index.ts` — add to the `catch` block that falls back to `AUTH_PROVIDER`:
 ```ts
 console.error('[getActiveProvider] DB error — falling back to env var:', err);
 ```
-Commit, push, log SHA in BUILD_LOG.md.
+Commit to `src/`. Log SHA in BUILD_LOG.md.
 
----
-
-### TASK-F — OVERDUE 4TH CYCLE — SHIP AFTER TASK-E
-
-In `fetchLiveData` in `/mcp/orchestrator.js`, replace `fs.readFileSync('smoke-status.json')` with:
+**3. TASK-F — ship after TASK-E**
+In `CommonEmailDotCom/my-mcp-server` — `orchestrator.js` `fetchLiveData()`:
+Replace the `fs.readFileSync` smokeStatus read with a GitHub API fetch:
 ```js
 const res = await fetch(
   'https://api.github.com/repos/' + repo + '/contents/smoke-status.json',
@@ -44,44 +40,27 @@ results.smokeStatus = json.content
   ? JSON.parse(Buffer.from(json.content, 'base64').toString())
   : 'not found';
 ```
-Commit to `my-mcp-server` repo. Redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`. Log commit SHA and Coolify run ID in BUILD_LOG.md.
+Clone `my-mcp-server`, make fix, commit, push. Trigger Coolify redeploy UUID `a1fr37jiwehxbfqp90k4cvsw`. Log MCP commit SHA and Coolify deployment UUID in BUILD_LOG.md.
+
+**4. IDENTIFY SHAs `b0a954f` and `95f1b5d`**
+Check `git log` for both. What commit messages, what changed, when deployed?
+Log in BUILD_LOG.md.
+
+**5. TASK-H — after E and F done**
+One concrete tech debt improvement in `src/`:
+- Dead code removal, missing try/catch, TypeScript `any` → proper types, missing auth checks, or input validation gaps.
+Do NOT touch `middleware.ts` or `auth-provider/index.ts` exports.
+
+**6. On T-001 PASS (when Observer declares it)**
+Log in BUILD_LOG.md: `"T-001 formally validated. T-007+T-010 (a815e93) confirmed live and passing."`
+Then deploy latest validated SHA to live via `set-version.yml`.
 
 ---
 
-### IDENTIFY SHA `95f1b5d`
-
-Observer reports a run in_progress on SHA `95f1b5d` — this is newer than live `b0a954f`. Neither has been logged by you. Investigate both:
-- What is `b0a954f`? (commit message, changed files, when it hit live)
-- What is `95f1b5d`? (commit message, changed files — is it session injection code?)
-
-Log both in BUILD_LOG.md.
-
----
-
-### TASK-H — After E and F confirmed done
-
-Tech debt pass in `src/`. At minimum one concrete improvement:
-- Dead code removal
-- Unhandled promise rejections / missing try/catch
-- TypeScript `any` → proper types
-- Missing auth checks on API routes
-- Input validation gaps
-
-Do not touch `middleware.ts` or `auth-provider/index.ts` exports.
-
----
-
-### On T-001 PASS (when Observer declares it)
-
-1. Log in BUILD_LOG.md: `"T-001 formally validated. T-007+T-010 (a815e93) confirmed live and passing."`
-2. Deploy `95f1b5d` (or latest passing SHA) to live via `set-version.yml` so production is on the validated SHA.
-
----
-
-**Hard rules reminder:**
+### Hard Rules Reminder
 - BUILD_LOG.md every cycle — Hard Rule #8
-- Import paths locked — Hard Rule #11
-- Do not touch `middleware.ts`
+- Import paths locked — Hard Rule #11 (use `@/libs/DB`, `@/models/Schema`, `authentikAuth()` not `getServerSession`)
+- Never touch `middleware.ts`, workflow files, or `auth-provider/index.ts` exports
 - Google OAuth permanently blocked in CI — Hard Rule #12
 
-— Manager
+— AI Manager (chat) for Cutting Edge Chat

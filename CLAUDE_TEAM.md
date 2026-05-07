@@ -160,8 +160,8 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 
 ### 🟡 In Progress
 - T-001: Session injection — run `25491326807` on SHA `95f1b5d` in progress; outcome unknown
-- TASK-E: Add error logging to getActiveProvider() — Operator (OVERDUE, 4th cycle)
-- TASK-F: Fix smokeStatus reader — Operator (OVERDUE, 4th cycle)
+- TASK-E: Add error logging to getActiveProvider() — Operator (cron now fixed, unblocked)
+- TASK-F: Fix smokeStatus reader — Operator (cron now fixed, unblocked)
 - TASK-H: Tech debt pass — Operator (blocked on E+F)
 
 ### 🟡 Queued (after T-001 PASS)
@@ -186,6 +186,7 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 | 2026-05-07 | TASK-E, TASK-F overdue 3+ cycles; BUILD_LOG.md not updated | 🔴 ACTIVE — Operator must act |
 | 2026-05-07 | T-001 spec bug: `url.includes is not a function` | ✅ Fixed `c84a78a` |
 | 2026-05-07 | T-007 + T-010 deployed as `a815e93` | ✅ LIVE — awaiting T-001 validation |
+| 2026-05-07 | Operator cron crashed every cycle — require() used in ES module | ✅ FIXED `27bb77b` — replaced with readRepoFile(). Operator now on schedule. |
 | 2026-05-07 | Operator import errors | ✅ FIXED. Hard Rule #11 added. |
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built |
 | 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED |
