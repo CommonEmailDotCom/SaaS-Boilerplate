@@ -1,1 +1,103 @@
-{"updated":"2026-05-07T08:15:00Z","sprint":"Auth Provider Switching — Phase 5: End-to-End Validation","project":"Cutting Edge Chat — https://cuttingedgechat.com","repo":"https://github.com/CommonEmailDotCom/SaaS-Boilerplate","agent_communication":{"inbox_files":{"observer":"agent_sync/OBSERVER_INBOX.md","operator":"agent_sync/OPERATOR_INBOX.md"},"protocol":"CHECK YOUR INBOX FILE FIRST at the start of every cycle, before reading this TASK_BOARD."},"manager_assessment":{"timestamp":"2026-05-07T08:15:00Z","overall_status":"🔴 CRITICAL — Operator non-functional. Skip-fix 4 cycles overdue. Triple-trigger confirmed on 3 consecutive SHAs (d1c4781, 19e2bf1, 7b39671). BUILD_LOG.md not updated 4 consecutive cycles (Hard Rule 8). Cycle 18 final warning expired with no delivery. Owner escalation now active.","key_events":["Run 25481415030 = success on SHA f9a325f — confirmed, now 6+ SHAs old","SHA chain since passing run: b0a954f → a2995a1 → 308e1bd → d1c4781 → 19e2bf1 → 7b39671 — all CI runs skipped","Triple-trigger CONFIRMED on d1c4781, 19e2bf1, AND 7b39671 — duplicate on: entries root cause confirmed across 3 consecutive SHAs","Observer Cycle 18: runs 25483679107, 25483679124, 25483681762 — all skipped 08:02:29–08:02:33Z on SHA 7b39671","Operator skip-fix NOT delivered in Cycles 15, 16, 17, 18 — 4 consecutive cycles without action","BUILD_LOG.md not updated by Operator in Cycles 15, 16, 17, 18 — Hard Rule 8 violated 4th consecutive cycle","Cycle 18 final warning expired — owner escalation trigger met","smokeStatus reader: fs.readFileSync not a function — persists, low priority"],"active_blockers":["BLOCKER-1 (CRITICAL — OWNER ESCALATION ACTIVE): observer-qa.yml skip bug — duplicate on: entries confirmed across 3 SHAs. Operator non-functional 4 cycles. Owner must manually fix .github/workflows/observer-qa.yml.","BLOCKER-2 (CRITICAL): Coolify auto-deploy SHA churn — 6th cycle owner request. UUID tuk1rcjj16vlk33jrbx3c9d3.","BLOCKER-3: BUILD_LOG.md not updated by Operator in Cycles 15–18 — Hard Rule 8 violation (4th consecutive)."],"secret_names_locked":{"ci_email":"QA_GMAIL_EMAIL","ci_password":"QA_GMAIL_PASSWORD","note":"These match what owner added. Do not rename. Hard rule in CLAUDE_TEAM.md."},"manager_contingency_pass":"If owner or Operator fixes the workflow this cycle and Observer reports a non-skipped success run with BUILD_LOG.md ancestry confirmation (f9a325f → HEAD, no functional src/ changes) — Manager accepts T-001 PASS immediately.","owner_escalation_status":"ACTIVE — Cycle 18 final warning expired. Operator has not delivered skip fix or BUILD_LOG.md entry in 4 consecutive cycles. Owner should: (1) manually edit .github/workflows/observer-qa.yml to remove duplicate on: entries; (2) disable Coolify auto-deploy on UUID tuk1rcjj16vlk33jrbx3c9d3.","confirmed_root_cause":"Duplicate on: trigger entries in observer-qa.yml. Triple-trigger signature (3 runs within 2–4 seconds) confirmed on THREE consecutive SHAs (d1c4781, 19e2bf1, 7b39671). Fix: remove duplicate on: entries, ensure job if: (if any) covers both push and workflow_dispatch, confirm branches: filter is not excluding main.","architecture_notes_for_agents":["Middleware runs on Edge runtime — provider-constant.ts is the ONLY safe import for middleware.","getActiveProvider() has a 5s cache TTL. Tests switching provider must wait >5s before asserting.","next-auth requires trustHost: true behind Traefik — do not remove.","Clerk clerkMiddleware() MUST run on all requests even when Authentik is active — Clerk is permanent.","Coolify SaaS app UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP server UUID: a1fr37jiwehxbfqp90k4cvsw.","T-005 + T-008 are live as 81c550f. T-007 + T-010 coded but NOT deployed."]},"columns":{"in_progress":[{"id":"CI-SKIP-FIX","title":"[OPERATOR — CYCLE 19 — OWNER ESCALATION ACTIVE] Fix observer-qa.yml skip bug","priority":"critical","assigned_to":"operator","manager_instruction":"Root cause confirmed across 3 consecutive SHAs. Duplicate on: entries in observer-qa.yml. Owner escalation is now active — this is your last opportunity before owner takes over this task. Steps: (1) Open .github/workflows/observer-qa.yml. (2) Remove duplicate on: block — keep ONE on: section with push: branches: [main] and workflow_dispatch:. (3) Remove any job-level if: that restricts to github.event_name == 'push' only. (4) Remove any paths: filter excluding workflow-file-only commits. (5) Push to main. (6) Manually dispatch via GitHub Actions UI if needed. (7) Report run ID in BUILD_LOG.md. (8) Log git log --oneline f9a325f..HEAD ancestry. (9) Log Cycles 15–18 retrospective entries in BUILD_LOG.md (even one line each). OWNER WILL MANUALLY FIX IF YOU DO NOT DELIVER THIS CYCLE."}],"ready_to_trigger":[{"id":"T-007-T-010-DEPLOY","title":"Deploy T-007 + T-010 together — gated on T-001 PASS","priority":"critical","assigned_to":"operator","manager_instruction":"Deploy immediately the moment Observer logs 🟢 T-001 PASS — DEPLOY SIGNAL. Both together. T-007 never ships without T-010."}],"monitoring":[{"id":"T-001-CYCLE19","title":"[OBSERVER — CYCLE 19] Monitor for skip-fix run (owner or Operator) + declare PASS or escalate","priority":"critical","assigned_to":"observer","manager_instruction":"Monitor GitHub Actions for a non-skipped observer-qa run on current HEAD. Fix may come from owner directly or Operator. On success + BUILD_LOG.md ancestry confirmation: declare 🟢 T-001 PASS — DEPLOY SIGNAL prominently at top of QA_REPORT.md Cycle 19 entry. On failure: report failing tests by name. If still skipped: log 🔴 Operator fix NOT landed — Cycle 19. Owner escalation active. Continue headless battery regardless."}],"backlog":[{"id":"T-010","title":"Guarantee at least one admin user exists — bootstrap + enforcement","priority":"high","status":"CODED — NOT DEPLOYED","manager_instruction":"Ships alongside T-007. Hold for T-001 PASS."},{"id":"T-006","title":"Stripe checkout works under Authentik session","priority":"high","assigned_to":"observer","manager_instruction":"HOLD — unblocks after T-001 PASS."},{"id":"T-009","title":"Sign-out from Authentik redirects correctly on provider switch-back","priority":"medium","manager_instruction":"HOLD — covered by T-001 Test D."},{"id":"T-002","title":"Smoke test polls correct SHA","priority":"high","assigned_to":"observer","manager_instruction":"Queue after T-001 complete."}],"done":[{"id":"RUN-25481415030-SUCCESS","title":"Run 25481415030 — SUCCESS on SHA f9a325f","closed_note":"✅ Confirmed first passing T-001. Now 6+ SHAs old. Skip bug preventing follow-up validation."},{"id":"T-001-FIX-b0a954f","title":"Fix googleOAuthSignIn — intermediate Google screen handling","closed_note":"✅ Fixed."},{"id":"T-001-FIX-61c15b5","title":"Fix googleOAuthSignIn helper — popup/redirect timeout + selector bugs","closed_note":"✅ Fixed by Observer in 61c15b5."},{"id":"RUN-25479919627-FAIL","title":"Run 25479919627 — FAILED (A2 timeout)","closed_note":"✅ Root cause identified and fixed."},{"id":"CRITICAL-06","title":"Fix /api/admin/set-provider — missing endpoint","closed_note":"✅ Resolved."},{"id":"NEW-RISK-01","title":"Secret name mismatch risk","closed_note":"✅ Closed. QA_GMAIL_EMAIL/QA_GMAIL_PASSWORD confirmed correct."},{"id":"MCP-DEPLOY-SECRET","title":"MCP_DEPLOY_SECRET confusion","closed_note":"✅ Permanently closed."},{"id":"SECRETS-GATE","title":"Owner adds GitHub repo secrets","closed_note":"✅ QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added."},{"id":"GH-ACTIONS-QA","title":"Build observer-qa.yml GitHub Actions workflow","closed_note":"✅ Built by Operator. Skip-bug fix 4 cycles overdue — owner escalation active."},{"id":"T-005","title":"First Authentik login auto-creates user + org in DB","closed_note":"Live as 81c550f."},{"id":"T-008","title":"Populate user.authentikId after first Authentik login","closed_note":"Folded into T-005. Live as 81c550f."},{"id":"T-004","title":"Auth provider instant switching via DB","closed_note":"getActiveProvider() + setActiveProvider() live. Edge-safe."},{"id":"INFRA-001","title":"Weekly Docker prune cron","closed_note":"Active: 0 3 * * 0."}]},"active_priority_order":["1. OWNER (CRITICAL — ESCALATION ACTIVE): Manually edit .github/workflows/observer-qa.yml — remove duplicate on: entries. Also disable Coolify auto-deploy on UUID tuk1rcjj16vlk33jrbx3c9d3 at https://joefuentes.me.","2. OPERATOR (CRITICAL — LAST CHANCE): Fix observer-qa.yml skip bug. Push. Update BUILD_LOG.md with Cycles 15–18 retrospective + Cycle 19 entry. Log run ID and ancestry. Failure means owner takes over this task.","3. OBSERVER (CRITICAL): Monitor for non-skipped run (from owner fix or Operator). Declare 🟢 T-001 PASS — DEPLOY SIGNAL on success + ancestry. If still skipped: log 🔴 Owner escalation active.","4. OPERATOR (on PASS signal): Deploy T-007+T-010 together immediately.","5. OBSERVER: T-003 chaos test — absolute last, never without Manager instruction."]}
+{
+  "updated": "2026-05-07T08:38:36.478Z",
+  "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
+  "project": "Cutting Edge Chat — https://cuttingedgechat.com",
+  "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
+  "manager_assessment": {
+    "timestamp": "2026-05-07T08:38:36.478Z",
+    "overall_status": "🟡 observer-qa.yml fixed by chat agent — paths: filter removed, push trigger removed, workflow_dispatch only. Operator double-syncToMain bug fixed. Awaiting next Observer cycle to trigger fresh T-001 run.",
+    "key_events": [
+      "observer-qa.yml paths: filter was preventing all push-triggered runs — fixed",
+      "observer-qa.yml now workflow_dispatch only — Observer orchestrator auto-dispatches each cycle",
+      "Operator double syncToMain bug fixed — was silently failing all Operator cycles",
+      "commitAndPush now retries with rebase on push failure — race condition fixed",
+      "Run 25481415030 = success on SHA f9a325f — still valid baseline"
+    ],
+    "active_blockers": [
+      "BLOCKER-1 (RESOLVED): observer-qa.yml skip bug — fixed by chat agent d4fde11",
+      "BLOCKER-2 (RESOLVED): Operator double syncToMain — fixed in orchestrator 8bc2288",
+      "BLOCKER-3 (MONITORING): BUILD_LOG.md — Operator should catch up on next cycle"
+    ]
+  },
+  "columns": {
+    "in_progress": [
+      {
+        "id": "T-001",
+        "title": "T-001 Auth Matrix — await next Observer dispatch + PASS signal",
+        "priority": "critical",
+        "assigned_to": "observer",
+        "manager_instruction": "Observer: dispatch observer-qa.yml via GitHub API this cycle if no passing run in last 30 min. On success declare 🟢 T-001 PASS — DEPLOY SIGNAL. On failure report failing test names."
+      }
+    ],
+    "ready_to_trigger": [
+      {
+        "id": "T-007-T-010-DEPLOY",
+        "title": "Deploy T-007 + T-010 together — gated on T-001 PASS",
+        "priority": "critical",
+        "assigned_to": "operator",
+        "manager_instruction": "Deploy immediately the moment Observer logs 🟢 T-001 PASS — DEPLOY SIGNAL. Both together. T-007 never ships without T-010."
+      }
+    ],
+    "backlog": [
+      {
+        "id": "T-006",
+        "title": "Stripe checkout works under Authentik session",
+        "priority": "high",
+        "manager_instruction": "HOLD — unblocks after T-001 PASS."
+      },
+      {
+        "id": "T-009",
+        "title": "Sign-out from Authentik redirects correctly on provider switch-back",
+        "priority": "medium",
+        "manager_instruction": "HOLD — covered by T-001 Test D."
+      },
+      {
+        "id": "T-002",
+        "title": "Smoke test polls correct SHA",
+        "priority": "high",
+        "manager_instruction": "Queue after T-001 complete."
+      }
+    ],
+    "done": [
+      {
+        "id": "CI-SKIP-FIX",
+        "title": "Fix observer-qa.yml skip bug",
+        "closed_note": "✅ Fixed by chat agent d4fde11 — paths: filter removed, push trigger removed, workflow_dispatch only."
+      },
+      {
+        "id": "OPERATOR-DOUBLE-SYNC",
+        "title": "Fix Operator double syncToMain + push retry",
+        "closed_note": "✅ Fixed in orchestrator 8bc2288."
+      },
+      {
+        "id": "T-005",
+        "title": "First Authentik login auto-creates user + org",
+        "closed_note": "Live as 81c550f."
+      },
+      {
+        "id": "T-008",
+        "title": "Populate user.authentikId after first login",
+        "closed_note": "Folded into T-005. Live."
+      },
+      {
+        "id": "T-004",
+        "title": "Auth provider instant switching via DB",
+        "closed_note": "Live."
+      },
+      {
+        "id": "INFRA-001",
+        "title": "Weekly Docker prune cron",
+        "closed_note": "Active."
+      }
+    ]
+  },
+  "architecture_notes_for_agents": [
+    "observer-qa.yml is now workflow_dispatch ONLY — Observer must trigger via GitHub API, not rely on push events.",
+    "To dispatch: POST https://api.github.com/repos/CommonEmailDotCom/SaaS-Boilerplate/actions/workflows/observer-qa.yml/dispatches with {ref:'main'}",
+    "Middleware runs on Edge runtime — provider-constant.ts is the ONLY safe import for middleware.",
+    "getActiveProvider() has a 5s cache TTL.",
+    "next-auth requires trustHost: true behind Traefik.",
+    "Coolify SaaS app UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP server UUID: a1fr37jiwehxbfqp90k4cvsw.",
+    "T-007 + T-010 coded but NOT deployed — deploy on T-001 PASS only."
+  ]
+}
