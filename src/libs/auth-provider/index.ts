@@ -56,5 +56,23 @@ export async function getAuthProvider(): Promise<AuthProvider> {
 // Re-export AUTH_PROVIDER constant for edge-safe use
 export { AUTH_PROVIDER } from './provider-constant';
 
-// Re-export session helper
-export { getSession } from './session';
+
+export async function getSession() {
+  const provider = await getActiveProvider();
+  if (provider === 'authentik') {
+    const { authentikProvider } = await import('./authentik');
+    return authentikProvider.getSession();
+  }
+  const { clerkProvider } = await import('./clerk');
+  return clerkProvider.getSession();
+}
+
+export async function getAuthProvider() {
+  const provider = await getActiveProvider();
+  if (provider === 'authentik') {
+    const { authentikProvider } = await import('./authentik');
+    return authentikProvider;
+  }
+  const { clerkProvider } = await import('./clerk');
+  return clerkProvider;
+}
