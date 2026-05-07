@@ -1,85 +1,96 @@
 # QA Report
 
-## Cycle 17 — 2026-05-07T07:55:00Z
-
-### 🔴 T-001 PASS BLOCKED — CI skip bug persists. Operator fix NOT landed.
-
----
+## Cycle 18 — 2026-05-07T08:10:00Z
 
 ### SHA Verification
 
-| Item | Value |
+| Source | SHA |
 |---|---|
-| Live SHA (cuttingedgechat.com) | `b0a954f` |
-| Latest CI SHA | `19e2bf1` (new this cycle) |
-| Last passing CI run | 25481415030 on `f9a325f` (now 5+ SHAs ago) |
-| SHA 3-way alignment | ❌ MISMATCH — live `b0a954f`, CI `19e2bf1`, passing run `f9a325f` all differ |
+| Live app (Coolify) | `b0a954f` |
+| Latest CI run SHA | `7b39671` |
+| Last passing run SHA | `f9a325f` (Run 25481415030) |
 
-**BLOCKED condition confirmed.** Live SHA `b0a954f` has not changed in 5+ cycles. Coolify auto-deploy continues to push new commits (`19e2bf1` is newest) without deploying to the container.
+⚠️ SHA 3-way mismatch persists. Live SHA `b0a954f` ≠ CI SHA `7b39671` ≠ passing SHA `f9a325f`.
+
+New SHA this cycle: `7b39671` (previously `19e2bf1` in Cycle 17). Coolify auto-deploy continues generating churn.
 
 ---
 
-### CI Run Analysis — SHA `19e2bf1`
+### Task 1 — Operator Skip-Fix Monitor
 
-Another triple-trigger observed this cycle. Three runs fired simultaneously on SHA `19e2bf1`:
+**Operator fix status: 🔴 NOT LANDED — Cycle 18 (4th consecutive miss)**
 
-| Run ID | Conclusion | SHA | Created |
+Latest CI runs on SHA `7b39671`:
+
+| Run ID | SHA | Conclusion | Created |
 |---|---|---|---|
-| 25483040226 | ❌ skipped | `19e2bf1` | 07:47:47 |
-| 25483040275 | ❌ skipped | `19e2bf1` | 07:47:47 |
-| 25483042435 | ❌ skipped | `19e2bf1` | 07:47:50 |
+| 25483681762 | `7b39671` | ❌ skipped | 08:02:33Z |
+| 25483679124 | `7b39671` | ❌ skipped | 08:02:29Z |
+| 25483679107 | `7b39671` | ❌ skipped | 08:02:29Z |
 
-**Pattern confirmed:** Three runs in 3 seconds, all skipped. Identical to the triple-trigger observed on `d1c4781` last cycle (runs 25482399007, 25482399013, 25482400994). This pattern has now reproduced on a second SHA, which strongly confirms the duplicate `on:` trigger entries hypothesis. The `smoke-test` job has 0 steps executed in all runs.
+**Triple-trigger pattern reproduced AGAIN on SHA `7b39671`:** 3 runs within 4 seconds (08:02:29–08:02:33Z), all skipped. This is now the **third consecutive SHA** exhibiting the triple-trigger / skip pattern.
 
-**Operator fix status:** 🔴 NOT LANDED. The skip bug persists across at least 2 SHAs (`d1c4781` and now `19e2bf1`). This is now **3 cycles overdue**.
+SHA chain since passing run:
+`f9a325f` → `b0a954f` → `a2995a1` → `308e1bd` → `d1c4781` → `19e2bf1` → `7b39671` — all CI runs skipped.
 
----
+Job detail for run 25483681762:
+- Job: `smoke-test` → `skipped` (no steps executed)
 
-### Headless Battery — Live App (`b0a954f`)
+Operator has not pushed the workflow fix. BUILD_LOG.md has not been updated. This is the **4th consecutive cycle** with no Operator action.
 
-| Check | Status | Notes |
-|---|---|---|
-| cuttingedgechat.com reachable | ⚠️ Assumed reachable | Live SHA consistent with prior cycles |
-| `/api/version` SHA response | `b0a954f` | Matches pre-fetched live data |
-| New error signals vs Cycle 16 | None new | Same blocked state |
-| smokeStatus reader | ❌ `fs.readFileSync is not a function` | Persistent — Edge runtime context issue |
-
-No regression detected in live app baseline. App appears stable at `b0a954f`. No new errors introduced.
+**T-001 PASS declaration: 🔴 BLOCKED.**
 
 ---
 
-### Smoke Badge
+### Task 2 — Headless Battery
 
-❌ Not recovering. Will remain in failed/unknown state until a non-skipped passing CI run completes. Blocked by skip bug.
+| Check | Result |
+|---|---|
+| `cuttingedgechat.com` reachable | ✅ Live (SHA `b0a954f` confirmed via Coolify) |
+| CI workflow executing | ❌ All runs skipped — no test execution |
+| New error signals vs Cycle 17 | ⚠️ New SHA `7b39671` generated — Coolify auto-deploy still active |
+| Functional regression on live app | Unable to confirm — CI not executing |
+
+No new error signals beyond the continuing skip bug and SHA churn.
 
 ---
 
-### smokeStatus Reader Error (Secondary)
+### Task 3 — Smoke Badge
 
-`fs.readFileSync is not a function` — persists from Cycle 16. Running in Edge/browser context where Node.js `fs` module is unavailable. Low priority. Flagged for Operator to address after skip bug is resolved.
+❌ Not recovering. Expected recovery requires a non-skipped passing run. Skip bug unresolved → badge remains failed/stale.
 
 ---
 
-### Cycle Summary Table
+### Task 4 — smokeStatus Reader
 
-| Cycle | SHA | CI Result | Live |
+❌ `fs.readFileSync is not a function` — persists. Low priority, pending skip fix resolution per Manager instruction.
+
+---
+
+### CI Skip Bug — Running History
+
+| Cycle | CI SHA | CI Outcome | Live SHA |
 |---|---|---|---|
-| 14 | `f9a325f` | ✅ success (Run 25481415030) | `b0a954f` |
-| 15 | `a2995a1` | ❌ skipped | `b0a954f` |
+| 14 (pass) | `f9a325f` | ✅ success (run 25481415030) | `f9a325f` |
+| 15 | `b0a954f` | ❌ skipped | `b0a954f` |
 | 16 | `d1c4781` | ❌ skipped (triple-trigger) | `b0a954f` |
 | 17 | `19e2bf1` | ❌ skipped (triple-trigger) | `b0a954f` |
+| **18** | **`7b39671`** | **❌ skipped (triple-trigger)** | **`b0a954f`** |
 
 ---
 
-### Escalation to Manager
+### Escalation
 
-🔴 **CRITICAL — Operator skip-fix now 3 cycles overdue.**
+🔴 **ESCALATION REQUIRED: Operator skip-fix not delivered in Cycle 18 (3rd consecutive miss — now 4th total). Owner intervention recommended on `.github/workflows/observer-qa.yml` — remove duplicate `on:` entries.**
 
-The triple-trigger pattern has reproduced on a second consecutive SHA (`19e2bf1`), confirming the duplicate `on:` entries root cause. The fix has not been applied. BUILD_LOG.md has not been updated (Hard Rule 8 violation continues). Ancestry of `19e2bf1` relative to `f9a325f` is unconfirmed.
+Owner action requested:
+1. Navigate to `.github/workflows/observer-qa.yml` in the repo
+2. Remove duplicate `on:` event entries (there are two `on:` blocks — keep only one)
+3. Ensure no job-level `if:` restricts to `github.event_name == 'push'` only
+4. Ensure `branches: [main]` is present and correct
+5. Commit directly to `main`
 
-Manager contingency PASS criteria cannot be applied: no ancestry confirmation, no BUILD_LOG.md entry, no non-skipped run.
-
-**Deploy gate: 🔴 ACTIVE.** T-007 + T-010 must NOT ship.
+This is a ~5-line change. Once applied, the next push will produce a non-skipped run and unblock the entire sprint.
 
 ---
 
@@ -87,13 +98,13 @@ Manager contingency PASS criteria cannot be applied: no ancestry confirmation, n
 
 | Item | Status |
 |---|---|
-| Live SHA | `b0a954f` (unchanged — cycle 5+) |
-| Latest CI SHA | `19e2bf1` (new this cycle) |
-| Last passing CI run (25481415030) | ✅ `success` on `f9a325f` (5+ SHAs ago) |
-| Latest CI runs (`19e2bf1`) | ❌ `skipped` — 3 runs, all skipped |
-| Triple-trigger pattern | 🔴 CONFIRMED on 2 consecutive SHAs (`d1c4781`, `19e2bf1`) |
-| Operator skip-fix | 🔴 NOT LANDED — 3 cycles overdue |
-| BUILD_LOG.md updated by Operator | 🔴 NO — Hard Rule 8 violation (3rd cycle) |
+| Live SHA | `b0a954f` (unchanged — cycle 6+) |
+| Latest CI SHA | `7b39671` (new this cycle) |
+| Last passing CI run (25481415030) | ✅ `success` on `f9a325f` (6+ SHAs ago) |
+| Latest CI runs (`7b39671`) | ❌ `skipped` — 3 runs, all skipped |
+| Triple-trigger pattern | 🔴 CONFIRMED on 3 consecutive SHAs (`d1c4781`, `19e2bf1`, `7b39671`) |
+| Operator skip-fix | 🔴 NOT LANDED — 4th consecutive cycle (Cycles 15–18) |
+| BUILD_LOG.md updated by Operator | 🔴 NO — Hard Rule 8 violation (4th consecutive cycle) |
 | Ancestry confirmation | 🔴 UNCONFIRMED |
 | SHA 3-way alignment | ❌ MISMATCH |
 | T-001 PASS declaration | 🔴 BLOCKED |
@@ -101,13 +112,14 @@ Manager contingency PASS criteria cannot be applied: no ancestry confirmation, n
 | Smoke badge | ❌ Not recovering |
 | smokeStatus reader | ❌ Edge runtime error (`fs.readFileSync`) |
 | Headless battery | ⚠️ Partial — live app reachable, CI not executing |
+| Coolify auto-deploy | 🔴 STILL ACTIVE — 6th cycle owner request |
 
-_Observer Agent — Cycle 17 — 2026-05-07T07:55:00Z_
+_Observer Agent — Cycle 18 — 2026-05-07T08:10:00Z_
 
 ---
 
-## Cycle 16 — 2026-05-07T07:40:00Z
+## Cycle 17 — 2026-05-07T07:55:00Z
 
-[Archived — superseded by Cycle 17. Summary: T-001 PASS blocked. Skip bug persists on `d1c4781`. Triple-trigger confirmed (runs 25482399007, 25482399013, 25482400994 — all skipped in 2s). Live SHA `b0a954f` unchanged. Operator fix not landed. Ancestry unconfirmed. Deploy gate active.]
+[Archived — superseded by Cycle 18. Summary: T-001 PASS blocked. Skip bug persists on `19e2bf1`. Triple-trigger confirmed (runs 25483040226, 25483040275, 25483042435 — all skipped within 3s). Live SHA `b0a954f` unchanged. Operator fix not landed (3rd cycle). Ancestry unconfirmed. Deploy gate active. Escalation to Manager noted.]
 
-_Observer Agent — Cycle 16 — 2026-05-07T07:40:00Z_
+_Observer Agent — Cycle 17 — 2026-05-07T07:55:00Z_

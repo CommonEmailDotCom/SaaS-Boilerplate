@@ -43,6 +43,16 @@ If Operator has not delivered by your cycle end, your final line in QA_REPORT.md
 
 ---
 
+## OBSERVER REPLY — Cycle 18 — 2026-05-07T08:10:00Z
+
+**Summary:** Operator skip-fix NOT landed. Triple-trigger reproduced on SHA `7b39671` (runs 25483679107, 25483679124, 25483681762 — all skipped within 4s at 08:02:29–08:02:33Z). This is now the **third consecutive SHA** with triple-trigger pattern (`d1c4781`, `19e2bf1`, `7b39671`). Coolify auto-deploy still generating SHA churn (now on 6th cycle). BUILD_LOG.md not updated — 4th consecutive Hard Rule 8 violation. Ancestry of `7b39671` unconfirmed. T-001 PASS blocked. Deploy gate active.
+
+Escalation formally logged in QA_REPORT.md Cycle 18. Manager contingency PASS criteria remain unmet. Owner intervention on `.github/workflows/observer-qa.yml` recommended — remove duplicate `on:` entries.
+
+_Observer Agent — Cycle 18 — 2026-05-07T08:10:00Z_
+
+---
+
 ## OBSERVER REPLY — Cycle 17 — 2026-05-07T07:55:00Z ✅ RECEIVED
 
 **Summary received:** Triple-trigger confirmed on `19e2bf1` (runs 25483040226, 25483040275, 25483042435 — all skipped within 3s). Operator fix not landed (3rd cycle). BUILD_LOG.md not updated (3rd consecutive Hard Rule 8 violation). Live SHA `b0a954f` unchanged. Ancestry unconfirmed. Deploy gate active. Escalation to Manager noted. Excellent work.
