@@ -67,6 +67,8 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | Provider switcher access | Admin only. T-007 must not ship before T-010. |
 | Test credentials | Google OAuth credentials only — sufficient for full end-to-end T-001 testing. |
 | Browser runtime for QA | GitHub Actions (`ubuntu-latest`) via `observer-qa.yml` — Playwright works there. |
+| MCP_DEPLOY_SECRET | **DOES NOT EXIST.** Smoke badge recovers automatically on next passing smoke test. No owner action needed. |
+| GitHub secret names for CI | **QA_GMAIL_EMAIL** and **QA_GMAIL_PASSWORD** — these are the confirmed names the owner added. Do not rename. |
 
 ---
 
@@ -80,6 +82,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 6. **Deploy gate.** No deploys until T-001 PASS in `QA_REPORT.md`, unless Manager overrides.
 7. **T-003 is high load.** Never run without explicit Manager instruction.
 8. **BUILD_LOG.md required.** Operator updates every cycle.
+9. **Secret names are locked.** CI secrets are `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`. Do not rename spec env vars without Manager approval.
 
 ---
 
@@ -98,32 +101,30 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T05:30:00Z*
+*Updated by Manager — 2026-05-07T05:45:00Z*
 
-### 🔴 Critical — DUAL BLOCKER (Cycle 7)
+### 🔴 Critical — ONE REMAINING BLOCKER (Cycle 9)
 
-Two blockers must BOTH be resolved before T-001 can pass. Resolving only one is insufficient.
+CRITICAL-06 is resolved. The dual blocker is now a single blocker.
 
-#### Blocker 1 — OWNER ACTION (Cycle 7): 5 GitHub repo secrets
-Owner must add these secrets to GitHub → Settings → Secrets and variables → Actions:
+#### Remaining Blocker — observer-qa.yml run 25477808748 results UNKNOWN
+Observer triggered observer-qa.yml but cannot read GitHub Actions results without network access. **The only outstanding question is whether run 25477808748 passed or failed.** The owner or Manager must check GitHub Actions → observer-qa.yml → run 25477808748 and report results.
 
-| Secret Name | Description |
-|---|---|
-| `GOOGLE_TEST_EMAIL` | Google account email for OAuth test login |
-| `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
-| `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` |
-| `ADMIN_API_SECRET` | Bearer token for /api/admin/set-provider |
-| ~~`MCP_DEPLOY_SECRET`~~ | ❌ DOES NOT EXIST — remove from all action items. Badge recovers automatically on next passing smoke test. |
+**If run 25477808748 PASSED:** T-001 is PASS. Observer declares it. Operator deploys T-007 + T-010 immediately.
+**If run 25477808748 FAILED:** Observer reviews failure output and fixes the specific failing step. Re-trigger.
 
-#### Blocker 2 — OPERATOR ACTION: CRITICAL-06 — `/api/admin/set-provider` endpoint missing
-Observer identified in Cycle 5 that the Playwright spec's `beforeAll` hook calls `/api/admin/set-provider`, which does not exist. This endpoint must be created (or the spec updated to use the correct existing endpoint `/api/admin/auth-provider`) **before** owner adding secrets will unblock T-001. This is now in its second cycle unresolved. **Operator must action this cycle.**
+#### Secret Name Resolution — LOCKED
+Manager has confirmed: GitHub secrets are named **QA_GMAIL_EMAIL** and **QA_GMAIL_PASSWORD**. Observer renamed spec to match these in Cycle 7. This is now locked. Do not rename again. NEW-RISK-01 is closed — the spec and the secret names now match.
+
+#### MCP_DEPLOY_SECRET — CLOSED, NOT AN ACTION ITEM
+- This secret does not exist and never did.
+- Smoke badge failing = smoke-status.json records a genuine old failing run.
+- Badge recovers automatically on next successful smoke test. No owner action needed.
+- Remove from all action items permanently.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
 - **T-007 + T-010** ✅ Coded, NOT deployed — ships together after T-001 PASS
-
-### 🟠 High — Infra
-- **INFRA-001** ✅ Done — weekly Docker prune cron active
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
@@ -131,7 +132,7 @@ Observer identified in Cycle 5 that the Playwright spec's `beforeAll` hook calls
 - T-009: Sign-out redirect
 
 ### ⚪ Backlog
-- T-003: Smoke concurrency chaos — absolute last, high load
+- T-003: Smoke concurrency chaos — absolute last, high load, never without Manager instruction
 
 ---
 
@@ -140,11 +141,13 @@ Observer identified in Cycle 5 that the Playwright spec's `beforeAll` hook calls
 | Date | Incident | Resolution |
 |---|---|---|
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
-| 2026-05-07 | Smoke badge FAILING — 6 consecutive cycles | ✅ Corrected: MCP_DEPLOY_SECRET does not exist. Badge failing because smoke-status.json records a genuine old failing run. Recovers on next passing smoke test automatically. |
-| 2026-05-07 | T-001 blocked — no test credentials in CI | ⏳ OWNER ACTION REQUIRED (Cycle 7): 5 secrets must be added |
-| 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ⏳ OPERATOR ACTION REQUIRED (Cycle 7, 2nd cycle unresolved) |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation via observer-qa.yml. |
-| 2026-05-07 | Orchestrator not committing | Fixed: max_tokens 8096→16000, context trimming, JSON error logging. |
+| 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED: Observer removed call from spec (Cycle 7). Operator built route anyway (unused but harmless). |
+| 2026-05-07 | Secret name churn: QA_GMAIL_* → GOOGLE_TEST_* → QA_GMAIL_* | ✅ RESOLVED: Locked as QA_GMAIL_EMAIL / QA_GMAIL_PASSWORD. Hard rule added. |
+| 2026-05-07 | NEW-RISK-01 — secret name mismatch (Observer Cycle 8 escalation) | ✅ CLOSED: Manager confirms QA_GMAIL_* matches what owner added. Spec matches. |
+| 2026-05-07 | MCP_DEPLOY_SECRET confusion — listed as owner action for 7 cycles | ✅ CLOSED: This secret does not exist. Removed from all action items permanently. |
+| 2026-05-07 | observer-qa.yml run 25477808748 — results unknown | ⏳ PENDING: Owner/Manager must check GitHub Actions and report outcome. |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting Test B confirmation via observer-qa.yml. |
+| 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD added by owner (Cycle 7 confirmed). |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | Fixed in `370c0c0` |
