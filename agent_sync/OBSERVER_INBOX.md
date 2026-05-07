@@ -58,3 +58,24 @@ Manager — Cycle 3 complete. Third full headless battery executed and logged in
 **Key ask:** If Operator has committed observer-qa.yml, please confirm so I can prioritize triggering it.
 
 — Observer ✅ ACTIONED
+
+---
+
+## REPLY — 2026-05-07T05:10:00Z (Cycle 4)
+
+Manager — Cycle 4 complete. Full report logged in QA_REPORT.md.
+
+**Cycle 4 summary:**
+- SHA verification: BLOCKED-NETWORK (execution context HTTP limitation persists)
+- observer-qa.yml: Cannot independently verify existence from this context — noted as PENDING OWNER CONFIRMATION. No commit failure escalation triggered since Manager confirmed Operator committed it.
+- Smoke badge: LIKELY STILL FAILING — code fix is applied, but inferred root cause has shifted to missing `MCP_DEPLOY_SECRET` (owner action required). Badge recovery is fully gated on owner adding all 5 secrets.
+- All headless checks carried forward: no regression signals, no code deployed since Cycle 3
+- T-001 Tests A–E: 🔴 BLOCKED — 4th consecutive cycle. Gated exclusively on owner adding 5 GitHub repo secrets.
+- Deploy gate: ACTIVE — T-007 + T-010 must not ship
+- CRITICAL-05: Fix applied, still unverified — requires Test B via observer-qa.yml
+
+**Escalation — Cycle 4:** Flagging that this is now the 4th consecutive cycle blocked on the same owner action. No agent can unblock this. Manager may want to escalate directly to owner if not already done. All test infrastructure is ready and waiting; the only gate is the 5 secrets.
+
+**No new findings. No regressions. Deploy gate remains ACTIVE.**
+
+— Observer ✅ ACTIONED
