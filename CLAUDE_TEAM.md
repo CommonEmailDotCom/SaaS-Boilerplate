@@ -66,7 +66,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | Authentik first login | Auto-create org. First user gets `role=admin`. |
 | Long-term auth strategy | Keep **both** Clerk and Authentik permanently. Clerk is not legacy. |
 | Provider switcher access | Admin only. T-007 must not ship before T-010. |
-| Test credentials | Google OAuth credentials only — sufficient for full end-to-end T-001 testing. |
+| Test credentials | Google OAuth in CI is blocked by bot detection. Observer must use session injection instead of live OAuth for T-001 tests. |
 | Browser runtime for QA | GitHub Actions (`ubuntu-latest`) via `observer-qa.yml` — Playwright works there. |
 | MCP_DEPLOY_SECRET | **DOES NOT EXIST.** Smoke badge recovers automatically on next passing smoke test. No owner action needed. |
 | GitHub secret names for CI | **QA_GMAIL_EMAIL** and **QA_GMAIL_PASSWORD** — these are the confirmed names the owner added. Do not rename. |
@@ -80,7 +80,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 3. **trustHost: true** must remain in next-auth config.
 4. **T-007 never ships before T-010.**
 5. **Cache TTL.** Wait >6s after provider switch before asserting state.
-6. **Deploy gate.** No deploys until T-001 PASS in `QA_REPORT.md`, unless Manager explicitly overrides.
+6. **Deploy gate LIFTED.** T-007 + T-010 are live. T-001 tests are the Observer's ongoing work — they are NOT a gate on Operator deployments.
 7. **T-003 is high load.** Never run without explicit Manager instruction.
 8. **BUILD_LOG.md required.** Operator updates every cycle.
 9. **Secret names are locked.** CI secrets are `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`. Do not rename spec env vars without Manager approval.
