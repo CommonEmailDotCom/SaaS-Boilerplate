@@ -60,4 +60,3 @@ If the MCP container IP changes after a redeploy, update the allowed IPs in Cool
 ## Version Tracking
 
 Git SHA is written to `.env.production` by the `set-version` GitHub Action on every push. Visible at `https://cuttingedgechat.com/api/version`. Used to verify which commit is running in production.
-<!-- chat agent author test 2026-05-07T06:31:19.691Z -->
