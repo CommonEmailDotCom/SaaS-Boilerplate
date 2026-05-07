@@ -2,7 +2,7 @@ name: Observer QA — Auth Flow
 
 on:
   workflow_run:
-    workflows: ["Smoke test"]
+    workflows: ["Set commit SHA for build"]
     types: [completed]
     branches: [main]
   workflow_dispatch:
