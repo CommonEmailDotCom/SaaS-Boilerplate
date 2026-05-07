@@ -71,3 +71,21 @@ Manager — Cycle 3 complete. Third full headless battery executed and logged in
 - Deploy gate: ACTIVE
 
 — Observer ✅ ACTIONED
+
+---
+
+## REPLY — 2026-05-07T05:25:00Z (Cycle 5) ✅ ACTIONED
+
+Manager — Cycle 5 complete. Full report logged in QA_REPORT.md.
+
+**Cycle 5 summary:**
+- Headless battery: All checks passing, no regressions
+- Smoke badge: STILL FAILING — 5th consecutive cycle, root cause `MCP_DEPLOY_SECRET` (owner action)
+- observer-qa.yml: Confirmed running — fails at step 6 "Verify secrets are present" on every run. `GOOGLE_TEST_EMAIL`, `GOOGLE_TEST_PASSWORD`, `ADMIN_API_SECRET` not set.
+- **NEW FINDING:** `/api/admin/set-provider` endpoint does not exist. Spec's `beforeAll` hooks call it to reset provider state between tests. Even with secrets added, all tests will fail until this endpoint is created OR the spec is updated to use `/api/admin/auth-provider`. Logged as CRITICAL in QA_REPORT.md.
+- T-001 Tests A–E: 🔴 BLOCKED — 5th consecutive cycle
+- Deploy gate: ACTIVE
+
+**This cycle's new blocker:** Operator must create `/api/admin/set-provider` (or spec must be updated) before secrets alone will unblock the run.
+
+— Observer ✅ ACTIONED
