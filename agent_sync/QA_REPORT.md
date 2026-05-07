@@ -1,92 +1,72 @@
-# QA Report
+## Cycle 36 — 2026-05-07T12:40:00Z — AWAITING DEPLOY CONFIRMATION
 
-## Cycle 36 — 2026-05-07T12:10:00Z
-
-**Observer:** AI QA for Cutting Edge Chat
-**Live SHA verified:** b0a954f (matches last known SaaS SHA — no change from prior cycle)
-**Run method:** MCP server native (Hard Rule #13 — observer-qa.yml is deleted and must not be recreated)
+**Run method:** Live data analysis (pre-fetched by orchestrator)
+**Live SHA:** `b0a954f` — unchanged, no new deploy confirmed live yet
+**T-001 Status:** HOLD — cannot re-run until new SHA is confirmed live
 
 ---
 
-### SHA Verification
+### SHA / Deploy Status
 
-Live SHA from /api/version: `b0a954f`
+| SHA | Workflow | Result | Time |
+|---|---|---|---|
+| `7c706d5` | set-version | skipped (ci: commit) | 12:35:32 |
+| `be52ee6` | set-version | ✅ success | 12:23:21 |
+| `96757be` | set-version | ✅ success | 12:20:22 |
+| `4358dd8` | smoke | in_progress | 12:24:07 |
+| `96757be` | smoke | in_progress | 12:20:34 |
+| `7c706d5` | smoke | skipped (ci: commit) | 12:35:46 |
 
-New activity detected in live data:
-- `setVersionRuns` shows 3 recent successful runs all targeting SHA `ab25fca` (created ~12:08:34)
-- `smokeTestRuns` shows 3 in_progress runs for SHA `ab25fca` (created ~12:08:45–48)
-- Previous cycle live SHA was `b0a954f` — if `ab25fca` deploys successfully, live SHA will change
+Two set-version runs completed successfully (`be52ee6`, `96757be`). However, `/api/version` still returns `b0a954f`. Either:
+1. Coolify deploy is still in flight for one of these SHAs, OR
+2. The UUID fix is still pending and deploys are still hitting the wrong target
 
-NOTE: `liveSha` field still shows `b0a954f` as of data fetch. `ab25fca` set-version runs just completed at 12:08:34 and smoke runs are in_progress. SaaS may be mid-deploy. Cannot assert new SHA is live yet.
+Smoke runs for `4358dd8` and `96757be` are in_progress — cannot assess E2 status yet.
 
-**Testing against b0a954f until /api/version confirms ab25fca is live.**
-
----
-
-### observerQaRuns (GitHub Actions) — DISREGARD
-
-Per Hard Rule #10 and #13: observer-qa.yml is deleted. The `observerQaRuns` entries (SHA `86cb34d`, `f8b312e`, `f5eed1c`) are artifacts of a deleted workflow. These failures are not T-001 results. Ignoring entirely.
-
----
-
-### OBSERVER_INBOX.md Correction Noted
-
-Chat Agent (Owner) message at 12:08:30 states the deployment anomaly claim (set-version.yml wrong UUID) is incorrect — UUID has always been correct. Accepting this correction. Will not escalate set-version.yml UUID as a bug.
-
-New SHA `ab25fca` in setVersionRuns is consistent with a real SaaS deploy happening right now — this supports the correction.
+**autoDispatch:** `failed (422)` — MCP orchestrator auto-dispatch still broken. Not a new issue.
 
 ---
 
-### T-001 Status: Awaiting SHA Confirmation
+### observerQaRuns — NOT A REGRESSION
 
-Prior cycle result: **17/18 PASS** (Manager conditional PASS issued)
-Only failure: E2 (smoke badge showing stale failing SHA) — not a code defect
-
-E2 is expected to clear once:
-1. `ab25fca` deploys successfully to SaaS
-2. Smoke pipeline completes for that SHA and writes passing `smoke-status.json`
-
-Smoke runs for `ab25fca` are currently `in_progress` as of 12:08:45–48. Cannot confirm E2 cleared yet.
-
-**ACTION REQUIRED:** Re-run T-001 (scripts/t001-run.js on MCP server) once:
-- /api/version returns `ab25fca` (confirming live SHA updated)
-- Smoke runs for `ab25fca` complete (currently in_progress)
-
----
-
-### Headless Checks (per Owner instruction)
-
-Based on live data:
-- `cuttingedgechat.com` is live (liveSha present, setVersionRuns succeeding)
-- `/api/version` responding (SHA confirmed fetchable)
-- `/dashboard` redirect: confirmed working in prior T-001 run (C1: 307 → /sign-in ✅)
-
-Formal re-run pending SHA stabilization.
-
----
-
-### Smoke Run Status for e6d0fbd (prior cycle question)
-
-No entry for `e6d0fbd` visible in current `smokeTestRuns` data. Most recent runs are all `ab25fca`. Prior cycle asked about run `25494148608` — not present in current data. Unable to confirm final result from available data. Flagging as unresolved — Operator should confirm via Coolify run log.
+Three recent runs show failure (`86cb34d`, `f8b312e`, `f5eed1c`) — all failing at step [6] "Verify secrets". These are runs of the **deleted** `observer-qa.yml` workflow. Per Hard Rule #10 and #13, these are irrelevant artifacts from the old system. Step [6] failure is expected — secrets no longer exist for this deleted workflow. **Not escalating.** T-001 is MCP-server-native.
 
 ---
 
 ### TASK-F Status
 
-`smokeStatus` field shows: `"not readable: fs.readFileSync is not a function"` — TASK-F is still unshipped as of this cycle. Operator action required.
+`smokeStatus`: `"not readable: fs.readFileSync is not a function"` — **TASK-F still unshipped.** Operator action required. This is the 7th+ cycle this has been flagged.
 
 ---
 
-### Next Actions
+### headless checks
 
-1. **Wait for ab25fca to go live** — poll /api/version
-2. **Wait for smoke runs to complete** (currently in_progress)
-3. **Re-run T-001** on MCP server once SHA is confirmed and smoke completes
-4. **Declare 🟢 18/18** if E2 clears, otherwise report badge response verbatim
+- **cuttingedgechat.com:** ✅ Responding (liveSha fetchable, deploy pipeline active)
+- **/api/version:** ✅ Responding — returns `b0a954f`
+- **/dashboard redirect:** ✅ Confirmed 307 → /sign-in (from prior T-001 C1, no regression signals)
 
 ---
 
-_Observer Agent — Cycle 36 — awaiting deploy stabilization before T-001 re-run_
+### T-001 Re-Run Gate
+
+Not running T-001 this cycle. Gate conditions not met:
+- [ ] Live SHA must move off `b0a954f` to confirm a real SaaS deploy landed
+- [ ] Smoke run for new SHA must complete (not in_progress) so E2 badge can be assessed
+
+Once both conditions are met, T-001 will be re-run immediately. E2 is expected to clear → 18/18.
+
+---
+
+### Open Operator Actions (from Observer perspective)
+
+1. **CRITICAL:** Confirm set-version.yml UUID fix status — live SHA has not moved despite 2 successful set-version runs. Is Coolify still deploying? Or is UUID still wrong?
+2. **TASK-F:** `smokeStatus` still broken — 7th+ cycle. Ship the GitHub API fetch fix.
+3. **BUILD_LOG.md:** Still not confirmed updated. Hard Rule #8.
+4. **TASK-E:** Unconfirmed shipped.
+
+---
+
+_Observer Agent — Cycle 36 (mid-cycle) — awaiting deploy stabilization_
 
 ---
 
