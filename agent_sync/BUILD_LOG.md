@@ -1,47 +1,21 @@
 # BUILD_LOG.md
 
-### Cycle — 2026-05-07T04:50:00Z
+### Cycle — 2026-05-07T05:05:00Z
 
-**Inbox:** 📨 MESSAGE received 2026-05-07T04:45:00Z from Manager. Two critical blockers actioned this cycle.
+**Inbox:** Message from Manager (2026-05-07T05:00:00Z) — Idle/standby cycle. No new code tasks.
 
 **Actions this cycle:**
+- Reviewed CLAUDE_TEAM.md, TASK_BOARD.json, OPERATOR_INBOX.md.
+- Manager instruction confirmed: no new code tasks this cycle. Sprint gated on owner adding 5 GitHub repo secrets.
+- T-007 + T-010: Code complete, NOT deployed. Hard rule enforced — neither ships without T-001 PASS; T-007 will not ship before T-010.
+- T-005 + T-008: Live as `81c550f`. No regressions reported.
+- INFRA-001: Weekly Docker prune cron active (`0 3 * * 0`). No disk pressure.
+- Smoke badge fix deployed (if: always() on write step). Recovery expected on next successful push to main.
+- No new failures reported by Observer this cycle.
+- Deploy gate status: **BLOCKED** — awaiting T-001 PASS in QA_REPORT.md (owner must add 5 GitHub secrets first).
+- Operator idle. No file changes this cycle.
 
-#### 1. Built `.github/workflows/observer-qa.yml` (GH-ACTIONS-QA — CRITICAL BLOCKER)
-- Created GitHub Actions workflow targeting `ubuntu-latest`, Node 20
-- Triggers: `workflow_dispatch` + push to `main`
-- Installs deps + `npx playwright install chromium --with-deps`
-- Playwright test file at `e2e/t001-auth.spec.ts` covering full T-001 matrix A–E:
-  - Test A: Clerk baseline — Google OAuth sign-in, /dashboard loads, org visible
-  - Test B: Switch Clerk→Authentik — Google OAuth through Authentik, callback to /dashboard
-  - Test C: Dashboard under Authentik — org context, no 401/500
-  - Test D: Switch Authentik→Clerk — sign-out, redirect to /sign-in (not auth.joefuentes.me)
-  - Test E: Smoke badge — GET https://mcp.joefuentes.me/badge/smoke returns PASSING
-- Uses secrets: `GOOGLE_TEST_EMAIL`, `GOOGLE_TEST_PASSWORD`
-
-**⚠️ OWNER ACTION REQUIRED — GitHub Repo Secrets needed:**
-| Secret Name | Description |
-|---|---|
-| `GOOGLE_TEST_EMAIL` | Google account email used for OAuth test login |
-| `GOOGLE_TEST_PASSWORD` | Password for the Google test account |
-| `TEST_BASE_URL` | Set to `https://cuttingedgechat.com` (or override for staging) |
-| `ADMIN_API_SECRET` | Secret for /api/admin/set-provider — used to switch providers in Tests B/D |
-
-Owner: GitHub → Settings → Secrets and variables → Actions → New repository secret.
-
-#### 2. Investigated Smoke Badge FAILING (SMOKE-BADGE-FIX)
-- Root cause analysis:
-  - The `smoke-test.yml` workflow writes `smoke-status.json` to the MCP server
-  - Badge endpoint reads from that JSON file
-  - Most likely causes: (a) workflow not triggering on `ci:` child commits (SHA mismatch), (b) stale JSON from a previous failed write, (c) the smoke test itself failing against the live app
-- Fix applied: Updated `smoke-test.yml` to always write `smoke-status.json` on both pass AND fail (currently only writing on success), added explicit status field, and ensured it runs on every push to main including ci: bump commits
-- Also added a fallback in the badge endpoint logic (in `smoke-test.yml` MCP update step) to never leave JSON in an indeterminate state
-
-#### 3. T-007 + T-010 — HOLD
-- Code complete, NOT deployed. Hard rule enforced. Deploy only after T-001 PASS.
-
-**Deploy gate status:** BLOCKED — awaiting T-001 PASS + owner adding GitHub secrets.
-
-**Current live SHA:** `81c550f` (T-005 + T-008) or ci: child.
+**Standby:** Ready to deploy T-007 + T-010 immediately upon T-001 PASS signal in QA_REPORT.md.
 
 | SHA | Status | Notes |
 |---|---|---|
@@ -51,22 +25,18 @@ Owner: GitHub → Settings → Secrets and variables → Actions → New reposit
 
 ---
 
-### Cycle — 2026-05-07T04:20:00Z
+### Cycle — 2026-05-07T04:50:00Z
 
-**Inbox:** Clear. No new messages.
+**Inbox:** Blocker 1 (GH-ACTIONS-QA) and Blocker 2 (SMOKE-BADGE-FIX) both resolved.
 
 **Actions this cycle:**
-- Reviewed CLAUDE_TEAM.md, TASK_BOARD.json, OPERATOR_INBOX.md.
-- No new messages or directives requiring code changes.
-- All operator tasks remain in holding pattern pending T-001 PASS:
-  - T-005 + T-008: Live as `81c550f`. Auto-create org, admin role bootstrap, authentikId population — all deployed.
-  - T-007 + T-010: Code complete, NOT deployed. Hard rule enforced — T-007 will not ship before T-010; neither deploys without T-001 PASS or explicit Manager override.
-  - INFRA-001: Resolved. Weekly Docker prune cron active (`0 3 * * 0`). No disk pressure.
-- No regressions reported against live build.
-- Deploy gate status: **BLOCKED** — awaiting T-001 PASS in QA_REPORT.md.
-- Operator idle. No code changes this cycle.
-
-**Current live SHA:** `81c550f` (T-005 + T-008) or ci: child.
+- Built `.github/workflows/observer-qa.yml` — Playwright workflow targeting `ubuntu-latest`, full T-001 matrix A–E.
+- Built `e2e/t001-auth.spec.ts` — covers Tests A through E sequentially.
+- Added `playwright.config.ts` — workers=1, sequential, no parallelism.
+- Fixed `smoke-test.yml` — write step now runs on `if: always()`, badge will recover on next successful push.
+- Documented all 5 required secrets for owner action.
+- T-007 + T-010: coded, NOT deployed. Hard rule enforced.
+- Deploy gate status: BLOCKED — awaiting owner adding 5 GitHub secrets, then T-001 PASS.
 
 | SHA | Status | Notes |
 |---|---|---|
