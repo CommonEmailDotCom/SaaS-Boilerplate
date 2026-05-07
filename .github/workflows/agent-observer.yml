@@ -1,7 +1,8 @@
 name: Observer Agent
 
 on:
-  schedule:
+  # schedule: # disabled — orchestration moved to MCP server
+  # schedule:
     - cron: '10,25,40,55 * * * *' # Every 15 minutes at :10
   workflow_dispatch:
 
