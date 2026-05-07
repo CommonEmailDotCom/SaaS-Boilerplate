@@ -1,7 +1,9 @@
 name: Smoke test
 
 on:
-  push:
+  workflow_run:
+    workflows: ["Set commit SHA for build"]
+    types: [completed]
     branches: [main]
 
 concurrency:
@@ -10,9 +12,8 @@ concurrency:
 
 jobs:
   smoke-test:
-    if: |
-      !startsWith(github.event.head_commit.message, 'ci:') &&
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+    # Only run if set-version succeeded (meaning a real deploy was triggered)
+    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -25,12 +26,29 @@ jobs:
 
       - name: Get deployed SHA
         id: sha
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
-          echo "Code commit SHA: $SHORT_SHA"
+          # set-version deploys the code commit, then creates a ci: bump on top.
+          # We need the code commit SHA (parent of the ci: bump) for polling.
+          CI_SHA="${{ github.event.workflow_run.head_sha }}"
+          CI_MSG=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/commits/${CI_SHA}" \
+            | jq -r '.commit.message' 2>/dev/null || echo "")
 
-      - name: Wait for CI bump + deployment
+          if echo "$CI_MSG" | grep -q "^ci:"; then
+            SHORT_SHA=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/commits/${CI_SHA}" \
+              | jq -r '.parents[0].sha' 2>/dev/null | cut -c1-7)
+            echo "CI bump detected — polling for parent: $SHORT_SHA"
+          else
+            SHORT_SHA=$(echo "$CI_SHA" | cut -c1-7)
+            echo "Direct commit — polling for: $SHORT_SHA"
+          fi
+
+          echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
+
+      - name: Wait for deployment
         id: deploy_wait
         continue-on-error: true
         run: |
@@ -38,13 +56,14 @@ jobs:
           MAX_ATTEMPTS=20
           ATTEMPT=0
           START_TIME=$(date +%s)
-          echo "Waiting 30s for set-version.yml to run and trigger deploy..."
-          sleep 30
+
           echo "Polling https://cuttingedgechat.com/api/version for SHA ${SHORT_SHA}..."
+
           while [ $ATTEMPT -lt $MAX_ATTEMPTS ]; do
             ATTEMPT=$((ATTEMPT + 1))
             LIVE_SHA=$(curl -sf https://cuttingedgechat.com/api/version | jq -r '.sha' 2>/dev/null || echo "")
             echo "Attempt ${ATTEMPT}/${MAX_ATTEMPTS}: live=${LIVE_SHA} expected=${SHORT_SHA}"
+
             if [ "$LIVE_SHA" = "$SHORT_SHA" ]; then
               END_TIME=$(date +%s)
               ELAPSED=$(( END_TIME - START_TIME ))
@@ -53,8 +72,10 @@ jobs:
               echo "Deployment confirmed live in ${ELAPSED}s!"
               exit 0
             fi
+
             if [ $ATTEMPT -lt $MAX_ATTEMPTS ]; then sleep 60; fi
           done
+
           echo "deploy_time=0" >> $GITHUB_OUTPUT
           echo "timed_out=true" >> $GITHUB_OUTPUT
           exit 1
@@ -119,7 +140,10 @@ jobs:
           git pull --rebase origin main
           OUR_RUN_ID="${{ github.run_id }}"
           STORED_RUN_ID=$(node -e "try{const f=require('./smoke-status.json');console.log(f.runId||0)}catch{console.log(0)}")
-          if [ "$OUR_RUN_ID" -lt "$STORED_RUN_ID" ]; then exit 0; fi
+          if [ "$OUR_RUN_ID" -lt "$STORED_RUN_ID" ]; then
+            echo "Skipping: stale run"
+            exit 0
+          fi
           cp /tmp/smoke-status.json smoke-status.json
           git add smoke-status.json
           git diff --staged --quiet || git commit -m "ci: update smoke-status.json [skip ci]"
@@ -136,7 +160,7 @@ jobs:
       - name: Set commit status
         if: always()
         run: |
-          SHA="${{ github.sha }}"
+          SHA="${{ github.event.workflow_run.head_sha }}"
           EXIT_CODE="${{ steps.result.outputs.exit_code }}"
           if [ "$EXIT_CODE" = "0" ]; then STATE="success"; DESCRIPTION="Smoke test passed"
           elif [ "${{ steps.deploy_wait.outputs.timed_out }}" = "true" ]; then STATE="failure"; DESCRIPTION="Deployment timed out"
