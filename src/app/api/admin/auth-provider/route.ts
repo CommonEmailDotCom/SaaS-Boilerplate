@@ -3,7 +3,6 @@ import { auth as clerkAuth } from '@clerk/nextjs/server';
 import { and, inArray, eq } from 'drizzle-orm';
 
 import { getActiveProvider, setActiveProvider } from '@/libs/auth-provider';
-import { authentikAuth } from '@/libs/auth-nextauth';
 import { db } from '@/libs/DB';
 import { organizationMemberSchema } from '@/models/Schema';
 
@@ -11,6 +10,7 @@ import { organizationMemberSchema } from '@/models/Schema';
  * T-007: Admin-only check for provider switching.
  * Clerk: orgRole must be org:admin.
  * Authentik: organization_member.role must be admin or owner.
+ * authentikAuth imported dynamically to avoid build-time DB initialization.
  */
 async function isOrgAdmin(): Promise<boolean> {
   const provider = await getActiveProvider();
@@ -24,8 +24,9 @@ async function isOrgAdmin(): Promise<boolean> {
     }
   }
 
-  // Authentik
+  // Authentik — dynamic import avoids static analysis of DB-dependent module at build time
   try {
+    const { authentikAuth } = await import('@/libs/auth-nextauth');
     const session = await authentikAuth();
     if (!session?.user?.id) return false;
 
@@ -47,10 +48,10 @@ async function isOrgAdmin(): Promise<boolean> {
 }
 
 export async function GET() {
-  // Auth check — any authenticated user can read current provider
   try {
     const { userId } = await clerkAuth();
     if (!userId) {
+      const { authentikAuth } = await import('@/libs/auth-nextauth');
       const session = await authentikAuth();
       if (!session?.user?.id) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
