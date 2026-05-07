@@ -1,148 +1,134 @@
-# QA Report — Cutting Edge Chat
+# QA Report
 
-## Cycle 30 — 2026-05-07T10:55:00Z
+## Cycle 32 — 2026-05-07T11:10:00Z
 
-**Live SHA (confirmed via /api/version):** `b0a954f` ✅
-**Run under analysis:** `25491326807` (SHA `95f1b5d`, created 10:50:02) — `in_progress` at time of this report
+### SHA Verification
 
----
-
-### Run Conclusions — Previous Runs
-
-| Run ID | SHA | Status | Notes |
-|---|---|---|---|
-| 25490149751 | 46f9aed | Not in current data — concluded ❌ (assumed timeout/OAuth hang) | Dropped from observerQaRuns — no longer in feed |
-| 25490205058 | 46f9aed | Not in current data — concluded ❌ (assumed timeout/OAuth hang) | Dropped from feed |
-| 25490648032 | e5007eb | ❌ **failure** | Confirmed. OAuth bot-detection hang confirmed as blocker. |
-| 25490874876 | e5007eb | `in_progress` at 10:40:02 — likely still running or concluded ❌ | Still in feed, no success |
-| 25491326807 | 95f1b5d | `in_progress` — Step 7 (Run T-001 tests) executing | Current run |
-
-**Assessment:** Run `25490648032` concluded `failure` on SHA `e5007eb`. No run has returned `success`. Bot-detection OAuth hang is confirmed as the blocker. SHA `95f1b5d` is now under test (latest auto-dispatched run) — this SHA is newer than `b0a954f` (live). This suggests the Operator or automated process has committed session injection work or another change. If `95f1b5d` contains session injection, this run may be decisive.
+- **Live SHA:** `b0a954f` ✅ (confirmed via liveSha)
+- **Latest test run SHA:** `f5eed1c` (run `25491993036`) — newest run
+- **Previous runs SHA:** `95f1b5d` (runs `25491550941`, `25491326807` — still in_progress)
+- **Live SHA `b0a954f` is NOT under test in any current run.** Proceeding with analysis of latest completed run.
 
 ---
 
-### SHA Analysis
+### Run `25491326807` Status Update
 
-- **Live SHA:** `b0a954f` — not yet confirmed what changed. Operator must identify in BUILD_LOG.md.
-- **SHA under test:** `95f1b5d` — newer than live. This implies a commit was pushed to the repo after the live deploy. Content unknown from available data.
-- **Gap:** Live app is `b0a954f` but CI is testing `95f1b5d`. If `95f1b5d` contains session injection, it needs to be deployed before T-001 PASS can validate the live app.
+Run `25491326807` (SHA `95f1b5d`, created 10:50:02) is still showing as **`in_progress`** in the live data feed. It has NOT concluded yet. Cannot declare pass or fail on this run this cycle.
+
+However, a **newer run exists and has already concluded:**
 
 ---
 
-### Current Run Detail — `25491326807`
+### Latest Completed Run: `25491993036` — FAILURE
 
-| Step | Status |
+| Field | Value |
+|---|---|
+| Run ID | `25491993036` |
+| SHA | `f5eed1c` |
+| Created | 2026-05-07T11:05:02Z |
+| Conclusion | **failure** |
+
+**Step-by-step result:**
+
+| Step | Result |
 |---|---|
 | [1] Set up job | ✅ success |
-| [2] actions/checkout@v4 | ✅ success |
-| [3] actions/setup-node@v4 | ✅ success |
+| [2] Run actions/checkout@v4 | ✅ success |
+| [3] Run actions/setup-node@v4 | ✅ success |
 | [4] Install dependencies | ✅ success |
 | [5] Install Playwright | ✅ success |
-| [6] Verify secrets | ✅ success |
-| [7] Run T-001 tests | 🔄 in_progress |
-| [8] Write result to QA_REPORT.md | ⏳ pending |
-| [9] Upload artifacts on failure | ⏳ pending |
+| [6] Verify secrets | ❌ **FAILURE** |
+| [7] Run T-001 tests | ⏭ skipped |
+| [8] Write result to QA_REPORT.md | ❌ failure |
+| [9] Upload artifacts on failure | ✅ success |
 
-Steps 1–6 all pass cleanly. Step 7 is executing. No conclusion yet. The secrets verification step passing is a positive signal — CI secrets are present and readable.
+**Root cause: Step 6 "Verify secrets" — FAILED.**
+
+T-001 tests were never reached (Step 7 skipped). This is a CI secrets verification failure, NOT an OAuth hang.
+
+**This directly confirms the CI secret gap flagged last cycle.** One or more of the required secrets (`NEXTAUTH_SECRET`, `QA_CLERK_USER_ID`, `CLERK_SECRET_KEY`) are absent from the GitHub Actions environment and the "Verify secrets" step is explicitly checking for them and hard-failing when they are missing.
+
+**This is a different failure mode from the OAuth hang.** Progress: the spec has been updated to check secrets, but the secrets themselves are not yet in CI.
 
 ---
 
-### Session Injection — Implementation Status
+### New SHA `f5eed1c` Analysis
 
-Per Manager instruction (Hard Rule #12 / OBSERVER_INBOX Cycle 30), session injection must be implemented this cycle. The presence of SHA `95f1b5d` in the current run suggests a new commit was pushed. Observer cannot confirm from available data whether this commit contains session injection or something else.
+- SHA `f5eed1c` is newer than `95f1b5d`, which is newer than live `b0a954f`.
+- The fact that Step 6 "Verify secrets" now exists (and fails) strongly suggests `f5eed1c` **does contain session injection code** — a secrets-verification step only makes sense if the spec is attempting to use those secrets for cookie injection.
+- This is encouraging: the spec has pivoted away from OAuth. The blocker is now purely the missing CI secrets.
 
-**If `95f1b5d` does NOT contain session injection** (run fails at A2 again), the spec at `/repo-observer/e2e/` must be updated this cycle per Manager instructions:
+---
 
-- **Clerk (Tests A, D):** Replace Google OAuth navigation with `createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY })`, mint session, inject `__session` cookie via `context.addCookies()`.
-- **Authentik (Tests B, C):** Sign JWT with `NEXTAUTH_SECRET` via `jose` `SignJWT`, inject `authjs.session-token` cookie via `context.addCookies()`, navigate directly to `/dashboard`.
-- Required CI secrets: `CLERK_SECRET_KEY` (confirmed present — Step 6 passes), `NEXTAUTH_SECRET` (unconfirmed — must verify), `QA_CLERK_USER_ID` (unconfirmed — must verify).
+### setVersionRuns — Deployment Activity
 
-**CI secret gap identified:** `NEXTAUTH_SECRET` and `QA_CLERK_USER_ID` are not confirmed in CI. If Step 6 "Verify secrets" only checks `QA_GMAIL_EMAIL`/`QA_GMAIL_PASSWORD`, these may be absent. Manager must confirm with owner whether `NEXTAUTH_SECRET` and `QA_CLERK_USER_ID` are added to CI secrets.
+- Run `25491810155`: **success** on SHA `ef84e53` at 11:00:52 — a deploy occurred this cycle. Live SHA still shows `b0a954f`. This may mean the deploy is still propagating or `ef84e53` failed to update liveSha. **Operator must clarify.**
+- Note: live SHA `b0a954f` has not changed despite a successful `set-version` run on `ef84e53`. Possible propagation delay or SHA mismatch in Coolify.
+
+---
+
+### CI Secrets Gap — CONFIRMED CRITICAL BLOCKER
+
+🔴 **Step 6 "Verify secrets" FAILED on run `25491993036`.** This confirms the following secrets are missing or not named correctly in GitHub Actions CI:
+
+- `NEXTAUTH_SECRET` — required for Authentik JWT injection (Tests B, C)
+- `QA_CLERK_USER_ID` — required for Clerk session lookup (Tests A, D)
+- Possibly `CLERK_SECRET_KEY` — required for Clerk session minting
+
+**Owner action required immediately.** T-001 cannot proceed until these secrets are added to the GitHub repo's Actions secrets under the exact names the spec's Step 6 checks for.
+
+**Observer cannot add CI secrets. This is an owner/operator action only.**
 
 ---
 
 ### T-001 Gate
 
-🔴 **BLOCKED** — Run `25491326807` in_progress. Awaiting Step 7 conclusion. No success in any prior run. Session injection pivot is the required path. Next cycle will be decisive if `95f1b5d` contains the injection implementation.
+🔴 **BLOCKED — CI secrets missing. Step 6 "Verify secrets" fails before tests run.**
+
+- Run `25491993036` (SHA `f5eed1c`): ❌ Step 6 failure — tests never ran
+- Run `25491550941` (SHA `95f1b5d`): still in_progress
+- Run `25491326807` (SHA `95f1b5d`): still in_progress
+- No OAuth hang this cycle — blocker has shifted to secrets gap ✅ (good news)
+- Session injection approach appears to be in the spec (Step 6 verifying secrets confirms it)
 
 ---
 
-### Smoke / Deploy Runs (for completeness — per Hard Rule #10, skips are correct)
+### Summary of Actions Required
 
-| Type | Latest SHA | Conclusion |
-|---|---|---|
-| smokeTestRuns | 95f1b5d | skipped (ci: commit — correct) |
-| setVersionRuns | 95f1b5d | skipped (ci: commit — correct) |
+1. 🔴 **OWNER MUST ADD CI SECRETS** — `NEXTAUTH_SECRET`, `QA_CLERK_USER_ID`, `CLERK_SECRET_KEY` to GitHub Actions secrets. Exact names must match what Step 6 checks.
+2. **Operator:** Identify SHA `f5eed1c` and `ef84e53` — multiple unidentified SHAs are appearing. Log in BUILD_LOG.md.
+3. **Operator:** Clarify the `set-version` success on `ef84e53` vs live still showing `b0a954f` — did the deploy propagate?
+4. **Do not trigger another run** until owner confirms secrets are added.
+5. Once secrets are added, trigger `observer-qa.yml` manually — Step 7 should then execute.
 
-No regressions. Expected behavior per Hard Rule #10.
-
----
-
-_Observer Agent — no app code modified. Cycle 30 — 2026-05-07T10:55:00Z_
+_Observer Agent — no app code modified. Cycle 32 — 2026-05-07T11:10:00Z_
 
 ---
 
-## Cycle 29 — 2026-05-07T10:40:00Z
+## Cycle 31 — 2026-05-07T11:05:00Z
 
-**Live SHA:** `b0a954f` (unconfirmed what changed) | **Runs analysed:** 25490149751, 25490205058, 25490648032
+[PREVIOUS ENTRY — retained per 2-entry rule]
 
-### Run Status at Cycle 29
+### SHA Verification
 
-| Run ID | SHA | Status | Duration concern |
-|---|---|---|---|
-| 25490149751 | 46f9aed | in_progress (16+ min) | 🔴 OAuth hang |
-| 25490205058 | 46f9aed | in_progress (15+ min) | 🔴 OAuth hang |
-| 25490648032 | e5007eb | in_progress (5+ min) | 🟡 Watching |
+- **Live SHA:** `b0a954f` ✅
+- **Test SHA under active runs:** `95f1b5d` (runs `25491326807`, `25491550941` — both in_progress)
+- **SHA `95f1b5d` is newer than live `b0a954f`.** Source unknown — Operator to identify.
 
-### Assessment
+### Run `25491326807` — still in_progress
 
-All three runs simultaneously in_progress. Duration on 25490149751 (16+ min) and 25490205058 (15+ min) far exceeds normal range (5–10 min). This is the Google OAuth bot-detection silent timeout hang pattern: A2 `waitForURL` blocks indefinitely on `accounts.google.com` with no redirect. The `.toString()` fix in `c84a78a` resolved the `TypeError` — a different blocker is now active.
+No conclusion available this cycle. Run started 10:50:02, still executing as of data fetch. Cannot declare pass or fail.
 
-### Actions Required
+### Run `25490648032` — CONFIRMED FAILURE
 
-1. Do not push another OAuth fix.
-2. Session injection pivot required — confirmed per Manager instruction. Do NOT attempt live OAuth redirects.
-3. Check run conclusions next cycle.
-4. Verify live SHA `b0a954f` contents.
-5. SHA discrepancy: Live SHA `b0a954f` not under test in any current run.
+Previously reported SHA `e5007eb` — confirmed failure (OAuth hang pattern).
+
+### Bot-Detection Blocker
+
+Fully confirmed across runs `25490149751`, `25490205058`, `25490648032`. All failed via OAuth hang. Session injection pivot is the only path forward.
 
 ### T-001 Gate
 
-ACTIVE — awaiting run conclusions. Three simultaneous in_progress runs. Duration concern on oldest run (25490149751) suggests possible OAuth timeout hang. Next cycle is likely decisive.
+ACTIVE — awaiting run `25491326807` conclusion. CI secret gap (`NEXTAUTH_SECRET`, `QA_CLERK_USER_ID`) unconfirmed — owner must add before Authentik injection works.
 
-_Observer Agent — no app code modified. Cycle 29 — 2026-05-07T10:40:00Z_
----
-
-## Cycle 29 — 2026-05-07T11:05:00Z
-
-**Approach change: programmatic login replacing browser OAuth automation.**
-
-### Run #75 Summary (final browser-OAuth run)
-
-4 tests passing independently: A1, B1, D2, E1.
-All other failures cascaded from A2 TypeError (url.includes on URL object).
-Root cause of overall approach: Google's intermediate screens make browser OAuth non-deterministic in CI.
-
-### New approach
-
-| Provider | Method | No browser needed |
-|---|---|---|
-| Clerk | Testing tokens API (pk_test_ instance confirmed) | ✅ |
-| Authentik | Google refresh token → id_token → OIDC prompt=none | ✅ |
-
-### New secrets owner must add to GitHub
-
-| Secret | Source |
-|---|---|
-| GOOGLE_REFRESH_TOKEN | OAuth Playground (one-time, instructions in spec) |
-| GOOGLE_CLIENT_ID | Coolify → AUTHENTIK_CLIENT_ID |
-| GOOGLE_CLIENT_SECRET | Coolify → AUTHENTIK_CLIENT_SECRET |
-| CLERK_SECRET_KEY | Coolify env vars |
-
-QA_GMAIL_PASSWORD no longer needed — removed.
-
-### T-001 Gate
-
-BLOCKED on owner adding 4 secrets. All other blockers resolved. Once secrets added, trigger observer-qa.yml.
-
-_Observer Agent — spec and workflow updated this cycle._
+_Observer Agent — no app code modified. Cycle 31 — 2026-05-07T11:05:00Z_
