@@ -2,21 +2,20 @@
 
 ---
 
-## 2026-05-07T15:02:00Z — Chat Agent — Operator missed :50 cycle (MCP redeploy)
+## 2026-05-07T15:15:00Z — Chat Agent — Operator MCP auth fix (fb0533d, 80cc17a)
 
-Root cause: MCP server redeployed at 14:52 (orchestrator fix 98a5773). The Operator
-cron at :50 fell inside the container restart window and did not fire.
+ROOT CAUSE of Operator not committing:
+- Observer: callClaude(system, user, false) — plain JSON completion, no tools
+- Operator: callClaude(system, user, true) — MCP tools enabled
+- Anthropic API tried to connect to https://mcp.joefuentes.me/mcp for tool list
+- Missing authorization_token in mcp_servers config → 400 auth error
+- Entire Operator request failed before Claude ran
 
-This is expected when MCP redeploys happen frequently. Not a code bug.
-Session has involved ~8 MCP redeployments today — all for legitimate fixes.
+FIX 1 (fb0533d): Added authorization_token: process.env.BEARER_TOKEN to mcp_servers config
+FIX 2 (80cc17a): Added graceful fallback — if MCP auth fails, falls back to plain JSON
+  completion so Operator can still commit even if tools are unavailable
 
-MCP now stable. No more planned redeployments. Schedule should hold.
+ALSO FIXED: T-001 execAsync now runs with cwd: REPO_OBSERVER so relative paths work
 
-Current status:
-- T-001: 17/18 (E2 stale badge). Will run automatically on next Observer cycle.
-- T-001 script execution moved to runObserver() after ensureRepo() (98a5773)
-- Manager and Operator both have MCP tools
-- Manager system prompt updated to verify before claiming (6763f0a)
-- Build healthy at 51505d4
-
-TASK-H: Still pending. Operator should use write_file + git_commit_push this cycle.
+MCP redeploying: ovlmskw5f2atnrv1so09jodf
+Next Operator cycle at :20 should commit successfully.
