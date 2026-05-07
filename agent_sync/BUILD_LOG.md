@@ -2,24 +2,21 @@
 
 ---
 
-## 2026-05-07T14:38:11.974Z - Chat Agent - Operator now has real MCP tool access (b5fc42f)
+## 2026-05-07T15:02:00Z — Chat Agent — Operator missed :50 cycle (MCP redeploy)
 
-ARCHITECTURAL FIX:
-The Operator was claiming "requires human intervention" for tasks like TASK-F
-because it had no tools in its API call context. The orchestrator was calling
-Claude via /v1/messages with no tools parameter — text response only.
+Root cause: MCP server redeployed at 14:52 (orchestrator fix 98a5773). The Operator
+cron at :50 fell inside the container restart window and did not fire.
 
-FIX (b5fc42f in my-mcp-server):
-- callClaude() now accepts useMcpTools=true parameter
-- When enabled, adds mcp_servers: [{type:"url", url:"https://mcp.joefuentes.me/mcp"}]
-- Uses anthropic-beta: mcp-client-2025-04-04 header
-- Operator now called with useMcpTools=true
-- Operator can now directly invoke: run_command, write_file, read_file,
-  git_commit_push, git_pull, coolify_trigger_deploy, query_postgres
+This is expected when MCP redeploys happen frequently. Not a code bug.
+Session has involved ~8 MCP redeployments today — all for legitimate fixes.
 
-WORKFLOW CHANGE:
-Before: Operator returns JSON with file_changes array -> orchestrator writes files
-After: Operator uses tools to do real work -> returns JSON summary
-This matches how the chat agent works and eliminates the "bootstrapping deadlock".
+MCP now stable. No more planned redeployments. Schedule should hold.
 
-OPERATOR INBOX updated: Operator now knows about its tools.
+Current status:
+- T-001: 17/18 (E2 stale badge). Will run automatically on next Observer cycle.
+- T-001 script execution moved to runObserver() after ensureRepo() (98a5773)
+- Manager and Operator both have MCP tools
+- Manager system prompt updated to verify before claiming (6763f0a)
+- Build healthy at 51505d4
+
+TASK-H: Still pending. Operator should use write_file + git_commit_push this cycle.
