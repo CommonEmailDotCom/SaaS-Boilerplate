@@ -70,6 +70,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | Browser runtime for QA | GitHub Actions (`ubuntu-latest`) via `observer-qa.yml` — Playwright works there. |
 | MCP_DEPLOY_SECRET | **DOES NOT EXIST.** Smoke badge recovers automatically on next passing smoke test. No owner action needed. |
 | GitHub secret names for CI | **QA_GMAIL_EMAIL** and **QA_GMAIL_PASSWORD** — these are the confirmed names the owner added. Do not rename. |
+| CI secrets for session injection | Owner must confirm/add: `NEXTAUTH_SECRET` (same value as prod), `QA_CLERK_USER_ID` (Clerk user ID of QA account). Manager has flagged this to Observer inbox. |
 
 ---
 
@@ -105,45 +106,42 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T10:45:00Z*
+*Updated by Manager — 2026-05-07T11:00:00Z*
 
-### 🔴 T-001 — BLOCKED ON GOOGLE OAUTH / SESSION INJECTION PIVOT REQUIRED
+### 🔴 T-001 — ACTIVE — Session injection spec may be in run `25491326807` (SHA `95f1b5d`)
 
-**Situation summary (Cycle 29 → 30):**
+**Situation summary (Cycle 30 → 31):**
 
-The `.toString()` fix in `c84a78a` resolved the `TypeError: url.includes is not a function` cascade. However, Observer's Cycle 29 report reveals a new problem:
-
-- Three runs simultaneously in_progress: `25490149751` (16+ min), `25490205058` (15+ min), `25490648032` (5+ min).
-- Run `25490149751` has been running 16+ minutes — far beyond normal 5–10 min range.
-- **This is the Google OAuth bot-detection hang pattern.** A2 waits on `waitForURL` to exit `accounts.google.com`, but bot-detection serves a challenge/stub page with no redirect. The test silently exhausts its timeout instead of failing fast.
-- The `TypeError` is fixed. The new blocker is bot-detection — a different class of problem requiring a different solution.
-
-**Observer must pivot to session injection this cycle.** This is no longer optional — three consecutive runs are showing the timeout pattern. Do not wait for another OAuth run to confirm. The Owner Decision is locked: Google OAuth in CI is blocked by bot detection.
-
-**Live SHA `b0a954f`** — different from all tested SHAs (`46f9aed`, `e5007eb`). Observer must confirm what `b0a954f` contains and whether it affects the test spec.
-
-**Operator tasks TASK-E, TASK-F, TASK-H remain overdue. Ship this cycle.**
+- Runs `25490149751`, `25490205058` dropped off feed → concluded `failure`. OAuth hang confirmed.
+- Run `25490648032` → `failure` on SHA `e5007eb`. Confirmed.
+- **Bot-detection as T-001 blocker: fully confirmed.** No OAuth run has ever succeeded.
+- Run `25491326807` is `in_progress` on SHA `95f1b5d`. Steps 1–6 passed. Step 7 (T-001 tests) executing.
+- **SHA `95f1b5d` is newer than live `b0a954f`.** Source unknown — Operator must identify.
+- **Observer has NOT confirmed** whether `95f1b5d` contains session injection. If it does, this run may pass. If it is another OAuth attempt, it will fail the same way.
+- **CI secret gap flagged:** `NEXTAUTH_SECRET` and `QA_CLERK_USER_ID` are unconfirmed in CI. Owner must add them before Authentik injection can work.
+- **SHA gap:** Live is `b0a954f`; latest test SHA is `95f1b5d`. Once T-001 PASSes, `95f1b5d` must be deployed to live before formal sign-off.
+- **TASK-E, TASK-F still unconfirmed shipped.** Operator BUILD_LOG.md still not updated as of Cycle 30.
 
 ---
 
-#### Observer — Cycle 30 (PRIORITY: SESSION INJECTION PIVOT)
+#### Observer — Cycle 31 (PRIORITY: Confirm run `25491326807` outcome)
 
-1. **Check conclusions of runs `25490149751`, `25490205058`, `25490648032`** — report exact results.
-2. **If A2 failed with timeout on `accounts.google.com` (any of the three runs)** → confirm bot-detection as the blocker. **Immediately implement session injection** — do not trigger another OAuth run.
-3. **Session injection implementation:**
-   - **Clerk (Tests A, D):** Use `CLERK_SECRET_KEY` env var (already in CI) to mint a session via Clerk backend SDK `createSessionToken()`. Set `__session` cookie via `context.addCookies()`. Bypass Google entirely.
-   - **Authentik (Tests B, C):** Set next-auth session cookies directly via `context.addCookies()` with a forged next-auth session payload. POST to `/api/auth/session` or set cookies without OAuth redirect.
-4. **Commit the session injection implementation, push, trigger a new `observer-qa.yml` run.**
-5. **Verify live SHA** from `/api/version` — confirm it is `b0a954f` or newer, and check what changed.
-6. **If any run shows SUCCESS** → declare **🟢 T-001 PASS** in QA_REPORT.md.
+1. **Report the exact conclusion of run `25491326807`** — success or failure, step that failed, error message.
+2. **Confirm whether SHA `95f1b5d` contains session injection** — check the commit diff or step 7 logs for cookie injection vs OAuth navigation.
+3. **If run `25491326807` FAILED with OAuth hang again** → the session injection code is NOT yet in the spec. Implement it yourself this cycle and push.
+4. **If run `25491326807` FAILED with a different error** → report exact error and diagnose.
+5. **If run `25491326807` PASSED** → declare 🟢 T-001 PASS in QA_REPORT.md. Also note that `95f1b5d` must be deployed to live before formal production sign-off.
+6. **CI secret gap:** Confirm whether `NEXTAUTH_SECRET` and `QA_CLERK_USER_ID` are present in CI (check step 6 "Verify secrets" log output for these names). If absent, flag to Manager — do not proceed with Authentik injection until confirmed.
+7. **Do not trigger another OAuth run under any circumstances.**
 
-#### Operator — Cycle 30
+#### Operator — Cycle 31
 
-1. **UPDATE BUILD_LOG.md** — mandatory (Hard Rule #8). This is the third consecutive cycle without a Operator BUILD_LOG update. Unacceptable.
-2. **TASK-E** — still overdue. Add `console.error('[getActiveProvider] DB error — falling back to env var:', err)` to catch block in `src/libs/auth-provider/index.ts`. Commit, push, log.
-3. **TASK-F** — still overdue. Replace `fs.readFileSync` in orchestrator with GitHub API fetch (exact code in OPERATOR_INBOX). Commit to `my-mcp-server`, redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`, log SHA and Coolify run ID.
-4. **TASK-H** — after E and F. Tech debt pass in `src/`. At minimum one concrete improvement.
-5. **Live SHA `b0a954f`** — identify what deployed and log in BUILD_LOG.md.
+1. **UPDATE BUILD_LOG.md** — Hard Rule #8. FOURTH consecutive cycle without update is unacceptable. This is a direct violation.
+2. **Identify SHA `95f1b5d`** — what commit is this? It is newer than live `b0a954f` and is under test. Log in BUILD_LOG.md.
+3. **TASK-E** — confirm shipped or ship now. One-line change. No excuses.
+4. **TASK-F** — confirm shipped or ship now. Log MCP redeploy SHA and Coolify run ID.
+5. **TASK-H** — begin tech debt pass after E and F are confirmed done.
+6. **On T-001 PASS:** Log `"T-001 formally validated. T-007+T-010 (a815e93) confirmed live and passing."` in BUILD_LOG.md. Then deploy `95f1b5d` to live (or latest passing SHA) via `set-version.yml`.
 
 ---
 
@@ -153,22 +151,24 @@ The `.toString()` fix in `c84a78a` resolved the `TypeError: url.includes is not 
 - CI skip regression: **RESOLVED**
 - CRITICAL-05: Authentik cross-domain state cookie 401: **FIXED**
 - T-007 + T-010: **FIXED** and deployed as `a815e93`
-- BUILD_LOG.md catch-up: **COMPLETE**
+- BUILD_LOG.md catch-up: **COMPLETE** (but now stale again)
+- Google OAuth bot-detection as T-001 blocker: **CONFIRMED**
 
 ### 🟠 High — Deployed (gated on T-001 formal PASS for validation)
 - **T-005 + T-008** ✅ Live as `81c550f`
 - **T-007 + T-010** ✅ Live as `a815e93` — formal sign-off pending T-001 PASS
 
 ### 🟡 In Progress
-- TASK-E: Add error logging to getActiveProvider() DB fallback — Operator (OVERDUE)
-- TASK-F: Fix smokeStatus reader in orchestrator — Operator (OVERDUE)
-- TASK-H: Tech debt pass — Operator (after E and F)
-- T-001: Session injection pivot required — Observer
+- T-001: Session injection — run `25491326807` on SHA `95f1b5d` in progress; outcome unknown
+- TASK-E: Add error logging to getActiveProvider() — Operator (OVERDUE, 4th cycle)
+- TASK-F: Fix smokeStatus reader — Operator (OVERDUE, 4th cycle)
+- TASK-H: Tech debt pass — Operator (blocked on E+F)
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
 - T-006: Stripe checkout under Authentik
 - T-009: Sign-out redirect
+- Deploy `95f1b5d` (or latest passing SHA) to live after T-001 PASS
 
 ### ⚪ Backlog
 - T-003: Smoke concurrency chaos — absolute last, high load, never without Manager instruction
@@ -179,20 +179,18 @@ The `.toString()` fix in `c84a78a` resolved the `TypeError: url.includes is not 
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | T-001 secondary blocker: Google OAuth bot-detection timeout hang (A2, 16+ min runs) | 🔴 ACTIVE — Observer must pivot to session injection this cycle |
-| 2026-05-07 | Live SHA `b0a954f` not under test in any current run | 🟡 Observer and Operator to investigate |
-| 2026-05-07 | TASK-E, TASK-F overdue 2+ cycles | 🔴 ACTIVE — Operator must ship this cycle |
-| 2026-05-07 | T-001 spec bug: `url.includes is not a function` in waitForURL predicate | ✅ Fixed in `c84a78a` |
-| 2026-05-07 | T-007 + T-010 deployed as `a815e93` (OOM on first build, success on second) | ✅ LIVE — awaiting T-001 formal validation |
-| 2026-05-07 | Operator import errors (`getServerSession`, wrong paths) | ✅ FIXED. Hard Rule #11 added. |
-| 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
+| 2026-05-07 | CI secret gap: `NEXTAUTH_SECRET` and `QA_CLERK_USER_ID` unconfirmed in CI | 🔴 ACTIVE — Owner must add before Authentik injection works |
+| 2026-05-07 | SHA gap: live `b0a954f`, test `95f1b5d` — source unknown | 🟡 Operator to identify `95f1b5d`; deploy after T-001 PASS |
+| 2026-05-07 | Run `25491326807` in_progress on `95f1b5d` — session injection unknown | 🟡 Observer to report outcome this cycle |
+| 2026-05-07 | Runs `25490149751`, `25490205058`, `25490648032` — all failed (OAuth hang) | ✅ Confirmed. Bot-detection blocker fully confirmed. |
+| 2026-05-07 | TASK-E, TASK-F overdue 3+ cycles; BUILD_LOG.md not updated | 🔴 ACTIVE — Operator must act |
+| 2026-05-07 | T-001 spec bug: `url.includes is not a function` | ✅ Fixed `c84a78a` |
+| 2026-05-07 | T-007 + T-010 deployed as `a815e93` | ✅ LIVE — awaiting T-001 validation |
+| 2026-05-07 | Operator import errors | ✅ FIXED. Hard Rule #11 added. |
+| 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built |
 | 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED |
-| 2026-05-07 | Secret name churn | ✅ RESOLVED: Locked. Hard rule added. |
+| 2026-05-07 | Secret name churn | ✅ RESOLVED: Locked. |
 | 2026-05-07 | MCP_DEPLOY_SECRET confusion | ✅ PERMANENTLY CLOSED |
 | 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocked follow-up |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
-| 2026-05-07 | Observer false-alarm — misread smoke/typecheck skips | ✅ CLOSED — Hard Rule #10 added |
-| 2026-05-07 | Operator double-syncToMain + push race | ✅ FIXED — orchestrator `8bc2288`. |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fixed and validated. |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
-| 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
-| 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |

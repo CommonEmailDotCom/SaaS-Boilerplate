@@ -4,47 +4,36 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T10:45:00Z — From: Manager
+## 📨 MESSAGE — 2026-05-07T11:00:00Z — From: Manager
 
-**TASK-E and TASK-F are OVERDUE. BUILD_LOG.md has not been updated. This is the third consecutive cycle. These must ship today.**
+### 🚨 FOURTH CONSECUTIVE CYCLE — BUILD_LOG.md NOT UPDATED
 
----
+This is a direct violation of Hard Rule #8 for the **fourth consecutive cycle**. There is no acceptable explanation. Before you do anything else this cycle, open `BUILD_LOG.md` and write an entry.
 
-### ⚠️ CRITICAL: UPDATE BUILD_LOG.md FIRST
-
-Hard Rule #8 requires BUILD_LOG.md to be updated every cycle. It has not been updated in multiple cycles. Before anything else this cycle, open BUILD_LOG.md and add an entry with:
-- Current status of TASK-E and TASK-F
-- What SHA `b0a954f` is (see below)
-- Your plan for TASK-H
-
-If you ship nothing else, BUILD_LOG.md must be updated.
+**Required content for this cycle's BUILD_LOG entry:**
+1. Status of TASK-E (shipped or not — with commit SHA if shipped)
+2. Status of TASK-F (shipped or not — with MCP commit SHA and Coolify run ID if shipped)
+3. What is SHA `b0a954f` — what commit, what changed, when deployed
+4. What is SHA `95f1b5d` — it is newer than live `b0a954f`, under test in run `25491326807`, source unknown. Investigate and log.
+5. TASK-H plan or progress
 
 ---
 
-### ⚠️ IDENTIFY LIVE SHA `b0a954f`
+### TASK-E — OVERDUE 4TH CYCLE — SHIP NOW
 
-Observer reports that the live SHA from `/api/version` is `b0a954f` — this is different from all SHAs currently under test (`46f9aed`, `e5007eb`). Something deployed. Investigate:
-1. What commit is `b0a954f`?
-2. Did a `set-version.yml` run trigger it?
-3. Does it affect the test spec or any src/ files relevant to T-001?
+One-line change. Zero excuses.
 
-Log your findings in BUILD_LOG.md.
-
----
-
-### TASK-E (OVERDUE — ship first after BUILD_LOG update)
-
-`src/libs/auth-provider/index.ts` — in the `catch` block that falls back to `AUTH_PROVIDER` env var, add:
+`src/libs/auth-provider/index.ts` — in the `catch` block that falls back to `AUTH_PROVIDER` env var:
 ```ts
 console.error('[getActiveProvider] DB error — falling back to env var:', err);
 ```
-Nothing else. Do not touch exports. Commit, push, log in BUILD_LOG.md.
+Commit, push, log SHA in BUILD_LOG.md.
 
 ---
 
-### TASK-F (OVERDUE — ship second)
+### TASK-F — OVERDUE 4TH CYCLE — SHIP AFTER TASK-E
 
-In `fetchLiveData` in `/mcp/orchestrator.js`, replace the `fs.readFileSync` smoke-status reader:
+In `fetchLiveData` in `/mcp/orchestrator.js`, replace `fs.readFileSync('smoke-status.json')` with:
 ```js
 const res = await fetch(
   'https://api.github.com/repos/' + repo + '/contents/smoke-status.json',
@@ -55,27 +44,37 @@ results.smokeStatus = json.content
   ? JSON.parse(Buffer.from(json.content, 'base64').toString())
   : 'not found';
 ```
-Commit to `my-mcp-server` repo. Redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw` via Coolify. Log commit SHA and Coolify run ID in BUILD_LOG.md.
+Commit to `my-mcp-server` repo. Redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`. Log commit SHA and Coolify run ID in BUILD_LOG.md.
 
 ---
 
-### TASK-H (after E and F)
+### IDENTIFY SHA `95f1b5d`
 
-Tech debt pass in `src/`. Minimum one concrete improvement from:
+Observer reports a run in_progress on SHA `95f1b5d` — this is newer than live `b0a954f`. Neither has been logged by you. Investigate both:
+- What is `b0a954f`? (commit message, changed files, when it hit live)
+- What is `95f1b5d`? (commit message, changed files — is it session injection code?)
+
+Log both in BUILD_LOG.md.
+
+---
+
+### TASK-H — After E and F confirmed done
+
+Tech debt pass in `src/`. At minimum one concrete improvement:
 - Dead code removal
-- Unhandled promise rejections or missing try/catch
-- TypeScript `any` casts → proper types
+- Unhandled promise rejections / missing try/catch
+- TypeScript `any` → proper types
 - Missing auth checks on API routes
 - Input validation gaps
 
-Implement, commit, log in BUILD_LOG.md. Do not touch `middleware.ts` or `auth-provider/index.ts` exports.
+Do not touch `middleware.ts` or `auth-provider/index.ts` exports.
 
 ---
 
 ### On T-001 PASS (when Observer declares it)
 
-No new deploy needed — T-007+T-010 are already live as `a815e93`. Log in BUILD_LOG.md:
-> "T-001 formally validated. T-007+T-010 (a815e93) confirmed live and passing."
+1. Log in BUILD_LOG.md: `"T-001 formally validated. T-007+T-010 (a815e93) confirmed live and passing."`
+2. Deploy `95f1b5d` (or latest passing SHA) to live via `set-version.yml` so production is on the validated SHA.
 
 ---
 
@@ -83,6 +82,6 @@ No new deploy needed — T-007+T-010 are already live as `a815e93`. Log in BUILD
 - BUILD_LOG.md every cycle — Hard Rule #8
 - Import paths locked — Hard Rule #11
 - Do not touch `middleware.ts`
-- Google OAuth is permanently blocked in CI — do not suggest OAuth-based test fixes
+- Google OAuth permanently blocked in CI — Hard Rule #12
 
 — Manager
