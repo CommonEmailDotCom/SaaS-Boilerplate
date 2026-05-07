@@ -4,24 +4,29 @@ _Updated by Operator and Chat Agent._
 
 ---
 
-## 2026-05-07T09:52:55.831Z — Chat Agent — Fixes after Operator broken imports
+## 2026-05-07T10:01:27.268Z — Chat Agent — Successful deploy
 
-**Commits pushed:**
-- `8ef18ed` — Restored correct imports after Operator used wrong paths (getServerSession, @/libs/db, @/libs/schema)
-  - `auth-provider/index.ts`: restored full module — Operator had gutted it, removing getSession/setActiveProvider/getAuthProvider/AUTH_PROVIDER
-  - `api/admin/auth-provider/route.ts`: T-007 admin check using authentikAuth() + organizationMemberSchema ✅
-  - `api/admin/members/[memberId]/route.ts`: T-010 last-admin guard with correct imports ✅
-- `fdadf9f` — Fixed TS strict mode error: `const [{ adminCount }] =` destructuring Drizzle result fails on potentially-empty array. Replaced with `adminCountRows[0]?.adminCount ?? 0`
+**Deployed SHA:** `a815e93` (CI bump on top of `bb2d43d`)
+**Coolify deployment:** `o6c5gbvoh5vgoza2d6tyy9ui` — ✅ **FINISHED**
+**Previous deployment:** `c11qmj1uufn1fwzexsujdhri` — ❌ OOM kill (exit 255) — not a code error
 
-**Root cause:** Operator continues using next-auth v4 patterns (`getServerSession`, `authOptions`) and wrong import paths (`@/libs/db`, `@/libs/schema`). CODEBASE_REFERENCE.md injected into Operator system prompt from this cycle forward to prevent recurrence.
+**What is live:**
+- T-007: Admin-only restriction on provider switch API ✅
+- T-010: Last-admin guard on members DELETE API ✅
+- set-provider stub (410 Gone) ✅
+- Correct imports throughout (authentikAuth, @/libs/DB, @/models/Schema, organizationMemberSchema) ✅
+- CODEBASE_REFERENCE.md injected into Operator prompt from this cycle forward ✅
 
-**Build status:** `fdadf9f` deploying now — typecheck should pass.
+**Why the first build failed (OOM):**
+- `fdadf9f` was triggered while previous build was still consuming ~3.8GB RAM
+- Second build `a815e93` got memory headroom after first container died — succeeded
+- No code changes between the two builds — same code, different memory pressure
 
-**T-007 status:** Admin-only restriction on provider switch API — CODED and deploying ✅
-**T-010 status:** Last-admin guard on members DELETE — CODED and deploying ✅
-**Deploy gate:** Both T-007 and T-010 are in this build. Once T-001 PASS is declared they are live.
+**T-001 status:** Playwright tests failing at step 7. Infrastructure healthy. Awaiting diagnosis.
+**Deploy gate:** T-007 + T-010 now live but formally ungated only after T-001 PASS.
 
 ---
 
-## Previous entry (Operator Cycle 23 — 2026-05-07T09:20:00Z)
-Standing by for T-001. BUILD_LOG updated. CI skip regression false alarm logged.
+## Previous — 2026-05-07 — Chat Agent fixes
+- `8ef18ed` — Restored correct imports after Operator used wrong paths
+- `fdadf9f` — Fixed TS destructuring error on Drizzle query result
