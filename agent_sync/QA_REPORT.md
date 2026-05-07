@@ -1,65 +1,84 @@
-# QA_REPORT.md
+# QA Report — Cutting Edge Chat
 
-## Cycle 26 — 2026-05-07T09:55:00Z
+## Cycle 27 — 2026-05-07T10:10:00Z
 
 ### SHA Verification
 
-| Item | Value |
-|---|---|
-| Live SHA (`/api/version`) | `b0a954f` |
-| Latest observer-qa.yml run SHA | `8ef18ed` |
-| SHA match | ❌ NO — CI is testing `8ef18ed`, live is `b0a954f` |
+- **Live SHA** (`/api/version`): `b0a954f`
+- **Latest observer-qa run SHA**: `bf74ed3` (run `25489311400` — IN PROGRESS)
+- **Run `25488605813` SHA**: `8ef18ed` — conclusion: **❌ FAILURE**
+- **Run `25488843096` SHA**: `bb2d43d` — conclusion: **❌ FAILURE**
 
-**Note:** `8ef18ed` is a newer commit than live `b0a954f`. The set-version runs show recent deployments (SHA `bb2d43d` at 09:52:59, `fdadf9f` at 09:51:44). Live SHA `b0a954f` may be stale from a prior deployment cycle. The observer-qa.yml run `25488605813` was dispatched against `8ef18ed` — this is the authoritative T-001 run for this cycle.
+---
+
+### T-001 Status — Cycle 27
+
+**Run `25488605813` (SHA `8ef18ed`) has CONCLUDED: ❌ FAILURE.**
+
+This was the priority run from last cycle. It failed. The Chat Agent's import fixes on `8ef18ed` did not resolve the Playwright test failure at step 7.
+
+**Run `25488843096` (SHA `bb2d43d`) also CONCLUDED: ❌ FAILURE** — a fourth consecutive failure.
+
+**Current active run: `25489311400` (SHA `bf74ed3`)** — dispatched at 10:05:02 — currently **IN PROGRESS at step 7** (Run T-001 tests). Steps 1–6 all succeeded.
+
+#### Consecutive Failure Pattern
+
+| Run ID | SHA | Conclusion | Notes |
+|---|---|---|---|
+| `25487914378` | `96991b9` | ❌ FAILURE | Cycle 25 |
+| `25488141574` | `d328910` | ❌ FAILURE | Cycle 25/26 |
+| `25488605813` | `8ef18ed` | ❌ FAILURE | **Priority run — now confirmed failed** |
+| `25488843096` | `bb2d43d` | ❌ FAILURE | Fourth consecutive failure |
+| `25489311400` | `bf74ed3` | 🔄 IN PROGRESS step 7 | Current |
+
+**Four consecutive failures at step 7 across four different SHAs.** This confirms a persistent Playwright test-code failure that is NOT resolved by SHA changes alone.
+
+---
+
+### Critical Escalation
+
+**⚠️ ESCALATION TO MANAGER — Persistent Step 7 Failure**
+
+Four consecutive runs have failed at step 7 (Run T-001 tests) across four different SHAs. The `latestObserverQaDetail` for the current in-progress run (`25489311400`) does not include step-level error output yet (step 7 is still in_progress). The detail for the failed runs (`25488605813`, `25488843096`) does not include verbatim Playwright error text in the live data snapshot.
+
+**What I can determine:**
+- Steps 1–6 (setup, checkout, node, install deps, install Playwright, verify secrets) all pass consistently.
+- Step 7 (Run T-001 tests) fails on every run.
+- Step 8 (Write result to QA_REPORT.md) never executes — meaning the failure is hard (non-zero exit from Playwright runner).
+- SHA changes have not fixed this — rules out a simple import-path code error as the sole cause.
+
+**Most likely causes (for Operator investigation):**
+1. A Playwright test assertion is failing against the live app — e.g., an element selector not found, a redirect not matching expected URL, or an OAuth flow producing an unexpected response.
+2. The Google OAuth credentials (`QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`) may be failing — Google's bot detection, expired session, or 2FA prompt.
+3. A Playwright config issue — wrong base URL, missing env var, timeout too short.
+4. The test code itself has an unresolved logic error independent of import paths.
+
+**Operator must:** Pull the GitHub Actions run logs for run `25488843096` or `25488605813` directly from the GitHub UI or API to extract the verbatim Playwright error output. The orchestrator's `latestObserverQaDetail` snapshot does not include the stderr/stdout from step 7. The exact failing test name, assertion, and stack trace are in the GitHub Actions log for those runs.
+
+**I cannot declare T-001 PASS. Deploy gate remains ACTIVE.**
+
+---
+
+### T-001 PASS Declared
+
+❌ **NO** — T-001 PASS has NOT been declared. Four consecutive failures. Deploy gate on T-007 + T-010 remains **🔴 ACTIVE**.
 
 ---
 
 ### Current Run Status
 
-**Run ID:** `25488605813`  
-**SHA:** `8ef18ed`  
-**Created:** `09:50:03`  
-**Conclusion:** 🔄 **IN PROGRESS**
+Run `25489311400` (SHA `bf74ed3`) is in_progress at step 7. Per protocol: noted, not redispatched, awaiting next cycle conclusion.
 
-| Step | Status |
-|---|---|
-| [1] Set up job | ✅ success |
-| [2] Run actions/checkout@v4 | ✅ success |
-| [3] Run actions/setup-node@v4 | ✅ success |
-| [4] Install dependencies | ✅ success |
-| [5] Install Playwright | ✅ success |
-| [6] Verify secrets | ✅ success |
-| [7] Run T-001 tests | 🔄 in_progress |
-| [8] Write result to QA_REPORT.md | ⏳ pending |
-| [9] Upload artifacts on failure | ⏳ pending |
-| [17] Post Run actions/setup-node@v4 | ⏳ pending |
-| [18] Post Run actions/checkout@v4 | ⏳ pending |
-
-**All infra steps (1–6) passed.** Playwright tests (step 7) are actively running. No result yet.
+- SHA `bf74ed3` is unknown — a new SHA not seen before. This may be a Operator push with a new fix attempt.
+- If this run also fails at step 7, that will be five consecutive failures and the Operator must obtain the verbatim error log immediately.
 
 ---
 
-### Prior Run Results (for context)
-
-| Run ID | SHA | Conclusion | Created |
-|---|---|---|---|
-| 25488605813 | `8ef18ed` | 🔄 in_progress | 09:50:03 |
-| 25488141574 | `d328910` | ❌ failure | 09:40:03 |
-| 25487914378 | `96991b9` | ❌ failure | 09:35:02 |
-
-Run `25488141574` (SHA `d328910`) FAILED — exact step not determinable from current live data snapshot (step detail not included). Run `25487914378` (SHA `96991b9`) also FAILED.
-
-**Pattern:** Two consecutive failures on different SHAs (`96991b9`, `d328910`) before the current in_progress run on `8ef18ed`. This suggests either (a) the Playwright tests have a persistent failure unrelated to SHA changes, or (b) the Operator has pushed fixes on `8ef18ed` to address the step 7 failure.
-
----
-
-### Smoke / Deploy Status (NOT used for T-001)
-
-*Listed for awareness only per Hard Rule #10 — irrelevant to T-001.*
+### Smoke / Deploy Status (Informational Only — Hard Rule #10)
 
 - smokeStatus reader: ❌ `fs.readFileSync is not a function` — TASK-F ongoing
-- set-version runs: recent success on `bb2d43d` (09:52:59) and `fdadf9f` (09:51:44)
-- smokeTestRuns: `bb2d43d` in_progress (09:53:21), two cancelled
+- setVersionRuns: `f7b3344` — success at 10:01:30 (possible new Operator deploy)
+- smokeTestRuns: skipped/cancelled (expected on ci: commits)
 
 ---
 
@@ -68,29 +87,29 @@ Run `25488141574` (SHA `d328910`) FAILED — exact step not determinable from cu
 | Item | Status |
 |---|---|
 | Live SHA | `b0a954f` |
-| Active run SHA | `8ef18ed` |
-| Run 25488605813 | 🔄 IN PROGRESS — step 7 (Playwright tests) running |
-| T-001 PASS declared | ❌ NO — awaiting step 7 completion |
+| Run `25488605813` (SHA `8ef18ed`) | ❌ FAILURE — confirmed |
+| Run `25488843096` (SHA `bb2d43d`) | ❌ FAILURE — fourth consecutive |
+| Active run `25489311400` (SHA `bf74ed3`) | 🔄 IN PROGRESS — step 7 |
+| T-001 PASS declared | ❌ NO |
 | Deploy gate (T-007+T-010) | 🔴 ACTIVE — must not ship |
+| Persistent step 7 failure pattern | 🔴 ESCALATED — 4 consecutive runs |
 | Coolify auto-deploy | ✅ OFF |
-| smokeStatus reader | ❌ Edge runtime error ongoing (TASK-F) |
 
 ---
 
 ### Next Cycle Action
 
-Run `25488605813` is in_progress at step 7 (Playwright tests). Next cycle must:
-1. Check `latestObserverQaDetail` for `25488605813` completion.
+1. Check `latestObserverQaDetail` for run `25489311400` conclusion.
 2. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL**.
-3. If **failure at step 7** → report exact test name, assertion, and error text verbatim. Escalate to Manager. Do NOT redispatch.
-4. Note: if the run completed and a new run has been auto-dispatched, read the newest completed run's detail.
+3. If **failure** → note fifth consecutive failure. Report whatever step 7 error text is available. Operator must retrieve verbatim Playwright logs from GitHub Actions UI for any failed run.
+4. Manager must direct Operator to extract full step 7 logs from a failed run — this is now critical to unblocking T-001.
 
-_Observer Agent — Cycle 26 — 2026-05-07T09:55:00Z_
+_Observer Agent — Cycle 27 — 2026-05-07T10:10:00Z_
 
 ---
 
-## Cycle 25 — 2026-05-07T09:40:00Z
+## Cycle 26 — 2026-05-07T09:55:00Z
 
-[Archived — Run 25488012786 was in_progress at step 4. Run 25487999234 (failure) and anomalous 25487999256 (success) on SHA `d328910` noted. Deploy gate active. Hard Rule #10 confirmed.]
+[Archived — Run 25488605813 on SHA `8ef18ed` was in_progress at step 7. Run 25488141574 (SHA `d328910`) and 25487914378 (SHA `96991b9`) both failed. Deploy gate active.]
 
-_Observer Agent — Cycle 25 — 2026-05-07T09:40:00Z_
+_Observer Agent — Cycle 26 — 2026-05-07T09:55:00Z_
