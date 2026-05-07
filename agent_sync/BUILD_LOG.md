@@ -1,35 +1,28 @@
-### Cycle 15 — 2026-05-07T07:20:00Z
+## BUILD_LOG.md
 
-**Status:** Standby — awaiting T-001 PASS signal. SHA alignment check performed.
+### Cycle 21 — 2026-05-07T08:50:00Z
 
-**Live SHA (from pre-fetched data):** `b0a954f`
+**Status:** Standby — awaiting T-001 PASS signal. BUILD_LOG catch-up performed per Manager instruction.
 
-**Target SHA (passing T-001 run 25481415030):** `f9a325f`
+**Live SHA:** `b0a954f` (from live data — unchanged from Cycle 15)
 
-**SHA Match:** ❌ NO — live SHA `b0a954f` ≠ `f9a325f`
-
-**New SHA observed:** `308e1bd` — latest CI runs (07:17:14–07:17:17Z) are all on `308e1bd`, all `skipped`. This is yet another new push to main that Coolify auto-deployed. Coolify has now moved past `b0a954f` to `308e1bd`.
-
-**CI Run Analysis (SHA `308e1bd`):**
-- Run `25481765180` — `skipped` (07:17:17Z)
-- Run `25481763139` — `skipped` (07:17:14Z)
-- Run `25481763067` — `skipped` (07:17:14Z)
-- All three runs skipped — the observer-qa job is not executing. This suggests either a branch filter condition, a job dependency failure, or a workflow trigger mismatch on `308e1bd`.
-
-**T-001 PASS status:** NOT declared. No `🟢 T-001 PASS — DEPLOY SIGNAL` in QA_REPORT.md.
+**Latest CI runs:** All on SHA `f65fa6a` — all `skipped`. Observer-qa job conclusion: `skipped`. No T-001 PASS declared.
 
 **Deploy Gate:** ACTIVE. T-007 + T-010 remain coded but NOT deployed.
 
-**SHA Drift Summary (cumulative):**
-| SHA | Event |
-|---|---|
-| `f9a325f` | PASSING run 25481415030 — never confirmed live |
-| `b0a954f` | Was live SHA (Cycle 14) |
-| `d9fcc73` | Previous push |
-| `308e1bd` | Latest push — all CI runs skipped |
+**git log f9a325f..HEAD:** Cannot execute shell commands from this environment. No direct git access available to Operator agent. Verbatim output not available — logging this limitation.
 
-**Analysis:** Coolify auto-deploy has pushed the live SHA forward again. The passing run `f9a325f` was never live — each cycle a new SHA has superseded it. The skipped runs on `308e1bd` are concerning — Observer needs to identify why observer-qa is skipping and trigger a fresh run against current HEAD.
+**BUILD_LOG catch-up (Cycles 15–20):**
+- Cycle 15: Standby. SHA drift observed (b0a954f live, f9a325f passing). No code changes. BUILD_LOG updated with SHA analysis.
+- Cycle 16: Standby. No code changes. Monitoring CI skip bug. Observer investigating skipped runs on SHA 308e1bd.
+- Cycle 17: Standby. No code changes. CI skip bug identified — observer-qa.yml paths filter removing workflow_dispatch runs. Chat agent fix initiated.
+- Cycle 18: Standby. No code changes. Chat agent fix d4fde11 applied — observer-qa.yml now workflow_dispatch only. CI skip bug resolved.
+- Cycle 19: Standby. No code changes. Operator double-syncToMain + push retry race fixed by orchestrator 8bc2288. No remaining technical blockers.
+- Cycle 20: Standby. No code changes. Run 25485310289 dispatched on SHA 0f80cf4. Step 4 in_progress at report time. SHA mismatch risk (live=b0a954f, target=0f80cf4). Coolify auto-deploy still active.
+- Cycle 21: Standby. BUILD_LOG catch-up completed per Manager instruction. No T-001 PASS received. Latest runs on f65fa6a all skipped — Observer must investigate and declare conclusion of run 25485310289.
 
-**Actions this cycle:** No code changes. BUILD_LOG updated with live data. Monitoring for T-001 PASS signal.
+**Run 25485310289 status:** Unknown from live data — not visible in latest observerQaRuns (newest runs are on SHA f65fa6a, created 08:46:56–08:46:59Z). Observer must check conclusion directly.
 
-**Coolify auto-deploy:** Still active. Owner action still required at https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF. This is causing continuous SHA churn and preventing T-001 PASS from being confirmed against live.
+**Coolify auto-deploy:** Still active. Owner action required — 9th cycle request. SHA continues to drift (now f65fa6a).
+
+**Actions this cycle:** No code changes. BUILD_LOG catch-up completed. Waiting for T-001 PASS signal to deploy T-007 + T-010.
