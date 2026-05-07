@@ -1,75 +1,79 @@
-# QA Report
+# QA_REPORT.md
 
-## Cycle 20 — 2026-05-07T08:40:00Z
+## Cycle 21 — 2026-05-07T08:55:00Z
 
-### SHA Verification
-
-| Item | Value | Status |
-|---|---|---|
-| Live SHA (`/api/version`) | `b0a954f` | ✅ Confirmed live |
-| Latest CI SHA | `0f80cf4` | ⚠️ Mismatch vs live |
-| Last passing CI run (25481415030) | `f9a325f` | Historical baseline |
-
-**SHA 3-way alignment: ❌ MISMATCH** — Live is `b0a954f`, CI runs are on `0f80cf4`. Coolify auto-deploy likely still active (new commits not deploying to live, or deployment lag). Testing proceeds — live SHA confirmed stable for headless battery.
+### 🔴 T-001 NOT PASSED — Run 25485310289 NOT FOUND IN LIVE DATA — NEW SKIP REGRESSION
 
 ---
 
-### 🟡 observer-qa.yml Status — PROGRESS (Run In-Progress)
+### Priority 1: Run 25485310289 Conclusion
 
-**Key change this cycle:** The orchestrator auto-dispatched `observer-qa.yml` and a non-skipped run is now `in_progress` on SHA `0f80cf4`. This is the **first non-skipped run** since run `25481415030` (SHA `f9a325f`).
+**CRITICAL FINDING:** Run 25485310289 (the in-progress run from Cycle 20) is **absent from the live CI data**. The most recent observer-qa runs are:
 
-| Run ID | SHA | Status | Created |
+| Run ID | Conclusion | SHA | Created |
 |---|---|---|---|
-| 25485310289 | `0f80cf4` | 🟡 `in_progress` | 08:39:02Z |
-| 25485305863 | `0f80cf4` | ❌ `cancelled` | 08:38:56Z |
-| 25485302150 | `0f80cf4` | ❌ `cancelled` | 08:38:51Z |
+| 25485842661 | `skipped` | `c0b7c4e` | 08:50:37 |
+| 25485839256 | `skipped` | `c0b7c4e` | 08:50:33 |
+| 25485839211 | `skipped` | `c0b7c4e` | 08:50:33 |
 
-**Note on cancelled runs:** Two earlier runs (25485305863, 25485302150) were cancelled within seconds — likely superseded by the winning run 25485310289 (auto-cancel-redundant pattern). This is normal and expected behaviour, NOT the triple-skip bug.
+Run 25485310289 is not present. It either concluded and scrolled out of the returned window, or the workflow list is paginated and it is not in the top results. However, the orchestrator's `autoDispatch: "dispatched"` field and three new `skipped` runs on SHA `c0b7c4e` tell a clear story:
 
-**Current job step progress (run 25485310289):**
+**THE CI SKIP BUG HAS REGRESSED.** Three new runs were triggered on SHA `c0b7c4e` (a new commit, different from `0f80cf4`), all concluded `skipped`. The `workflow_dispatch`-only fix from `d4fde11` is apparently no longer active — push-triggered runs are happening again and being skipped.
 
-| Step | Status |
+---
+
+### Priority 2: New SHA — `c0b7c4e`
+
+A new SHA `c0b7c4e` is present in CI but the **live app SHA remains `b0a954f`**. This means:
+- A new commit landed on `main` after `0f80cf4`
+- Three runs were auto-triggered on it (push trigger is back)
+- All three runs were `skipped`
+- Coolify has not deployed it (live is still `b0a954f`)
+
+SHA 3-way status:
+| Location | SHA |
 |---|---|
-| [1] Set up job | ✅ success |
-| [2] Run actions/checkout@v4 | ✅ success |
-| [3] Get deployed SHA | ✅ success |
-| [4] Wait for deployment | 🟡 in_progress |
-| [5–16] Remaining steps | ⏳ pending |
+| Live app | `b0a954f` |
+| Latest CI runs | `c0b7c4e` |
+| Last CI SHA (Cycle 20) | `0f80cf4` |
 
-**The workflow is executing.** Step 4 (`Wait for deployment`) is in progress — this waits for the live SHA to match `0f80cf4`. However, since live SHA is `b0a954f` and Coolify auto-deploy is still active, this step may time out if `0f80cf4` is never deployed.
-
-**⚠️ RISK:** If step 4 waits for SHA `0f80cf4` to go live but Coolify deploys a different SHA, this run may time out or fail at step 4. Owner action on Coolify auto-deploy remains critical.
+Three different SHAs across the chain. The SHA drift is worsening.
 
 ---
 
-### CI Skip Bug — STATUS UPDATE
+### Priority 3: Skip Bug Regression Analysis
 
-| Item | Status |
-|---|---|
-| observer-qa.yml paths: filter removed | ✅ Fixed by chat agent (d4fde11) |
-| workflow_dispatch-only trigger | ✅ Confirmed — run is in_progress, not skipped |
-| Triple-trigger / skip pattern | ✅ RESOLVED — no skipped runs this cycle |
-| Operator YAML fix | ℹ️ Superseded — chat agent applied fix directly |
+The `latestObserverQaDetail` shows:
+- Job: `smoke-test` → `skipped`
+- Steps: `[]` (empty — no steps executed)
 
-**The CI skip bug is resolved.** The workflow is now executing non-skipped runs.
+This is identical to the skip pattern seen in Cycles 14–19. The `workflow_dispatch`-only fix (`d4fde11`) was confirmed working in Cycle 20 (run 25485310289 was `in_progress` = it executed). But now runs on `c0b7c4e` are skipping again.
 
----
+**Root cause hypothesis:** Either (a) `c0b7c4e` reverted the `d4fde11` fix, or (b) a new push event re-triggered the old workflow path. The three simultaneous runs at `08:50:33`/`08:50:37` on identical SHA `c0b7c4e` strongly suggest a push event hit a workflow that still has a `push:` trigger, not `workflow_dispatch`-only.
 
-### T-001 Declaration
-
-🟡 **T-001 IN PROGRESS** — Run 25485310289 is executing. Cannot declare PASS or FAIL until run completes. Step 4 is in progress.
-
-**Next cycle action:** Check `latestObserverQaDetail.conclusion`. If `success` → declare **🟢 T-001 PASS — DEPLOY SIGNAL**. If `failure` → report exact failed steps.
+**Note:** The orchestrator's `autoDispatch: "dispatched"` field likely contributed one of these runs. If the orchestrator is dispatching via the API but the workflow is responding with `skipped` due to a condition check, that is a separate issue from the push-trigger regression.
 
 ---
 
-### Headless Battery (Live App — SHA `b0a954f`)
+### Priority 4: Run 25485310289 — Best Available Assessment
+
+Since run 25485310289 is not in the live data window, its conclusion cannot be confirmed this cycle. Possible states:
+- Completed (success or failure) before `c0b7c4e` runs arrived
+- Cancelled by GitHub when `c0b7c4e` pushed (GitHub cancels in-progress runs on new push to same branch for some workflow configurations)
+
+**Most likely:** Run 25485310289 was auto-cancelled when `c0b7c4e` was pushed to `main`. The three skipped runs on `c0b7c4e` replaced it. **T-001 PASS cannot be declared.**
+
+---
+
+### Headless Battery
 
 | Check | Result |
 |---|---|
-| Live app reachable (https://cuttingedgechat.com) | ✅ Assumed reachable (consistent with prior cycles) |
-| smokeStatus | ❌ `fs.readFileSync is not a function` (Edge runtime error — ongoing) |
-| SHA confirmed stable | ✅ `b0a954f` same as Cycle 19 |
+| Live SHA (`/api/version`) | `b0a954f` |
+| smokeStatus | ❌ Edge runtime error — `fs.readFileSync is not a function` (ongoing) |
+| CI skip regression | 🔴 CONFIRMED — 3 skipped runs on `c0b7c4e` |
+| Run 25485310289 conclusion | ❌ NOT FOUND in data window — likely auto-cancelled |
+| Triple-trigger pattern | 🔴 RETURNED — 3 simultaneous runs on `c0b7c4e` |
 
 ---
 
@@ -77,22 +81,23 @@
 
 | Issue | Status |
 |---|---|
-| CI skip bug | ✅ RESOLVED |
-| observer-qa run executing | 🟡 IN PROGRESS (run 25485310289) |
-| T-001 PASS declaration | ⏳ Pending run completion |
-| Deploy gate (T-007 + T-010) | 🔴 ACTIVE — must NOT ship until T-001 PASS |
-| Coolify auto-deploy | 🔴 STILL ACTIVE — 8th cycle owner request. Step 4 may time out. |
-| BUILD_LOG.md updated by Operator | 🔴 NO — Hard Rule 8 violation (6th consecutive cycle) |
+| CI skip bug | 🔴 REGRESSED — `c0b7c4e` runs all `skipped` |
+| Triple-trigger pattern | 🔴 RETURNED — 3 runs on same SHA same second |
+| Run 25485310289 conclusion | ❌ UNKNOWN — not in data window, likely cancelled |
+| T-001 PASS declaration | ❌ BLOCKED — cannot declare |
+| Deploy gate (T-007 + T-010) | 🔴 ACTIVE — must NOT ship |
+| Coolify auto-deploy | 🔴 STILL ACTIVE — 9th cycle escalation |
+| SHA 3-way alignment | 🔴 3-WAY MISMATCH (`b0a954f` live / `c0b7c4e` CI / `0f80cf4` last expected) |
+| BUILD_LOG.md updated by Operator | 🔴 NO — Hard Rule 8 violation (7th consecutive cycle) |
 | smokeStatus reader | ❌ Edge runtime error (`fs.readFileSync`) — ongoing |
-| SHA 3-way alignment | ❌ MISMATCH (`b0a954f` live vs `0f80cf4` CI) |
 
 ---
 
-### 🔴 OWNER ACTION STILL REQUIRED
+### 🔴 OWNER ACTION STILL REQUIRED (9th cycle)
 
-**Coolify auto-deploy (8th cycle request):** Please go to https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF.
+**Coolify auto-deploy:** Please go to https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → **Auto Deploy OFF**.
 
-With `workflow_dispatch`-only CI, Coolify auto-deploy is causing SHA drift that may cause the `Wait for deployment` step to time out on every run. This is now an active risk to T-001 execution.
+Every new commit to `main` is causing Coolify to attempt a new deployment while also pushing the CI workflow into a skip/cancel pattern. SHA drift is now 3-way. This cannot be fixed by CI alone — Coolify auto-deploy must be disabled.
 
 ---
 
@@ -101,21 +106,21 @@ With `workflow_dispatch`-only CI, Coolify auto-deploy is causing SHA drift that 
 | Item | Status |
 |---|---|
 | Live SHA | `b0a954f` |
-| Latest CI SHA | `0f80cf4` |
-| observer-qa skip bug | ✅ RESOLVED |
-| Latest CI run (25485310289) | 🟡 `in_progress` — step 4/16 |
-| Triple-trigger pattern | ✅ GONE — cancelled runs are normal auto-cancel |
-| T-001 PASS declaration | ⏳ PENDING run completion |
+| Latest CI SHA | `c0b7c4e` |
+| Run 25485310289 | ❌ NOT IN DATA — likely auto-cancelled |
+| CI skip regression | 🔴 ACTIVE — `d4fde11` fix may have been reverted by `c0b7c4e` |
+| Triple-trigger | 🔴 RETURNED |
+| T-001 PASS | ❌ NOT DECLARED |
 | Deploy gate | 🔴 ACTIVE |
-| Coolify auto-deploy | 🔴 STILL ACTIVE — 8th cycle |
-| BUILD_LOG.md (Operator) | 🔴 NOT UPDATED — 6th cycle violation |
+| Coolify auto-deploy | 🔴 STILL ACTIVE — 9th cycle |
+| BUILD_LOG.md (Operator) | 🔴 NOT UPDATED — 7th cycle violation |
 
-_Observer Agent — Cycle 20 — 2026-05-07T08:40:00Z_
+_Observer Agent — Cycle 21 — 2026-05-07T08:55:00Z_
 
 ---
 
-## Cycle 19 — 2026-05-07T08:25:00Z
+## Cycle 20 — 2026-05-07T08:40:00Z
 
-[Archived — superseded by Cycle 20. Summary: Triple-trigger confirmed on SHA `3cafadd` (4th consecutive SHA). observer-qa.yml fix applied by chat agent (d4fde11) but not yet reflected in CI runs. Operator fix not landed (4th cycle). BUILD_LOG.md violation (5th cycle). Owner escalation active. Coolify still active (7th cycle). Ancestry unconfirmed. Deploy gate active.]
+[Archived — superseded by Cycle 21. Summary: CI skip bug confirmed resolved. Run 25485310289 dispatched on SHA `0f80cf4`, step 4 `in_progress` at report time. Live SHA `b0a954f`. Triple-trigger pattern gone. Coolify auto-deploy still active (8th cycle). BUILD_LOG.md violation (6th cycle). T-001 PASS pending.]
 
-_Observer Agent — Cycle 19 — 2026-05-07T08:25:00Z_
+_Observer Agent — Cycle 20 — 2026-05-07T08:40:00Z_
