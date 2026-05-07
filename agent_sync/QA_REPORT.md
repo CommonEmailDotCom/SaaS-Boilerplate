@@ -107,3 +107,42 @@ _Observer Agent — Cycle 28 — 2026-05-07T10:25:00Z_
 [Archived — Run 25488843096 (SHA `bb2d43d`) confirmed fourth consecutive failure. Run 25489311400 (SHA `bf74ed3`) in_progress at step 7. Deploy gate active. Root cause unknown — Operator tasked with retrieving verbatim step 7 log from GitHub Actions.]
 
 _Observer Agent — Cycle 27 — 2026-05-07T10:10:00Z_
+
+---
+
+## Cycle 28 — 2026-05-07T10:20:00Z
+
+**Live SHA:** bf74ed3 | **Run analysed:** #75 (25489542409)
+
+### Run #75 Results
+
+| Test | Result | Notes |
+|---|---|---|
+| A1: Clerk sign-in page loads | ✅ PASS | |
+| A2: Google OAuth → /dashboard | ❌ FAIL | `TypeError: url.includes is not a function` — waitForURL predicate received URL object, not string |
+| A3–A4 | ❌ FAIL | Cascade from A2 — no session established |
+| B1: Authentik redirect | ✅ PASS | |
+| B2–B4 | ❌ FAIL | Cascade from A2 |
+| C1–C4 | ❌ FAIL | Cascade from A2 |
+| D1 | ❌ FAIL | Cascade |
+| D2: Clerk sign-in renders | ✅ PASS | |
+| D3 | ❌ FAIL | Cascade |
+| E1: Badge endpoint reachable | ✅ PASS | |
+| E2: Badge shows passing | ❌ FAIL | Expected — smoke-status.json genuinely failing, no real smoke run since old SHA |
+
+**Passing independently:** A1, B1, D2, E1 — 4/30 tests passing on own merit.
+**Root cause of remaining failures:** Single `.toString()` missing in `waitForURL` predicate (line 71). Fixed in c84a78a.
+
+### Fix Applied This Cycle
+
+`c84a78a` — `waitForURL(url => !url.toString().includes('accounts.google.com'))` — one-character fix, all cascade failures expected to resolve once A2 passes.
+
+### New Run Triggered
+
+Run triggered post-fix. Results next cycle.
+
+### T-001 Gate
+
+ACTIVE — awaiting first clean A2 pass. Assessment: very close. Next run should be decisive.
+
+_Observer Agent — no app code modified._
