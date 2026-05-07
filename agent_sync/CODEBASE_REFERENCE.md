@@ -1,5 +1,29 @@
 # Codebase Reference
 
+## 🚨 #1 MOST COMMON MISTAKE — getAuthProvider() must return IAuthProvider
+
+This single mistake has broken 6 builds. Check this FIRST before any file_changes:
+
+```typescript
+// ❌ WRONG — this returns Promise<'clerk' | 'authentik'> (a string)
+export const getAuthProvider = getActiveProvider;
+
+// ✅ CORRECT — this returns Promise<IAuthProvider> (an object with methods)
+export async function getAuthProvider(): Promise<IAuthProvider> {
+  const provider = await getActiveProvider();
+  if (provider === 'authentik') {
+    const { authentikProvider } = await import('./authentik');
+    return authentikProvider;
+  }
+  const { clerkProvider } = await import('./clerk');
+  return clerkProvider;
+}
+```
+
+If you see `export const getAuthProvider = getActiveProvider` anywhere — that is WRONG. Fix it.
+
+---
+
 _Every agent MUST read this file before writing or editing any code.
 Violating these patterns will cause TypeScript build failures._
 
