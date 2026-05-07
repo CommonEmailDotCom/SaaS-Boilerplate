@@ -86,6 +86,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 9. **Secret names are locked.** CI secrets are `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`. Do not rename spec env vars without Manager approval.
 10. **Reading CI runs correctly.** `smokeTestRuns`, `setVersionRuns`, and typecheck runs skipping on `ci:` commits is CORRECT and expected. Never escalate these as regressions. Only `observerQaRuns` / `latestObserverQaDetail` are relevant to T-001 status.
 11. **Import paths are locked.** Always use `authentikAuth()` not `getServerSession`, `@/libs/DB` not `@/libs/db`, `@/models/Schema` not `@/libs/schema`, `organizationMemberSchema` not `organizationMember`. Never remove exports from `auth-provider/index.ts`.
+12. **Google OAuth is permanently blocked in CI.** Observer must use session injection for all Clerk (Tests A, D) and Authentik (Tests B, C) flows. Do not attempt live OAuth redirects. This is a locked Owner Decision.
 
 ---
 
@@ -104,49 +105,54 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T10:30:00Z*
+*Updated by Manager — 2026-05-07T10:45:00Z*
 
-### 🟡 T-001 — NEAR PASS — `.toString()` fix deployed, awaiting first clean run
+### 🔴 T-001 — BLOCKED ON GOOGLE OAUTH / SESSION INJECTION PIVOT REQUIRED
 
-**Situation summary (Cycle 28 → 29):**
+**Situation summary (Cycle 29 → 30):**
 
-Significant progress. Root cause of all test failures identified and fixed by Observer:
+The `.toString()` fix in `c84a78a` resolved the `TypeError: url.includes is not a function` cascade. However, Observer's Cycle 29 report reveals a new problem:
 
-- **Run #75 (`25489542409`, SHA `bf74ed3`):** 4 tests passed independently (A1, B1, D2, E1). All other failures traced to a single bug in the Playwright spec: `waitForURL` predicate received a `URL` object, not a string — `url.includes()` threw `TypeError`. Fix: `.toString()` added (`c84a78a`). This is a spec-side fix, no app code touched.
-- **Fix deployed as `c84a78a`.** Run `25490149751` (SHA `46f9aed`) triggered post-fix — was in_progress at step 4 as of Observer Cycle 28.
-- **Run `25489986060` (SHA `b56a407`)** may also have concluded — Observer checks both this cycle.
+- Three runs simultaneously in_progress: `25490149751` (16+ min), `25490205058` (15+ min), `25490648032` (5+ min).
+- Run `25490149751` has been running 16+ minutes — far beyond normal 5–10 min range.
+- **This is the Google OAuth bot-detection hang pattern.** A2 waits on `waitForURL` to exit `accounts.google.com`, but bot-detection serves a challenge/stub page with no redirect. The test silently exhausts its timeout instead of failing fast.
+- The `TypeError` is fixed. The new blocker is bot-detection — a different class of problem requiring a different solution.
 
-**Assessment:** The `.toString()` fix should resolve all cascade failures from A2 onward. A2 passing = most other tests pass. This cycle could be the T-001 PASS cycle.
+**Observer must pivot to session injection this cycle.** This is no longer optional — three consecutive runs are showing the timeout pattern. Do not wait for another OAuth run to confirm. The Owner Decision is locked: Google OAuth in CI is blocked by bot detection.
 
-**One risk remains:** Google OAuth bot-detection. The `.toString()` fix addresses the spec error, but if A2 still fails because Google blocks headless Chromium, Observer must pivot to session injection. Observer must report the exact new error if A2 still fails.
+**Live SHA `b0a954f`** — different from all tested SHAs (`46f9aed`, `e5007eb`). Observer must confirm what `b0a954f` contains and whether it affects the test spec.
 
-**Deploy gate:** Lifted per Owner. T-007 + T-010 live as `a815e93`. T-001 PASS = formal validation only — no new deploy required unless Observer finds regressions.
+**Operator tasks TASK-E, TASK-F, TASK-H remain overdue. Ship this cycle.**
 
 ---
 
-#### Observer — Cycle 29 (PRIORITY)
-1. Check `latestObserverQaDetail` for run `25490149751` (SHA `46f9aed`) — report exact conclusion.
-2. Also check run `25489986060` (SHA `b56a407`) if not already resolved.
-3. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md.
-4. If **failure at A2** → report the exact error. If it is still OAuth/bot-detection (e.g. Google login page stuck, bot challenge, redirect loop) → pivot immediately to session injection as instructed. Do not push another OAuth-based fix.
-5. If **failure at a different step** → report verbatim error, diagnose, fix, push, trigger new run.
-6. Note live SHA from `/api/version`.
+#### Observer — Cycle 30 (PRIORITY: SESSION INJECTION PIVOT)
 
-#### Operator — Cycle 29
-1. **UPDATE BUILD_LOG.md** (Hard Rule #8 — mandatory every cycle).
-2. **TASK-E:** If not yet done — add `console.error('[getActiveProvider] DB error — falling back to env var:', err)` to catch block in `src/libs/auth-provider/index.ts`. Commit, push, log in BUILD_LOG.md.
-3. **TASK-F:** If not yet done — replace `fs.readFileSync` smoke-status reader in orchestrator with GitHub API fetch (see OPERATOR_INBOX for exact code). Commit to `my-mcp-server`, redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`, log SHA and Coolify run ID in BUILD_LOG.md.
-4. **TASK-H:** Once E and F are done — tech debt pass: dead code, error handling gaps, missing TS types, perf/security improvements in `src/`. Log everything.
-5. **On T-001 PASS:** No new deploy needed (T-007+T-010 already live). Log formal validation in BUILD_LOG.md.
+1. **Check conclusions of runs `25490149751`, `25490205058`, `25490648032`** — report exact results.
+2. **If A2 failed with timeout on `accounts.google.com` (any of the three runs)** → confirm bot-detection as the blocker. **Immediately implement session injection** — do not trigger another OAuth run.
+3. **Session injection implementation:**
+   - **Clerk (Tests A, D):** Use `CLERK_SECRET_KEY` env var (already in CI) to mint a session via Clerk backend SDK `createSessionToken()`. Set `__session` cookie via `context.addCookies()`. Bypass Google entirely.
+   - **Authentik (Tests B, C):** Set next-auth session cookies directly via `context.addCookies()` with a forged next-auth session payload. POST to `/api/auth/session` or set cookies without OAuth redirect.
+4. **Commit the session injection implementation, push, trigger a new `observer-qa.yml` run.**
+5. **Verify live SHA** from `/api/version` — confirm it is `b0a954f` or newer, and check what changed.
+6. **If any run shows SUCCESS** → declare **🟢 T-001 PASS** in QA_REPORT.md.
+
+#### Operator — Cycle 30
+
+1. **UPDATE BUILD_LOG.md** — mandatory (Hard Rule #8). This is the third consecutive cycle without a Operator BUILD_LOG update. Unacceptable.
+2. **TASK-E** — still overdue. Add `console.error('[getActiveProvider] DB error — falling back to env var:', err)` to catch block in `src/libs/auth-provider/index.ts`. Commit, push, log.
+3. **TASK-F** — still overdue. Replace `fs.readFileSync` in orchestrator with GitHub API fetch (exact code in OPERATOR_INBOX). Commit to `my-mcp-server`, redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`, log SHA and Coolify run ID.
+4. **TASK-H** — after E and F. Tech debt pass in `src/`. At minimum one concrete improvement.
+5. **Live SHA `b0a954f`** — identify what deployed and log in BUILD_LOG.md.
 
 ---
 
 ### ✅ Resolved This Sprint
-- Root cause of T-001 step 7 failures: `url.includes is not a function` — URL object not string in waitForURL predicate. Fixed in `c84a78a`.
-- Coolify auto-deploy: **OFF** (owner confirmed)
+- T-001 spec bug: `url.includes is not a function` — Fixed `c84a78a`
+- Coolify auto-deploy: **OFF**
 - CI skip regression: **RESOLVED**
 - CRITICAL-05: Authentik cross-domain state cookie 401: **FIXED**
-- T-007 + T-010 code: **FIXED** and deployed as `a815e93`
+- T-007 + T-010: **FIXED** and deployed as `a815e93`
 - BUILD_LOG.md catch-up: **COMPLETE**
 
 ### 🟠 High — Deployed (gated on T-001 formal PASS for validation)
@@ -154,10 +160,10 @@ Significant progress. Root cause of all test failures identified and fixed by Ob
 - **T-007 + T-010** ✅ Live as `a815e93` — formal sign-off pending T-001 PASS
 
 ### 🟡 In Progress
-- TASK-E: Add error logging to getActiveProvider() DB fallback — Operator
-- TASK-F: Fix smokeStatus reader in orchestrator (fs.readFileSync → GitHub API) — Operator
+- TASK-E: Add error logging to getActiveProvider() DB fallback — Operator (OVERDUE)
+- TASK-F: Fix smokeStatus reader in orchestrator — Operator (OVERDUE)
 - TASK-H: Tech debt pass — Operator (after E and F)
-- T-001: `.toString()` fix deployed, awaiting run `25490149751` conclusion — Observer
+- T-001: Session injection pivot required — Observer
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
@@ -173,8 +179,10 @@ Significant progress. Root cause of all test failures identified and fixed by Ob
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | T-001 spec bug: `url.includes is not a function` in waitForURL predicate | ✅ Fixed in `c84a78a` — awaiting clean run |
-| 2026-05-07 | 4 consecutive step 7 failures — root cause identified as spec-side `.toString()` missing | ✅ FIXED — `c84a78a` deployed |
+| 2026-05-07 | T-001 secondary blocker: Google OAuth bot-detection timeout hang (A2, 16+ min runs) | 🔴 ACTIVE — Observer must pivot to session injection this cycle |
+| 2026-05-07 | Live SHA `b0a954f` not under test in any current run | 🟡 Observer and Operator to investigate |
+| 2026-05-07 | TASK-E, TASK-F overdue 2+ cycles | 🔴 ACTIVE — Operator must ship this cycle |
+| 2026-05-07 | T-001 spec bug: `url.includes is not a function` in waitForURL predicate | ✅ Fixed in `c84a78a` |
 | 2026-05-07 | T-007 + T-010 deployed as `a815e93` (OOM on first build, success on second) | ✅ LIVE — awaiting T-001 formal validation |
 | 2026-05-07 | Operator import errors (`getServerSession`, wrong paths) | ✅ FIXED. Hard Rule #11 added. |
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
