@@ -37,23 +37,36 @@ jobs:
             echo "package.json unchanged — skipping lock file update"
           fi
 
-      - name: Write SHA to .env.production
-        run: |
-          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-          grep -v "NEXT_PUBLIC_COMMIT_SHA" .env.production 2>/dev/null > .env.production.tmp || true
-          echo "NEXT_PUBLIC_COMMIT_SHA=${SHORT_SHA}" >> .env.production.tmp
-          mv .env.production.tmp .env.production
-
-      - name: Commit updated .env.production
+      - name: Write SHA to .env.production and push (with retry)
         run: |
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           COMMIT_MSG=$(echo "${{ github.event.head_commit.message }}" | head -1)
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
-          git pull --rebase origin main
-          git add .env.production
-          git diff --staged --quiet || git commit -m "ci: ${SHORT_SHA} ${COMMIT_MSG}"
-          git push
+
+          for i in 1 2 3 4 5; do
+            echo "Attempt $i..."
+            git fetch origin main
+            git reset --hard origin/main
+            grep -v "NEXT_PUBLIC_COMMIT_SHA" .env.production 2>/dev/null > .env.production.tmp || true
+            echo "NEXT_PUBLIC_COMMIT_SHA=${SHORT_SHA}" >> .env.production.tmp
+            mv .env.production.tmp .env.production
+            git add .env.production
+            if git diff --staged --quiet; then
+              echo "SHA already written — nothing to commit"
+              exit 0
+            fi
+            git commit -m "ci: ${SHORT_SHA} ${COMMIT_MSG}"
+            if git push origin main; then
+              echo "Pushed on attempt $i"
+              exit 0
+            fi
+            echo "Push rejected, retrying in 5s..."
+            git reset --soft HEAD~1
+            sleep 5
+          done
+          echo "All push attempts failed"
+          exit 1
 
       - name: Trigger Coolify deployment
         run: |
