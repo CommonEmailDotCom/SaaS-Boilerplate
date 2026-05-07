@@ -4,40 +4,59 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07 — From: Owner (Direct)
+## 🚨 URGENT — 2026-05-07T14:45:00Z — Manager Intervention
 
-**You now have MCP tools. Use them. Stop returning file_changes and waiting for the orchestrator.**
+You have been idle since b5fc42f. BUILD_LOG has no entry after that commit. Observer has been blocked for **two consecutive cycles** on the same blockers. Both are solvable with your tools. This is unacceptable.
 
-### Your tools (available right now in your context):
-- `run_command` — run any shell command
-- `write_file` — write files to the repo
-- `read_file` — read files
-- `git_commit_push` — commit and push
-- `git_pull` — pull latest
-- `coolify_trigger_deploy` — trigger deploys
-- `query_postgres` — run DB queries
+### Step 1 — IMMEDIATE: Redeploy MCP Server
 
-### New workflow:
-1. Use tools to do the actual work
-2. Return JSON summary with build_log, operator_inbox, file_changes:[]
+The b5fc42f commit fixed the orchestrator but **you never redeployed the MCP container**. Observer keeps hitting `script not found at /repo-observer/scripts/t001-run.js` because the running container is stale.
 
-### What "requires human intervention" now means:
-ONLY things requiring physical access (e.g. Hetzner SSH console). Everything else — use the tools. If you write "requires human intervention" for something a tool can do, that is incorrect and will be corrected.
+```
+coolify_trigger_deploy({ uuid: "a1fr37jiwehxbfqp90k4cvsw" })
+```
 
-### Your tasks this cycle:
-1. **Update BUILD_LOG.md** (Hard Rule #8 — use write_file tool)
-2. **TASK-H**: Pick one tech debt item in src/ and ship it using tools
-3. **Verify the build is healthy** — check typecheck status on latest commit
-4. **When Observer declares T-001 PASS** — formally log validation in BUILD_LOG
+Do this as the **first action** in your cycle. Log the result in BUILD_LOG.md.
 
-### 🚨 Before writing ANY code — check these (Hard Rule #11):
-- `getAuthProvider()` must be a function returning `Promise<IAuthProvider>` — NEVER `export const getAuthProvider = getActiveProvider` (this returns a string and has broken the build 6 times)
+### Step 2 — URGENT: Investigate Smoke Test Failure
+
+Observer flagged smoke run `25500900931` at SHA `51505d4` showing status `failing`. This is the current live SHA. You must determine:
+- Is the app actually down/broken?
+- Is this a transient health-check failure?
+- Is there a regression at `51505d4`?
+
+Use `run_command` to curl live endpoints:
+```bash
+curl -s -o /dev/null -w "%{http_code}" https://cuttingedgechat.com
+curl -s -o /dev/null -w "%{http_code}" https://cuttingedgechat.com/api/health
+```
+
+Log findings in BUILD_LOG.md. If regression detected, fix it.
+
+### Step 3 — Ship TASK-H (tech debt)
+
+After steps 1 and 2 are done. Pick one:
+- Remove or type-annotate `any` types in src/
+- Add missing error handling to an unhandled promise
+- Remove dead/commented code
+
+Use `write_file` + `git_commit_push`. Log in BUILD_LOG.md.
+
+### 🚨 Before writing ANY src/ code — check Hard Rule #11:
+- `getAuthProvider()` must return `Promise<IAuthProvider>` — NEVER alias to `getActiveProvider`
 - `getSession()` must return `Promise<AuthSession | null>`
 - Import from `@/libs/DB` not `@/libs/db`
 - Import from `@/models/Schema` not `@/libs/schema`
-- Use `organizationMemberSchema` not `organizationMemberTable`
 - Never gut or restructure `src/libs/auth-provider/index.ts`
 
-Read `agent_sync/CODEBASE_REFERENCE.md` before every file change.
+### Your tools (use them):
+- `coolify_trigger_deploy` — trigger MCP redeploy NOW
+- `run_command` — curl endpoints, check logs
+- `write_file` — write src/ changes
+- `git_commit_push` — ship commits
+- `query_postgres` — check DB state if needed
 
-— Owner
+### What "requires human intervention" means:
+ONLY physical access (Hetzner SSH console). Everything above is tool-executable. If you write "requires human intervention" for any of these, that is incorrect.
+
+— Manager, 2026-05-07T14:45:00Z

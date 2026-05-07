@@ -1,37 +1,53 @@
 {
-  "updated": "2026-05-07T14:45:00.000Z",
+  "updated": "2026-05-07T14:45:00.113Z",
   "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
   "project": "Cutting Edge Chat — https://cuttingedgechat.com",
   "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
   "manager_assessment": {
-    "timestamp": "2026-05-07T14:45:00.000Z",
-    "overall_status": "🟡 T-001 at 17/18. Operator now has MCP tools — no more human intervention excuses. TASK-F done. TASK-E done. Build stable. Operator should be doing real work with tools.",
+    "timestamp": "2026-05-07T14:45:00.113Z",
+    "overall_status": "🔴 TWO URGENT ISSUES: (1) MCP server never redeployed after b5fc42f — Observer blocked for 2+ cycles on identical blocker. (2) Smoke test failing at 51505d4 — not investigated. Operator has not shipped TASK-H. Both agents stuck.",
     "key_events": [
-      "Operator MCP tools ENABLED — orchestrator now passes mcp_servers to Operator API call (b5fc42f)",
-      "TASK-F DONE — smokeStatus GitHub API fetch (afa1be1)",
-      "TASK-E DONE — console.error in getActiveProvider (51505d4)",
-      "getAuthProvider() alias fixed for 6th time — Hard Rule #11 and CODEBASE_REFERENCE updated",
-      "CLAUDE_TEAM.md fully updated to reflect current state"
+      "MCP server (a1fr37jiwehxbfqp90k4cvsw) NOT redeployed after b5fc42f commit — Operator must trigger this NOW",
+      "Smoke run 25500900931 at SHA 51505d4 shows FAILING — Operator must investigate",
+      "Observer blocked identically for Cycles 41 and 42 — same two blockers, no progress",
+      "Operator has not shipped TASK-H — BUILD_LOG has no entry since b5fc42f",
+      "TASK-F and TASK-E confirmed done per Owner Decisions"
     ],
     "active_blockers": [
-      "T-001 E2 — smoke badge stale, clears on next real deploy + passing smoke test"
+      "MCP server stale — Operator must call coolify_trigger_deploy(a1fr37jiwehxbfqp90k4cvsw) this cycle",
+      "Smoke test failing at 51505d4 — must investigate before assuming stable",
+      "T-001 E2 — smoke badge may clear once MCP redeployed and smoke passes"
     ]
   },
   "columns": {
     "in_progress": [
       {
-        "id": "T-001-DISPATCH",
-        "title": "T-001 — dispatch and get to 18/18",
-        "priority": "high",
-        "assigned_to": "observer",
-        "manager_instruction": "Use run_command to execute scripts/t001-run.js. Report results in QA_REPORT.md. When 18/18 passes, declare T-001 FULL PASS."
+        "id": "MCP-REDEPLOY",
+        "title": "Redeploy MCP server — UUID a1fr37jiwehxbfqp90k4cvsw",
+        "priority": "CRITICAL",
+        "assigned_to": "operator",
+        "manager_instruction": "This is NOT a human task. Use coolify_trigger_deploy tool with UUID a1fr37jiwehxbfqp90k4cvsw. The orchestrator fix b5fc42f is committed but the container is running stale code. Observer has been blocked for 2 cycles because of this. Do it NOW as step 1 of your cycle. Log result in BUILD_LOG.md."
+      },
+      {
+        "id": "SMOKE-INVESTIGATE",
+        "title": "Investigate smoke test failure at SHA 51505d4",
+        "priority": "CRITICAL",
+        "assigned_to": "operator",
+        "manager_instruction": "Observer flagged smoke run 25500900931 showing 'failing' at 51505d4. Use run_command to check smoke test logs or curl the live app endpoints to verify health. Determine: transient failure or app-level regression. Log findings in BUILD_LOG.md. If regression, identify and fix immediately."
       },
       {
         "id": "TASK-H",
-        "title": "Tech debt pass — use MCP tools directly",
+        "title": "Tech debt pass — overdue, no entry in BUILD_LOG since b5fc42f",
         "priority": "high",
         "assigned_to": "operator",
-        "manager_instruction": "Pick one concrete improvement: dead code removal, unhandled promises, TypeScript any types, missing validation. Use write_file and git_commit_push tools directly. Do NOT return file_changes — use tools. Log in BUILD_LOG.md."
+        "manager_instruction": "After MCP-REDEPLOY and SMOKE-INVESTIGATE are done. Pick one concrete improvement: dead code removal, unhandled promises, TypeScript any types, missing validation. Use write_file and git_commit_push directly. Log in BUILD_LOG.md. Do NOT skip this again."
+      },
+      {
+        "id": "T-001-DISPATCH",
+        "title": "T-001 — run after MCP redeploy, get to 18/18",
+        "priority": "high",
+        "assigned_to": "observer",
+        "manager_instruction": "Wait for Operator to confirm MCP redeploy complete, then use run_command to execute scripts/t001-run.js. The script is in the repo — it will be available once the container picks up latest code. Report full results in QA_REPORT.md. When 18/18 passes, declare T-001 FULL PASS."
       }
     ],
     "ready_to_trigger": [

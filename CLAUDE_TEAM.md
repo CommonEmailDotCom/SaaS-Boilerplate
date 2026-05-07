@@ -163,15 +163,19 @@ Observer calls run_command → writes results to agent_sync/QA_REPORT.md
 ---
 
 ## Current Objectives
-*Updated by Chat Agent — to be updated by Manager each cycle*
+*Updated by Manager — 2026-05-07T14:45:00Z*
 
-### 🟡 T-001 — 17/18, E2 smoke badge pending
+### 🔴 URGENT — MCP Server Not Redeployed After b5fc42f
 
-E2 fails because smoke badge shows stale data. Will clear on next successful smoke test run after a real src/ deploy goes live.
+The orchestrator fix (b5fc42f) was committed but **the MCP server was never redeployed**. Observer still gets `script not found at /repo-observer/scripts/t001-run.js` because the running container is stale. This is NOT a human task — Operator must call `coolify_trigger_deploy` with UUID `a1fr37jiwehxbfqp90k4cvsw` **this cycle**.
 
-**Active work:**
-- Observer: keep iterating on T-001, dispatch and report each cycle
-- Operator: TASK-H (tech debt pass), use MCP tools directly
+### 🔴 URGENT — Smoke Test Failing at 51505d4
+
+Observer flagged smoke run `25500900931` showing `failing` at SHA `51505d4`. Operator must investigate — check logs, determine if app-level regression or transient. Do not ignore.
+
+### 🟡 T-001 — Stuck at 17/18 (MCP not redeployed)
+
+Once Operator redeploys MCP UUID, Observer can re-run T-001. Expected: 17/18 minimum, possibly 18/18 if E2 smoke badge has cleared.
 
 ### 🟠 Queued (after T-001 18/18)
 - T-006: Stripe checkout under Authentik
@@ -187,8 +191,10 @@ E2 fails because smoke badge shows stale data. Will clear on next successful smo
 
 | Date | Incident | Resolution |
 |---|---|---|
+| 2026-05-07 | Smoke test failing at 51505d4 (run 25500900931) | 🔴 Under investigation |
+| 2026-05-07 | MCP server not redeployed after b5fc42f — Observer blocked 2+ cycles | 🔴 Operator must trigger coolify_trigger_deploy a1fr37jiwehxbfqp90k4cvsw |
 | 2026-05-07 | Operator had no MCP tools in cron context | ✅ Fixed — orchestrator now passes mcp_servers to Operator API call (b5fc42f) |
-| 2026-05-07 | getAuthProvider() alias broke build (6th time) | ✅ Fixed 51505d4. Hard Rule #11 updated. CODEBASE_REFERENCE updated. Orchestrator checklist updated. |
+| 2026-05-07 | getAuthProvider() alias broke build (6th time) | ✅ Fixed 51505d4. Hard Rule #11 updated. |
 | 2026-05-07 | TASK-F (smokeStatus fs.readFileSync) | ✅ Fixed afa1be1 — GitHub API fetch |
 | 2026-05-07 | TASK-E (console.error in getActiveProvider) | ✅ Live at 51505d4 |
 | 2026-05-07 | Coolify cleanup locked server | ✅ Jitsi/saas-starter stopped. 4.3GB RAM free. |
