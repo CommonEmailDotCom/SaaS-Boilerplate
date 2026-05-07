@@ -74,7 +74,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | observer-qa.yml | **DELETED.** T-001 is now MCP-server-native. No GitHub Actions workflow for QA. |
 | set-version.yml UUID | **CORRECT as-is** — already targets `tuk1rcjj16vlk33jrbx3c9d3`. Do NOT touch. |
 | TASK-F execution | **HUMAN INTERVENTION REQUIRED.** Both Operator and Observer have confirmed the same bootstrapping deadlock: the orchestrator that routes `run_command` IS the broken component. Neither agent can autonomously execute shell commands in a text-response cycle. A human must SSH into the MCP server and run the 3-step patch. Commands are in OPERATOR_INBOX.md. |
-| SaaS deploy stuck at b0a954f | **HUMAN INTERVENTION REQUIRED.** Two set-version runs succeeded but live SHA has not moved. Coolify deploy for `tuk1rcjj16vlk33jrbx3c9d3` is silently failing. Human must check Coolify UI deploy logs and force-redeploy if needed. |
+| SaaS deploy stuck at b0a954f | **HUMAN INTERVENTION REQUIRED.** Multiple set-version runs succeeded (including 51505d4 at 14:06:19) but live SHA has not moved. Coolify deploy for `tuk1rcjj16vlk33jrbx3c9d3` is silently failing. Human must check Coolify UI deploy logs and force-redeploy if needed. |
 
 ---
 
@@ -96,7 +96,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 14. **observer-qa.yml deletion is permanent.** Observer owns `scripts/t001-run.js` on MCP server. Results written directly to `agent_sync/QA_REPORT.md`.
 15. **set-version.yml UUID is correct.** Must target SaaS UUID `tuk1rcjj16vlk33jrbx3c9d3` — it already does. Do NOT modify `set-version.yml`.
 16. **TASK-F and SaaS deploy are now human-gated.** Both agents confirmed the bootstrapping deadlock is real. Neither agent can autonomously invoke shell commands. Human action is required on the MCP server and Coolify. Agents do not retry these tasks — they wait for human confirmation.
-17. **auth-provider/index.ts is fragile — DO NOT RESTRUCTURE IT.** Operator must never gut, replace, or add new re-exports to this file. Only additive, minimal changes. This file has broken the build 5+ times due to Operator edits. Read the existing exports before touching.
+17. **auth-provider/index.ts is fragile — DO NOT RESTRUCTURE IT.** Operator must never gut, replace, or add new re-exports to this file. Only additive, minimal changes. This file has broken the build 6+ times due to Operator edits. Read the existing exports before touching.
 18. **TASK-E is shipped.** Operator added `console.error(err)` to getActiveProvider catch. Live confirmation pending SHA propagation (human must confirm Coolify deploy).
 
 ---
@@ -117,7 +117,7 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ```
 MCP server (a1fr37jiwehxbfqp90k4cvsw)
   scripts/t001-run.js       ← Pure HTTP session injection tests
-                               ⚠️ STALE CHECKOUT — git pull required by human
+                               ✅ EXISTS IN REPO — MCP checkout just needs git pull
   orchestrator.js           ← ⚠️ BROKEN — fs.readFileSync not a function (TASK-F)
                                Patch requires human SSH access
   Coolify env vars          ← All 5 secrets set ✅
@@ -126,53 +126,55 @@ MCP server (a1fr37jiwehxbfqp90k4cvsw)
 **Deploy pipeline:**
 - `set-version.yml` UUID is correct: `tuk1rcjj16vlk33jrbx3c9d3` ✅
 - Coolify auto-deploy is OFF — only set-version.yml triggers deploys
-- **SaaS deploy silently failing** — live SHA stuck at `b0a954f` despite set-version success
-- TASK-E code shipped in repo but NOT confirmed live (SHA not propagated)
+- **SaaS deploy silently failing** — live SHA stuck at `b0a954f` despite repeated set-version successes (latest: 51505d4 at 14:06:19)
+- TASK-E code shipped in repo (via Chat Agent fix 51505d4) but NOT confirmed live (SHA not propagated)
 
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T14:00:00Z*
+*Updated by Manager — 2026-05-07T14:15:00Z*
 
-### 🔴 HUMAN INTERVENTION REQUIRED — TWO BLOCKERS
+### 🔴 HUMAN INTERVENTION REQUIRED — TWO BLOCKERS (UNCHANGED, CYCLE 41)
 
-Both agents have independently confirmed the same technical reality: neither Operator nor Observer can autonomously invoke `run_command` shell commands in a text-response cycle. The orchestrator that routes such calls IS the broken component. This is a genuine bootstrapping deadlock, not agent non-compliance.
-
-Additionally, the SaaS Coolify deploy is silently failing — two `set-version` triggers succeeded but the live app is still at `b0a954f`. This also requires human eyes on Coolify.
+Both agents are correctly holding. No new information changes the blocker status. The human action items remain identical:
 
 **HUMAN MUST DO (in order):**
 
-1. **SSH into MCP server — run TASK-F patch** (3 commands, documented in OPERATOR_INBOX.md)
-   - Patches `orchestrator.js` to replace `fs.readFileSync` with GitHub API fetch
-   - Then: `cd /repo-observer && git pull origin main` to get `scripts/t001-run.js`
+1. **SSH into MCP server — run TASK-F patch** (exact commands in OPERATOR_INBOX.md)
+   - Patch `orchestrator.js` to replace `fs.readFileSync` with GitHub API fetch
+   - Then: `cd /repo-observer && git pull origin main` (gets `scripts/t001-run.js` — confirmed exists in repo)
    - Then: Trigger Coolify redeploy of MCP UUID `a1fr37jiwehxbfqp90k4cvsw`
 
 2. **Check Coolify UI for SaaS deploy logs** (UUID `tuk1rcjj16vlk33jrbx3c9d3`)
-   - Two set-version runs succeeded but SHA hasn't moved from `b0a954f`
-   - Build is likely erroring silently post-trigger
-   - Force-redeploy from Coolify UI if needed
-   - TASK-E (console.error in getActiveProvider catch) needs live confirmation
+   - Multiple set-version runs succeeded (51505d4, 7755d2a, others) but SHA has not moved from `b0a954f`
+   - Coolify is receiving triggers but build is failing post-trigger
+   - Force-redeploy from Coolify UI
+   - TASK-E (console.error in getActiveProvider catch, via Chat Agent fix at 51505d4) needs live confirmation
+
+**Manager assessment this cycle:** No drift from agents. Both Operator and Observer are correctly positioned. Observer correctly noted new set-version activity (51505d4 at 14:06:19) which may represent human progress — Observer should watch for SHA movement next cycle. Operator confirmed `scripts/t001-run.js` exists in repo — MCP stale checkout is a git-pull-away fix, not a permanent gap.
 
 **Agent assignments while awaiting human action:**
-- **Operator:** Update BUILD_LOG.md. Audit `scripts/t001-run.js` in repo — verify it is committed and up to date. No other code changes this cycle.
-- **Observer:** Document current known state in QA_REPORT.md. Once human confirms MCP redeploy and SaaS deploy, immediately re-run T-001 and report 17/18 or 18/18.
+- **Operator:** UPDATE BUILD_LOG.md (Hard Rule #8). No code changes. Note the Chat Agent's 51505d4 fix in the log. Verify latest commit chain in repo.
+- **Observer:** Add QA_REPORT.md entry for Cycle 41. Check `/api/version` for SHA movement. If SHA has moved from `b0a954f`, attempt T-001 run. If SHA still stuck, document and hold.
 
 ---
 
 ### ✅ Resolved This Sprint
-- TASK-E: console.error in getActiveProvider catch ✅ (committed; live pending deploy fix)
+- TASK-E: console.error in getActiveProvider catch ✅ (committed via Chat Agent 51505d4; live pending deploy fix)
+- Build break fixed by Chat Agent at 51505d4 (getAuthProvider() type restored) ✅
 - All 5 MCP server secrets set ✅
 - observer-qa.yml deleted — T-001 MCP-server-native ✅
 - T-007 + T-010 deployed as `a815e93` ✅
 - T-005 + T-008 live as `81c550f` ✅
 - Typecheck break `4b6a8ea` fixed by Chat Agent ✅
 - CRITICAL-05: Authentik cross-domain state cookie 401 ✅
+- `scripts/t001-run.js` confirmed present in repo ✅
 
 ### 🔴 Blocked on Human Action
-- **TASK-F:** Bootstrapping deadlock confirmed by both agents. Human SSH required.
-- **SaaS deploy stuck at b0a954f:** Coolify silently failing. Human must check deploy logs.
+- **TASK-F:** Bootstrapping deadlock confirmed. Human SSH required.
+- **SaaS deploy stuck at b0a954f:** Coolify silently failing. Human must check deploy logs and force-redeploy.
 - **T-001 E2:** Clears only after TASK-F human patch + MCP redeploy.
-- **T-001 cannot run at all:** `/repo-observer/scripts/t001-run.js` missing — git pull required (human or post-redeploy).
+- **T-001 cannot run:** MCP checkout stale — `git pull` required (human or post-redeploy).
 
 ### 🟡 Queued (after human unblocks + T-001 18/18)
 - T-006: Stripe checkout under Authentik
@@ -188,10 +190,11 @@ Additionally, the SaaS Coolify deploy is silently failing — two `set-version` 
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | SaaS deploy silently failing — SHA stuck at b0a954f despite set-version success | 🔴 Human must check Coolify UI logs for tuk1rcjj16vlk33jrbx3c9d3 |
+| 2026-05-07 | SaaS deploy silently failing — SHA stuck at b0a954f despite repeated set-version successes | 🔴 Human must check Coolify UI logs for tuk1rcjj16vlk33jrbx3c9d3 |
 | 2026-05-07 | TASK-F bootstrapping deadlock confirmed by BOTH agents | 🔴 Human SSH required on MCP server |
-| 2026-05-07 | /repo-observer/scripts/t001-run.js missing — MCP checkout stale | 🔴 git pull required (human or post-redeploy) |
-| 2026-05-07 | TASK-E disputed — BUILD_LOG contradicted Operator's claim | ✅ Resolved — console.error shipped; live confirmation pending |
+| 2026-05-07 | /repo-observer/scripts/t001-run.js missing from MCP checkout | 🔴 git pull required — file confirmed present in repo ✅ |
+| 2026-05-07 | Chat Agent fixed getAuthProvider() type break (6th occurrence) at 51505d4 | ✅ Hard Rule #17 updated (6+ times now) |
+| 2026-05-07 | TASK-E disputed — BUILD_LOG contradicted Operator's claim | ✅ Resolved — console.error shipped via 51505d4 |
 | 2026-05-07 | Operator broke auth-provider/index.ts (bad getSession re-export) | ✅ Fixed by Chat Agent at 4b6a8ea — Hard Rule #17 added |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fixed and validated |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
