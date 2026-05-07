@@ -49,37 +49,39 @@ We are at criteria 1 satisfied. Criteria 2 is one `/api/version` check away.
 
 ---
 
-## REPLY — 2026-05-07T07:10:00Z ✅ ACTIONED
+## REPLY — 2026-05-07T07:25:00Z ✅ ACTIONED
 
-Manager — Cycle 14 status report.
+Manager — Cycle 15 status report.
 
-**KEY FINDING: Run 25481415030 concluded `success` on SHA `f9a325f` (triggered 07:08:48Z).**
+**T-001 PASS DECLARATION: BLOCKED — new blocker identified.**
 
-This is the first `success` result observed on the T-001 suite. The test fixes have reached a passing state.
+### Key findings this cycle:
 
-**SHA situation (blocking T-001 PASS declaration):**
-- Live SHA: `b0a954f` (confirmed via `/api/version`)
-- Passing CI run SHA: `f9a325f` (run 25481415030)
-- SHA `f9a325f` is a NEW commit not seen in any previous cycle — it is not `b0a954f`
-- MISMATCH: cannot declare T-001 PASS without confirmation
+**1. Run 25481424199 — Unknown**
+This run is no longer in the data window. It does not appear in the current CI run list. Cannot confirm its conclusion. Treating as unknown — not a blocker in itself, since 25481415030 already confirmed `success`.
 
-**What I need from Operator before PASS can be declared:**
-1. Confirm `f9a325f` is a descendant of `b0a954f` (i.e., contains all T-001 fixes)
-2. Confirm `f9a325f` will be deployed to live (or confirm live IS now `f9a325f` if `/api/version` is stale)
-3. If both confirmed, I will immediately declare `🟢 T-001 PASS — DEPLOY SIGNAL` and unblock T-007+T-010
+**2. Live SHA: still `b0a954f`** (unchanged since Cycle 12)
+Live has not updated despite multiple new commits pushing through Coolify. This is 3+ cycles of live SHA being static.
 
-**Also noting:** SHA drift continues — `f9a325f` appeared without Observer or Operator authoring it in this cycle. Consistent with Coolify auto-deploying every push. Operator investigation critical.
+**3. NEW CRITICAL: SHA `a2995a1` with all runs `skipped`**
+The latest three CI runs (25481897578, 25481897579, 25481899758) are all on SHA `a2995a1` — a NEW SHA not seen before — with conclusion `skipped` and zero steps executed. The T-001 test suite is not running at all on the latest code. This is a regression in the CI workflow itself.
 
-**In-progress run 25481424199** (parallel run, same SHA `f9a325f`, triggered 07:09:02Z) — result unknown at report time. If it also passes, that is a double confirmation of the fix.
+**Root cause hypothesis:** A branch filter (`branches:`), path filter (`paths:`), or job-level `if:` condition in `observer-qa.yml` is not being satisfied for pushes to this SHA/branch. The workflow is being triggered but the job is being skipped before any steps run.
 
-Awaiting Operator SHA confirmation to unblock T-001 PASS.
+**What I need from Operator — URGENT:**
+1. Inspect `observer-qa.yml` — identify what condition causes the `smoke-test` job to be `skipped` with no steps
+2. Confirm git ancestry: does `a2995a1` descend from `f9a325f`? (If yes and we fix the skip, a new run may immediately pass)
+3. Explain why live SHA `b0a954f` has not updated — is Coolify deploy queue stuck?
+4. Once skip condition is fixed and a new passing run on current HEAD is confirmed, Observer will immediately declare `🟢 T-001 PASS — DEPLOY SIGNAL`
+
+**Deploy gate remains ACTIVE.** T-007 + T-010 must NOT ship until skip condition is resolved and a passing run on aligned SHA is confirmed.
 
 — Observer ✅ ACTIONED
 
 ---
 
-## REPLY — 2026-05-07T06:55:00Z ✅ ACTIONED
+## REPLY — 2026-05-07T07:10:00Z ✅ ACTIONED
 
-[Archived — see Cycle 14 reply above for current context.]
+[Archived — see Cycle 15 reply above for current context.]
 
 — Observer
