@@ -1,9 +1,7 @@
 name: Smoke test
 
 on:
-  workflow_run:
-    workflows: ["Set commit SHA for build"]
-    types: [completed]
+  push:
     branches: [main]
 
 # Cancel any in-progress smoke test when a newer one starts.
@@ -13,7 +11,10 @@ concurrency:
 
 jobs:
   smoke-test:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Skip if this is a CI housekeeping commit — those don't change deployed code
+    if: |
+      !startsWith(github.event.head_commit.message, 'ci:') &&
+      !startsWith(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -29,38 +30,22 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          CI_SHA="${{ github.event.workflow_run.head_sha }}"
-          SHORT_CI_SHA=$(echo "$CI_SHA" | cut -c1-7)
-
-          # The CI workflow commits a "ci: update commit sha" bump on top of the
-          # real code commit. Coolify deploys the code commit (parent of the CI bump),
-          # so we must poll for the parent SHA, not the CI bump SHA.
-          CI_MSG=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/commits/$CI_SHA" \
-            | jq -r '.commit.message' 2>/dev/null || echo "")
-
-          if echo "$CI_MSG" | grep -q "^ci:"; then
-            # This is a CI bump commit — get the parent (actual code commit)
-            PARENT_SHA=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/repos/${{ github.repository }}/commits/$CI_SHA" \
-              | jq -r '.parents[0].sha' 2>/dev/null || echo "")
-            SHORT_SHA=$(echo "$PARENT_SHA" | cut -c1-7)
-            echo "CI bump detected — polling for parent code commit: $SHORT_SHA"
-          else
-            SHORT_SHA=$SHORT_CI_SHA
-            echo "Direct commit — polling for: $SHORT_SHA"
-          fi
-
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          echo "Code commit SHA: $SHORT_SHA"
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
-      - name: Wait for deployment
+      - name: Wait for CI bump + deployment
         id: deploy_wait
         continue-on-error: true
         run: |
           SHORT_SHA="${{ steps.sha.outputs.sha }}"
-          MAX_ATTEMPTS=15
+          MAX_ATTEMPTS=20
           ATTEMPT=0
           START_TIME=$(date +%s)
+
+          # Give set-version.yml time to create the ci: bump and trigger Coolify
+          echo "Waiting 30s for set-version.yml to run and trigger deploy..."
+          sleep 30
 
           echo "Polling https://cuttingedgechat.com/api/version for SHA ${SHORT_SHA}..."
 
@@ -86,7 +71,7 @@ jobs:
 
           echo "deploy_time=0" >> $GITHUB_OUTPUT
           echo "timed_out=true" >> $GITHUB_OUTPUT
-          echo "Deployment did not go live within 15 minutes"
+          echo "Deployment did not go live within 20 minutes"
           exit 1
 
       - uses: actions/setup-node@v4
@@ -151,8 +136,6 @@ jobs:
           git checkout -- .
           git pull --rebase origin main
 
-          # Guard: only write if our run_id is >= what's already stored.
-          # run_id is a monotonically increasing integer — higher always means newer.
           OUR_RUN_ID="${{ github.run_id }}"
           STORED_RUN_ID=$(node -e "try{const f=require('./smoke-status.json');console.log(f.runId||0)}catch{console.log(0)}")
 
@@ -177,7 +160,7 @@ jobs:
       - name: Set commit status
         if: always()
         run: |
-          SHA="${{ github.event.workflow_run.head_sha }}"
+          SHA="${{ github.sha }}"
           EXIT_CODE="${{ steps.result.outputs.exit_code }}"
 
           if [ "$EXIT_CODE" = "0" ]; then
