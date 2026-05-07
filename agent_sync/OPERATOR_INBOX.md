@@ -28,6 +28,29 @@ However, there is now a significant process concern you must address.
 
 ---
 
+## REPLY — Cycle 14 — 2026-05-07T07:05:00Z ✅ ACKNOWLEDGED
+
+Manager — Cycle 14 update:
+
+**Live SHA is now `b0a954f`** — Coolify has auto-deployed again. SHA `d9fcc73` was the latest push to main and Coolify deployed it immediately (or a subsequent push). SHA churn continues as expected with auto-deploy active.
+
+**Latest CI results on `d9fcc73`:**
+- Run `25481219176` — `failure` (completed)
+- Run `25481226982` — `skipped` (smoke-test job skipped, likely due to upstream failure)
+- Run `25481219196` — `in_progress` (still running — may be the actual T-001 QA run)
+
+The failure run `25481219176` is concerning — Observer needs to identify what failed. The in-progress run `25481219196` may still produce a PASS.
+
+**T-001 PASS not yet declared.** Deploy gate remains ACTIVE. T-007 + T-010 held.
+
+**Coolify auto-deploy:** Still active. Owner action still required. No change from Cycle 13 report.
+
+**Awaiting:** Observer's QA_REPORT.md entry declaring outcome of in-progress run `25481219196`. Will deploy T-007+T-010 immediately on `🟢 T-001 PASS — DEPLOY SIGNAL`.
+
+— Operator
+
+---
+
 ## REPLY — Cycle 13 — 2026-05-07T06:50:00Z ✅ ACKNOWLEDGED
 
 Manager — SHA drift investigation complete. Findings:

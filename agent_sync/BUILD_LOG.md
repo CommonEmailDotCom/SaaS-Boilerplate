@@ -1,37 +1,41 @@
 ## BUILD_LOG.md
 
-### Cycle 13 — 2026-05-07T06:50:00Z
+### Cycle 14 — 2026-05-07T07:05:00Z
 
-**Inbox:** Cycle 13 instructions received. Investigate SHA drift / Coolify auto-deploy behavior. Update BUILD_LOG.md. Deploy gate remains ACTIVE — T-007 + T-010 hold until Observer logs 🟢 T-001 PASS.
+**Status:** Standby — awaiting T-001 PASS signal.
 
-**SHA Drift Investigation:**
+**Live SHA:** `b0a954f` (another auto-deploy has occurred — Coolify continues to deploy every push to main)
 
-Live SHA is now `61c15b5` — this confirms Coolify IS auto-deploying on every push to `main`. Observer's fix commit `61c15b5` has already been deployed to production automatically, without T-001 PASS. Previous SHAs tracked: `f52c77a` → `6e99ee5` → `61c15b5` — three consecutive auto-deploys confirmed.
+**Latest Observer QA Runs (SHA `d9fcc73`):**
+- Run `25481226982` — conclusion: `skipped` (created 07:04:06Z)
+- Run `25481219196` — conclusion: `in_progress` (created 07:03:54Z)
+- Run `25481219176` — conclusion: `failure` (created 07:03:54Z)
 
-**Root Cause:** Coolify SaaS app (UUID: `tuk1rcjj16vlk33jrbx3c9d3`) has auto-deploy enabled on push to `main`. Every commit — including Observer's test fix and any other agent commits — immediately deploys to https://cuttingedgechat.com. This fully bypasses the T-001 deploy gate.
+**Analysis:**
+- SHA `d9fcc73` is yet another new push (previously we saw `dced2a3`, now `d9fcc73`). Coolify has auto-deployed `b0a954f` to live. The SHA churn continues.
+- Run `25481219176` shows `failure` on SHA `d9fcc73` — this is concerning. The most recent completed run failed.
+- Run `25481226982` is `skipped` — the smoke-test job was skipped, possibly because a previous job failed.
+- Run `25481219196` is still `in_progress` — this may be the actual T-001 QA run Observer triggered.
+- **T-001 PASS has NOT been declared.** No `🟢 T-001 PASS — DEPLOY SIGNAL` in QA_REPORT.md.
 
-**Risk Assessment:**
-- Low risk for Observer test commits (they only change spec/workflow files we don't own, no app behavior change)
-- HIGH risk if T-007 or T-010 code were ever committed to main before T-001 PASS — they would auto-deploy instantly
-- The deploy gate is currently being enforced by agents NOT committing T-007/T-010 src/ changes — Coolify cannot be the gate
+**Deploy Gate:** ACTIVE. T-007 + T-010 remain coded but NOT committed to main. Hard rule enforced.
 
-**Can Operator pause Coolify auto-deploy?** The Coolify API does not expose a pause-auto-deploy endpoint via the tools available to this agent. Pausing auto-deploy in Coolify requires the owner to log into https://joefuentes.me, navigate to the SaaS app (UUID: `tuk1rcjj16vlk33jrbx3c9d3`), and toggle off "Auto Deploy" in the deployment settings. **Flagging for owner action.**
+**SHA Drift Summary (cumulative):**
+| SHA | Event |
+|---|---|
+| `f52c77a` | Earlier tracked cycle |
+| `6e99ee5` | Auto-deployed by Coolify |
+| `61c15b5` | Observer fix — auto-deployed |
+| `dced2a3` | Another push — auto-deployed |
+| `d9fcc73` | Latest push — CI running |
+| `b0a954f` | Current live (Coolify auto-deployed `d9fcc73` or later) |
 
-**New CI Run — 2026-05-07T06:49:19Z:**
-- Run ID: `25480618816`
-- SHA: `dced2a3` (NOTE: this is a newer SHA than live `61c15b5` — Observer or another agent pushed again)
-- Status: `in_progress` — typecheck job running, installing dependencies
-- Cannot declare T-001 PASS yet — run still in progress
+Coolify auto-deploy remains active. Owner action still required to toggle off at https://joefuentes.me → UUID `tuk1rcjj16vlk33jrbx3c9d3` → Deployment Settings → Auto Deploy OFF.
 
-**SHA Note:** Live is `61c15b5` but new CI run is on `dced2a3`. Another push has occurred. If auto-deploy fires on `dced2a3`, live SHA will change again before CI result is known.
-
-**T-007 + T-010 Status:** Coded, NOT deployed. Hard rule enforced. Will deploy together immediately on 🟢 T-001 PASS signal from Observer.
-
-**Actions this cycle:** No code changes. BUILD_LOG updated. SHA drift explained. Owner flag raised re: Coolify auto-deploy setting.
+**Actions this cycle:** No code changes. BUILD_LOG updated. Monitoring for T-001 PASS signal.
 
 | SHA | Status | Notes |
 |---|---|---|
-| `dced2a3` | ⏳ CI in_progress | New Observer QA run — typecheck step running |
-| `61c15b5` | ✅ Live (auto-deployed) | Observer's T-001 fix — deployed automatically by Coolify |
-| `81c550f` | ✅ Superseded | T-005 + T-008: signIn callback, org auto-create, authentikId |
-| pending | ⏳ Holding | T-007 + T-010: coded, awaiting T-001 PASS deploy signal |
+| `b0a954f` | ✅ Live (auto-deployed) | Latest Coolify deploy |
+| `d9fcc73` | ⏳ CI mixed results | failure + in_progress + skipped runs |
+| pending | ⏳ Holding | T-007 + T-010: coded, awaiting T-001 PASS signal |
