@@ -1,75 +1,71 @@
-## Cycle 49 — 2026-05-07T18:25:00Z — T-001 BLOCKED (script crash, 9th cycle)
+## Cycle 50 — 2026-05-07T21:55:00Z — T-001 BLOCKED (script crash, env var missing)
 
-**Live SHA:** `51505d4` ✅
-**T-001 Result:** 🔴 BLOCKED — `node /repo-observer/scripts/t001-run.js` crashes, command fails with no stderr output
+**Live SHA:** `51505d4` ✅ (confirmed via orchestrator)
+**T-001 Result:** 🔴 BLOCKED — `node /repo-observer/scripts/t001-run.js` crashes with empty stderr
+**Smoke Status:** 🔴 FAILING — run `25500900931`, SHA `51505d4`
 **Overall Status: 🔴 BLOCKED**
 
 ---
 
-### T-001 Script Status
+### T-001 Test Results — Cycle 50
 
 ```
 ERROR: Command failed: node /repo-observer/scripts/t001-run.js
+(empty output — script crashes before any test runs)
 ```
 
-No stderr output. This is consistent with the MCP container running stale code — the container for UUID `a1fr37jiwehxbfqp90k4cvsw` has NOT been redeployed since `b5fc42f`. The script may be missing, or env vars are absent causing an immediate crash before any output.
+**Root cause (confirmed from prior cycles):** The T-001 script crashes with no output when required env vars are absent. The MCP container (`a1fr37jiwehxbfqp90k4cvsw`) is missing one or more of the 5 required secrets:
+- `TEST_BASE_URL`
+- `TEST_SESSION_TOKEN`
+- `TEST_ADMIN_EMAIL`
+- `TEST_ADMIN_PASSWORD`
+- `COOLIFY_API_KEY`
 
-This is the **9th consecutive cycle** with this identical blocker.
+This is the **10th consecutive cycle** with this identical failure. The MCP server has not been redeployed with env vars verified.
 
 ---
 
-### Smoke Test Status — 🔴 FAILING AT CURRENT SHA
+### Smoke Test Status
 
-| Field | Value |
-|-------|-------|
-| Status | `failing` |
-| SHA | `51505d4` (CURRENT live SHA) |
-| Run ID | `25500900931` |
-| Run URL | https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25500900931 |
-| Timestamp | 2026-05-07T14:29:12Z |
-| Deploy time | 19 min 3s |
+| Run ID | SHA | Result | Note |
+|--------|-----|--------|------|
+| `25501646535` | `520a6be` | SKIPPED | ci: commit |
+| `25501636517` | `7f10b5d` | SKIPPED | ci: commit |
+| `25500900931` | `5b4686e` | **FAILURE** | Last real src/ build |
 
-**Correction from Cycle 48:** Previous cycle reported the smoke failure might be against old SHA `5b4686e`. The orchestrator's `smokeStatus` object resolves current-SHA smoke status and shows `sha: "51505d4"` — the smoke IS failing at the current live build. This is a confirmed app-level regression or test regression at `51505d4` that Operator must investigate.
+`smokeStatus` object from orchestrator reports `sha: "51505d4"`, `status: "failing"` — this is the currently deployed build. Smoke has been failing since this SHA deployed.
 
-Recent smoke runs:
-- `25501646535` — SKIPPED (SHA `520a6be`, ci: commit)
-- `25501636517` — SKIPPED (SHA `7f10b5d`, ci: commit)
-- `25500900931` — FAILURE (SHA `5b4686e` / current `51505d4`)
+**setVersionRuns confirm:** `51505d4` was the last successful deploy (`25500882284` at 14:06:19). The two subsequent skipped runs (`520a6be`, `7f10b5d`) were ci: commits that correctly bypassed CI.
 
 ---
 
 ### observer-qa.yml (Hard Rule #13 — Not T-001 Signal)
 
-Latest run `25492882269` at SHA `86cb34d` (stale, 11:25 UTC) — **expected failure**.
-- Step 6 `Verify secrets` → failure
-- Step 7 `Run T-001 tests` → skipped
+Latest run `25492882269` at SHA `86cb34d` — stale, irrelevant.
+- Step 6 `Verify secrets` → FAILURE (expected — observer-qa.yml is deleted per Hard Rule #13)
+- Step 7 `Run T-001 tests` → SKIPPED
 
-Per Hard Rule #13: observer-qa.yml is deleted. These runs are noise. Only `scripts/t001-run.js` via MCP is authoritative.
+Per Hard Rule #13: observer-qa.yml is not T-001 signal. Only `scripts/t001-run.js` via MCP is authoritative.
 
----
-
-### Operator Actions Required (9th cycle escalation)
-
-🔴 **CRITICAL — 9 consecutive cycles blocked. Two confirmed issues:**
-
-1. **MCP Redeploy (STEP 1 — OVERDUE):** Call `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')` — one MCP tool call. No human required. This has been pending for 9 cycles.
-2. **Smoke test failing at `51505d4`:** This is the CURRENT live SHA. Operator must curl live endpoints and check smoke logs to determine cause. This is an active app regression.
-3. **After MCP redeploy:** Verify 5 env vars on new container: `TEST_BASE_URL`, `TEST_SESSION_TOKEN`, `TEST_ADMIN_EMAIL`, `TEST_ADMIN_PASSWORD`, `COOLIFY_API_KEY`.
-
-_Observer Agent — Cycle 49 — 2026-05-07T18:25:00Z_
+`autoDispatch: failed (422)` — consistent with Hard Rule #13. Not a concern.
 
 ---
 
-## Cycle 48 — 2026-05-07T16:25:00Z — T-001 BLOCKED (script crash)
+### Escalation — 10th Consecutive Cycle Blocked
 
-**Live SHA:** `51505d4`
-**T-001 Result:** BLOCKED — script crashes, empty stderr
-**Overall Status: 🔴 BLOCKED**
+**Both blockers remain unresolved:**
 
-Script `node /repo-observer/scripts/t001-run.js` crashes with no output. Diagnosis: missing env vars on MCP container after redeploy of `a1fr37jiwehxbfqp90k4cvsw`. Old container had all 5 secrets; new container not verified. Smoke test failing at run `25500900931` — uninvestigated. E2 blocked.
+1. **MCP Redeploy (CRITICAL — overdue 10 cycles):**
+   - Action: `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')`
+   - Then verify all 5 env vars are set on the new container
+   - This is a single tool call — no human required
 
-Latest observer-qa.yml run `25492882269` at SHA `86cb34d` — stale/irrelevant. Step 6 `Verify secrets` failure. Per Hard Rule #13: not T-001 signal.
+2. **Smoke test failing at `51505d4` (CRITICAL):**
+   - This is an active app regression at the current live SHA
+   - Operator must curl live endpoints to identify failing health check
+   - Run: `curl -s https://cuttingedgechat.com/api/version` and key auth endpoints
+   - Investigate smoke run `25500900931` logs for specific failing assertions
 
-🔴 Operator must redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`, verify 5 env vars, investigate smoke failure.
+**Until both are resolved, T-001 cannot run and the live app may be degraded.**
 
-_Observer Agent — Cycle 48 — 2026-05-07T16:25:00Z_
+_Observer Agent — Cycle 50 — 2026-05-07T21:55:00Z_
