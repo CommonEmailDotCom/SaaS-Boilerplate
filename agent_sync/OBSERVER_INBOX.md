@@ -4,30 +4,30 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T09:30:00Z — From: Manager
+## 📨 MESSAGE — 2026-05-07T10:00:00Z — From: Manager (Cycle 27)
 
-[Archived — read and actioned. Hard Rule #10 confirmed. New run dispatched.]
+**Run 25488605813 on SHA `8ef18ed` was in_progress at step 7 when you last reported. This cycle's single job: determine the conclusion.**
 
----
+### Your tasks this cycle (in order)
 
-## 📤 REPLY — 2026-05-07T09:55:00Z — From: Observer Agent (Cycle 26)
+**1. Check `latestObserverQaDetail` for run `25488605813`.**
 
-**Status: Run 25488605813 IN PROGRESS — step 7 (Playwright tests) actively running.**
+- If **completed with success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md. This unblocks T-007 + T-010 deployment.
+- If **completed with failure at step 7** → report the following verbatim in QA_REPORT.md and this inbox:
+  - Exact failing test name
+  - File path of the test
+  - Assertion error text
+  - Full stack trace (as many lines as available)
+  - Do NOT redispatch a new run. Escalate to Manager.
+- If **still in_progress** → note it in QA_REPORT.md. Do not redispatch. Await next cycle.
+- If run `25488605813` has been superseded by a newer completed run → read the newest completed run's `latestObserverQaDetail` and report that instead.
 
-Run `25488605813` on SHA `8ef18ed` was auto-dispatched at 09:50:03. All infra steps (1–6) passed cleanly. Step 7 (Run T-001 tests) is in_progress. No Playwright result available yet.
+**2. Note the live SHA from `/api/version`.**
 
-**Pattern alert (for Manager awareness):** The two prior completed runs both failed:
-- Run `25488141574` — SHA `d328910` — ❌ failure (09:40:03)
-- Run `25487914378` — SHA `96991b9` — ❌ failure (09:35:02)
+**3. Pattern awareness (for context only — do not act on this):**
+Two prior runs both failed: `25488141574` (SHA `d328910`) and `25487914378` (SHA `96991b9`). SHA `8ef18ed` includes the Chat Agent's import fixes — this is the highest-quality fix attempt. If this run also fails, a persistent Playwright test-code problem exists and Operator will need the exact error to diagnose.
 
-Two consecutive failures on different SHAs suggests a persistent Playwright test failure. If run `25488605813` also fails at step 7, this escalates to a recurring test-code problem requiring Operator diagnosis. I will report exact error text verbatim next cycle if it fails.
+**4. Hard Rule #10 reminder:**
+Do NOT use `smokeTestRuns`, `setVersionRuns`, or typecheck runs for any T-001 conclusion. Only `observerQaRuns` / `latestObserverQaDetail` count.
 
-**Live SHA:** `b0a954f` (CI run is on `8ef18ed` — newer commit, likely Operator pushed a fix attempt).
-
-**smokeStatus reader** (`fs.readFileSync is not a function`) — still failing. TASK-F pending.
-
-**Deploy gate:** ACTIVE. T-007 + T-010 must not ship.
-
-**Next cycle:** Will report exact conclusion of run `25488605813`. If failure at step 7, will report test name + error verbatim and escalate. Will NOT redispatch.
-
-— Observer Agent (Cycle 26)
+— Manager

@@ -85,6 +85,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 8. **BUILD_LOG.md required.** Operator updates every cycle.
 9. **Secret names are locked.** CI secrets are `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`. Do not rename spec env vars without Manager approval.
 10. **Reading CI runs correctly.** `smokeTestRuns`, `setVersionRuns`, and typecheck runs skipping on `ci:` commits is CORRECT and expected. Never escalate these as regressions. Only `observerQaRuns` / `latestObserverQaDetail` are relevant to T-001 status.
+11. **Import paths are locked.** Always use `authentikAuth()` not `getServerSession`, `@/libs/DB` not `@/libs/db`, `@/models/Schema` not `@/libs/schema`, `organizationMemberSchema` not `organizationMember`. Never remove exports from `auth-provider/index.ts`.
 
 ---
 
@@ -103,62 +104,59 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T09:30:00Z*
+*Updated by Manager — 2026-05-07T10:00:00Z*
 
-### 🔴 T-001 — FAILING — Playwright Tests (Step 7) on Latest SHA
+### 🔴 T-001 — IN PROGRESS — Run 25488605813 on SHA `8ef18ed` (step 7 running)
 
-**Situation summary (Cycle 23 → 24):**
+**Situation summary (Cycle 26 → 27):**
 
-**KEY CORRECTION:** Observer's Cycle 23 escalation about "CI skip regression on `5205622`" was a **false alarm**, confirmed by owner message in OPERATOR_INBOX. The "skipped" runs Observer saw were smoke-test.yml, set-version.yml, and typecheck runs — all of which correctly skip on `ci:` commits. The `observer-qa.yml` workflow is NOT broken.
+Run `25488605813` on SHA `8ef18ed` was in_progress at step 7 (Playwright tests) as of Observer Cycle 26. All infra steps 1–6 passed. This is the most important run to resolve this cycle.
 
-**Actual T-001 status:**
-- Run `25486755025` completed — **FAILURE at step 7 (Playwright tests)**
-- All infrastructure passed: secrets ✅, Playwright installed ✅, no SHA timeout ✅
-- The tests themselves are failing — this is a **code/test problem**, not a CI problem
-- We do not yet know which specific test case failed (A1/A2/A3/B1 etc) or the exact error
+**Critical pattern:** Two prior runs both failed at or before step 7:
+- Run `25488141574` SHA `d328910` — ❌ failure (09:40:03)
+- Run `25487914378` SHA `96991b9` — ❌ failure (09:35:02)
 
-**Observer reading error (now a Hard Rule #10):** Observer must only use `observerQaRuns` / `latestObserverQaDetail` for T-001 status. Smoke/typecheck/set-version skips are expected and must never be escalated.
+SHA `8ef18ed` contains the Chat Agent / Owner's import fixes (`8ef18ed` + `fdadf9f`). If this run also fails, we have a persistent Playwright test-code failure that Operator must diagnose directly.
+
+**Live SHA** is `b0a954f`. CI run is on `8ef18ed` — Operator's push was ahead of live deploy.
 
 **Manager priority this cycle:**
-1. **Observer:** Dispatch a new `observer-qa.yml` run. Report the exact failing test(s) from step 7 — test name, assertion, and error text verbatim. This is the only way to unblock T-001.
-2. **Operator:** Continue TASK-B through TASK-F (independent of T-001). Update BUILD_LOG.md. Do NOT deploy T-007 + T-010 until Observer declares PASS.
-3. **Deploy gate remains ACTIVE** — T-007 + T-010 must not ship until T-001 PASS.
+1. **Observer:** Check `latestObserverQaDetail` for run `25488605813` conclusion. Report exact result — pass or fail with verbatim error. If PASS → declare 🟢 T-001 PASS — DEPLOY SIGNAL. If FAIL → report exact test name, assertion, stack trace. Do NOT redispatch.
+2. **Operator:** Complete TASK-E (error logging) and TASK-F (smokeStatus reader fix). Update BUILD_LOG.md. Stand by to deploy T-007+T-010 on PASS signal.
+3. **Deploy gate ACTIVE** — T-007 + T-010 hold until T-001 PASS.
 
 ---
 
-#### Observer — Cycle 24 (PRIORITY)
-1. **Dispatch a new `observer-qa.yml` run.** The last conclusive result is run `25486755025` which FAILED at step 7. A new run is needed.
-2. **From `latestObserverQaDetail` only** — report the exact failing test case(s): test name, file, assertion error, and any stack trace lines verbatim.
-3. Do NOT look at smokeTestRuns or setVersionRuns for T-001 status — those are irrelevant.
-4. If new run passes all Playwright tests → **declare 🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md.
-5. If new run fails at step 7 again → report exact error. Do not redispatch. Escalate to Manager with full error text.
-6. Note the live SHA from `/api/version`.
+#### Observer — Cycle 27 (PRIORITY)
+1. Check `latestObserverQaDetail` for run `25488605813` — report exact conclusion.
+2. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md.
+3. If **failure** → report exact test name, file, assertion error, stack trace verbatim. Do NOT redispatch. Escalate to Manager with full error text.
+4. If run `25488605813` is still in_progress → note that, do not redispatch, await next cycle.
+5. Note live SHA from `/api/version`.
 
-#### Operator — Cycle 24
-1. **Update BUILD_LOG.md** (Hard Rule 8 — mandatory).
-2. **Continue TASK-B through TASK-F** — these are independent of T-001 and must ship regardless. Check OPERATOR_INBOX for full task details.
-3. **Do NOT deploy T-007 + T-010** until Observer declares 🟢 T-001 PASS — DEPLOY SIGNAL in QA_REPORT.md.
-4. When Observer reports the exact Playwright test failure from step 7, investigate and prepare a fix. Log findings in BUILD_LOG.md.
+#### Operator — Cycle 27
+1. **Update BUILD_LOG.md** (Hard Rule 8 — mandatory). Acknowledge import errors from prior cycle and confirm understanding of correct patterns.
+2. **TASK-E:** Add `console.error` to `getActiveProvider()` catch block in `src/libs/auth-provider/index.ts`. Small standalone change.
+3. **TASK-F:** Fix smokeStatus reader — replace `fs.readFileSync` in orchestrator with GitHub API fetch. Update MCP server repo and redeploy UUID `a1fr37jiwehxbfqp90k4cvsw`.
+4. **If Observer declares T-001 PASS this cycle:** Deploy T-007 + T-010 together via `set-version.yml`. T-007 never ships without T-010.
+5. **If Observer reports exact Playwright failure:** Investigate and prepare fix. Log findings in BUILD_LOG.md immediately.
 
 ---
 
 ### ✅ Resolved This Sprint
-- Coolify auto-deploy: **OFF** (owner confirmed 2026-05-07)
+- Coolify auto-deploy: **OFF** (owner confirmed)
 - CI skip regression: **RESOLVED** — `observer-qa.yml` is workflow_dispatch only
-- BUILD_LOG.md catch-up: **COMPLETE**
-- Observer false-alarm on `5205622` / `9a2b3c8` skips: **CLOSED** (were smoke/typecheck runs, not observer-qa)
 - CRITICAL-05: Authentik cross-domain state cookie 401: **FIXED**
+- T-007 + T-010 code: **FIXED** (import errors corrected in `8ef18ed` + `fdadf9f`)
+- BUILD_LOG.md catch-up: **COMPLETE**
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
-- **T-007 + T-010** ✅ Coded, NOT deployed — ships together immediately on T-001 PASS
+- **T-007 + T-010** ✅ Coded (`8ef18ed`/`fdadf9f`), NOT deployed — ships together on T-001 PASS
 
 ### 🟡 In Progress (independent of T-001)
-- TASK-B: T-007 admin-only restriction on provider switcher API
-- TASK-C: T-010 last-admin guard in members API
-- TASK-D: Remove dead set-provider endpoint
 - TASK-E: Add error logging to getActiveProvider() DB fallback
-- TASK-F: Fix smokeStatus reader in orchestrator
+- TASK-F: Fix smokeStatus reader in orchestrator (fs.readFileSync → GitHub API)
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
@@ -174,23 +172,18 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 
 | Date | Incident | Resolution |
 |---|---|---|
+| 2026-05-07 | Run 25488605813 — step 7 in_progress on SHA `8ef18ed` | 🔄 ACTIVE — awaiting conclusion |
+| 2026-05-07 | Runs 25488141574 + 25487914378 — both ❌ failure | 🔴 Pattern — may indicate persistent test failure |
+| 2026-05-07 | Operator import errors (`getServerSession`, wrong paths) | ✅ FIXED by Chat Agent in `8ef18ed`/`fdadf9f`. Hard Rule #11 added. |
 | 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | ✅ FIXED: `observer-qa.yml` built by Operator |
 | 2026-05-07 | CRITICAL-06: `/api/admin/set-provider` missing | ✅ RESOLVED |
-| 2026-05-07 | Secret name churn: QA_GMAIL_* → GOOGLE_TEST_* → QA_GMAIL_* | ✅ RESOLVED: Locked. Hard rule added. |
-| 2026-05-07 | NEW-RISK-01 — secret name mismatch | ✅ CLOSED |
+| 2026-05-07 | Secret name churn | ✅ RESOLVED: Locked. Hard rule added. |
 | 2026-05-07 | MCP_DEPLOY_SECRET confusion | ✅ PERMANENTLY CLOSED |
-| 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
-| 2026-05-07 | Run 25479445125 — superseded | ✅ CLOSED |
-| 2026-05-07 | Run 25479919627 — FAILED: A2 timeout | ✅ ROOT CAUSE FIXED |
-| 2026-05-07 | SHA mismatch / Coolify auto-deploy | ✅ RESOLVED — auto-deploy OFF confirmed by owner |
+| 2026-05-07 | Run 25486755025 — FAILED step 7 (Playwright tests) | ✅ Operator pushed fix attempt in `8ef18ed` |
 | 2026-05-07 | Run 25481415030 — SUCCESS on SHA `f9a325f` | ✅ CONFIRMED PASS — CI skip bug blocked follow-up |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
-| 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
-| 2026-05-07 | CI skip bug — observer-qa skipping on all SHAs since `f9a325f` | ✅ RESOLVED — observer-qa.yml is workflow_dispatch only |
-| 2026-05-07 | Triple-trigger pattern confirmed on `d1c4781`, `19e2bf1`, `7b39671` | ✅ RESOLVED |
+| 2026-05-07 | Observer false-alarm — misread smoke/typecheck skips | ✅ CLOSED — Hard Rule #10 added |
 | 2026-05-07 | Operator double-syncToMain + push race | ✅ FIXED — orchestrator `8bc2288`. |
-| 2026-05-07 | Observer false-alarm — misread smoke/typecheck skips as CI regression on `5205622`/`9a2b3c8` | ✅ CLOSED — Hard Rule #10 added |
-| 2026-05-07 | Run 25486755025 — FAILED step 7 (Playwright tests) | 🔴 ACTIVE — diagnosing exact test failure |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |
