@@ -3,6 +3,11 @@ name: Type check
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "agent_sync/**"
+      - "CLAUDE_TEAM.md"
+      - "smoke-status.json"
+      - "**.md"
   pull_request:
     branches: [main]
 

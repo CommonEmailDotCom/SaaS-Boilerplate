@@ -3,12 +3,18 @@ name: Set commit SHA for build
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "agent_sync/**"
+      - "CLAUDE_TEAM.md"
+      - "smoke-status.json"
+      - "**.md"
 
 jobs:
   set-version:
     if: |
       !startsWith(github.event.head_commit.message, 'ci:') &&
-      !startsWith(github.event.head_commit.message, 'chore(release):')
+      !startsWith(github.event.head_commit.message, 'chore(release):') &&
+      !startsWith(github.event.head_commit.message, 'chore:')
     runs-on: ubuntu-latest
     permissions:
       contents: write
