@@ -44,14 +44,21 @@ async function signInWithGoogle(page: any, email: string, password: string, labe
   // Use :not([aria-hidden]) to skip Google's hidden duplicate inputs
   await page.waitForSelector('input[type="email"]:not([aria-hidden="true"])', { timeout: 15000 });
   await page.fill('input[type="email"]:not([aria-hidden="true"])', email);
-  await page.locator('#identifierNext button, [jsname="LgbsSe"]').first().click();
+  // Enter works across all Google UI variants — avoids fragile button selectors
+  await page.keyboard.press('Enter');
   logFinding('PASS', `${label}: Gmail email submitted`);
 
-  // jsname="YPqjbf" is the visible password input — not the hidden duplicate
-  await page.waitForSelector('input[jsname="YPqjbf"]', { timeout: 15000 });
-  await page.fill('input[jsname="YPqjbf"]', password);
+  // Fill password — prefer jsname YPqjbf (visible input), fall back to any visible password field
+  await page.waitForSelector(
+    'input[jsname="YPqjbf"]:not([aria-hidden="true"]), input[type="password"]:not([aria-hidden="true"])',
+    { timeout: 15000 }
+  );
+  await page.fill(
+    'input[jsname="YPqjbf"]:not([aria-hidden="true"]), input[type="password"]:not([aria-hidden="true"])',
+    password
+  );
   await page.screenshot({ path: `agent_sync/screenshots/${label.toLowerCase().replace(/[\s/]/g, '_')}_password.png` });
-  await page.locator('#passwordNext button, [jsname="LgbsSe"]').first().click();
+  await page.keyboard.press('Enter');
   logFinding('PASS', `${label}: Gmail password submitted`);
 }
 
