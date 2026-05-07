@@ -3,8 +3,8 @@
  * Cutting Edge Chat — https://cuttingedgechat.com
  *
  * Required GitHub Secrets:
- *   GOOGLE_TEST_EMAIL     — Google account email for OAuth test login
- *   GOOGLE_TEST_PASSWORD  — Google account password for OAuth test login
+ *   QA_GMAIL_EMAIL     — Google account email for OAuth test login
+ *   QA_GMAIL_PASSWORD  — Google account password for OAuth test login
  *   TEST_BASE_URL         — Target URL (default: https://cuttingedgechat.com)
  *   ADMIN_API_SECRET      — Secret for /api/admin/set-provider
  *
@@ -20,8 +20,8 @@ import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 
 const BASE_URL = process.env.TEST_BASE_URL ?? 'https://cuttingedgechat.com';
 const MCP_URL = 'https://mcp.joefuentes.me';
-const GOOGLE_EMAIL = process.env.GOOGLE_TEST_EMAIL ?? '';
-const GOOGLE_PASSWORD = process.env.GOOGLE_TEST_PASSWORD ?? '';
+const GOOGLE_EMAIL = process.env.QA_GMAIL_EMAIL ?? '';
+const GOOGLE_PASSWORD = process.env.QA_GMAIL_PASSWORD ?? '';
 const ADMIN_SECRET = process.env.ADMIN_API_SECRET ?? '';
 
 // Cache TTL guard — must wait >6s after provider switch before asserting

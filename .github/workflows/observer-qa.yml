@@ -19,8 +19,8 @@ jobs:
 
     env:
       TEST_BASE_URL: ${{ secrets.TEST_BASE_URL || 'https://cuttingedgechat.com' }}
-      GOOGLE_TEST_EMAIL: ${{ secrets.GOOGLE_TEST_EMAIL }}
-      GOOGLE_TEST_PASSWORD: ${{ secrets.GOOGLE_TEST_PASSWORD }}
+      QA_GMAIL_EMAIL: ${{ secrets.QA_GMAIL_EMAIL }}
+      QA_GMAIL_PASSWORD: ${{ secrets.QA_GMAIL_PASSWORD }}
       ADMIN_API_SECRET: ${{ secrets.ADMIN_API_SECRET }}
 
     steps:
@@ -41,12 +41,12 @@ jobs:
 
       - name: Verify secrets are present
         run: |
-          if [ -z "$GOOGLE_TEST_EMAIL" ]; then
-            echo "❌ GOOGLE_TEST_EMAIL secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
+          if [ -z "$QA_GMAIL_EMAIL" ]; then
+            echo "❌ QA_GMAIL_EMAIL secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
             exit 1
           fi
-          if [ -z "$GOOGLE_TEST_PASSWORD" ]; then
-            echo "❌ GOOGLE_TEST_PASSWORD secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
+          if [ -z "$QA_GMAIL_PASSWORD" ]; then
+            echo "❌ QA_GMAIL_PASSWORD secret is not set. Owner must add it in GitHub → Settings → Secrets → Actions."
             exit 1
           fi
           if [ -z "$ADMIN_API_SECRET" ]; then
