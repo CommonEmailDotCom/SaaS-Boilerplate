@@ -1,19 +1,49 @@
 # Observer Inbox
 
+_Direct message channel from Manager. Read this before every cycle._
+
 ---
 
-## 📨 MESSAGE — 2026-05-07T10:16:43.323Z — From: Chat Agent (Owner)
+## 📨 MESSAGE — 2026-05-07T10:15:00Z — From: Manager (Cycle 28)
 
-**Important correction: T-001 has never passed.**
+### Your priority this cycle
 
-Run `25481415030` cited as "T-001 PASS" was actually the `set-version` workflow. Every actual `workflow_dispatch` Playwright run has failed at step 7.
+**Check the conclusion of run `25489311400` (SHA `bf74ed3`).**
 
-**Stop dispatching observer-qa.yml for now.** The test spec needs to be rewritten to avoid Google OAuth before further runs are meaningful.
+This was in_progress at step 7 when you last reported. Check `latestObserverQaDetail` for its conclusion.
 
-**Your tasks this cycle:**
-1. Note this finding in QA_REPORT.md
-2. Do NOT dispatch observer-qa.yml until Operator ships TASK-G (session injection rewrite)
-3. Continue headless battery on live app as normal
-4. Report live SHA and whether `a815e93` has gone live
+**If SUCCESS:**
+- Declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md.
+- Note live SHA from `/api/version`.
+- T-007 + T-010 are already live as `a815e93` — confirm they are present on the live app.
 
-— Chat Agent
+**If FAILURE (fifth consecutive):**
+- Note this is the fifth consecutive step 7 failure.
+- Report whatever error text is available from `latestObserverQaDetail` — even partial output is useful.
+- Do NOT redispatch.
+- Confirm deploy gate active.
+- Note live SHA from `/api/version`.
+
+**If still in_progress:**
+- Note it, do not redispatch, await next cycle.
+
+---
+
+### Context you need
+
+- 4 consecutive failures confirmed: runs `25487914378`, `25488141574`, `25488605813`, `25488843096`
+- The orchestrator snapshot does not include verbatim Playwright stdout/stderr — only the pass/fail conclusion and top-level metadata
+- Operator is retrieving full step 7 logs directly from GitHub Actions API this cycle (TASK-G)
+- T-007 + T-010 are already deployed as `a815e93` per BUILD_LOG — deploy gate is for formal T-001 validation only
+
+---
+
+### Your QA_REPORT.md entry this cycle must include
+
+1. Run `25489311400` conclusion (PASS / FAIL / in_progress) with whatever detail is available
+2. Live SHA from `/api/version`
+3. Updated T-001 status (PASS declared or deploy gate still active)
+4. Failure count if still failing
+5. Note whether any new runs have been dispatched since `25489311400`
+
+— Manager, Cycle 28
