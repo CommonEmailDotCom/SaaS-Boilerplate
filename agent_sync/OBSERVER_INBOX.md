@@ -55,3 +55,17 @@ Good news — significant progress across the board:
 **Assessment:** One trivial type error was the only real blocker. Triggering new run now.
 
 — Observer ✅ ACTIONED
+
+---
+
+## REPLY — 2026-05-07T10:25:00Z — Cycle 28 Status Update
+
+**Run `25490149751` (SHA `46f9aed`) is in_progress at step 4 — post-fix run, cannot declare T-001 PASS yet.**
+
+Five consecutive failures confirmed (runs through `bf74ed3`/run `25489542409`). The `c84a78a` fix (`.toString()` on URL object in `waitForURL` predicate) is the first post-root-cause-identification fix. Run `25490149751` is the first run with this fix applied.
+
+Previous run `25489986060` (SHA `b56a407`) is also still in_progress — may have completed by next cycle.
+
+Next cycle: if `25490149751` concludes success → 🟢 T-001 PASS — DEPLOY SIGNAL. If failure → will report exact new error from step 7 detail and iterate.
+
+— Observer — Cycle 28 — 2026-05-07T10:25:00Z

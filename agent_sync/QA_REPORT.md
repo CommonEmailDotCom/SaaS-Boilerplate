@@ -1,115 +1,109 @@
-# QA Report — Cutting Edge Chat
+# QA_REPORT.md
 
-## Cycle 27 — 2026-05-07T10:10:00Z
+## Cycle 28 — 2026-05-07T10:25:00Z
 
 ### SHA Verification
 
-- **Live SHA** (`/api/version`): `b0a954f`
-- **Latest observer-qa run SHA**: `bf74ed3` (run `25489311400` — IN PROGRESS)
-- **Run `25488605813` SHA**: `8ef18ed` — conclusion: **❌ FAILURE**
-- **Run `25488843096` SHA**: `bb2d43d` — conclusion: **❌ FAILURE**
+- Live SHA from `/api/version`: `b0a954f`
+- Latest observer-qa.yml run `25490149751` is on SHA `46f9aed`
+- SHA mismatch: live app is `b0a954f`, latest CI run is `46f9aed`
+- **Note:** setVersionRuns shows `c84a78a` deployed successfully at 10:23:24, and `ad43288` at 10:20:24. SHA `46f9aed` is a newer commit. The live app at `b0a954f` may not yet reflect the latest deploys — or the orchestrator liveSha is from a prior poll. This does not block QA reporting as the CI runs are independent.
 
 ---
 
-### T-001 Status — Cycle 27
+### Run Status Updates This Cycle
 
-**Run `25488605813` (SHA `8ef18ed`) has CONCLUDED: ❌ FAILURE.**
+#### Run `25489542409` (SHA `bf74ed3`) — ❌ FAILURE
+This is run `25489311400`'s successor — confirmed **FAILURE**. This is the **fifth consecutive step 7 failure**.
 
-This was the priority run from last cycle. It failed. The Chat Agent's import fixes on `8ef18ed` did not resolve the Playwright test failure at step 7.
+#### Run `25489986060` (SHA `b56a407`) — 🔄 IN PROGRESS (created 10:20:03)
+Status: in_progress — conclusion unknown this cycle.
 
-**Run `25488843096` (SHA `bb2d43d`) also CONCLUDED: ❌ FAILURE** — a fourth consecutive failure.
-
-**Current active run: `25489311400` (SHA `bf74ed3`)** — dispatched at 10:05:02 — currently **IN PROGRESS at step 7** (Run T-001 tests). Steps 1–6 all succeeded.
-
-#### Consecutive Failure Pattern
-
-| Run ID | SHA | Conclusion | Notes |
-|---|---|---|---|
-| `25487914378` | `96991b9` | ❌ FAILURE | Cycle 25 |
-| `25488141574` | `d328910` | ❌ FAILURE | Cycle 25/26 |
-| `25488605813` | `8ef18ed` | ❌ FAILURE | **Priority run — now confirmed failed** |
-| `25488843096` | `bb2d43d` | ❌ FAILURE | Fourth consecutive failure |
-| `25489311400` | `bf74ed3` | 🔄 IN PROGRESS step 7 | Current |
-
-**Four consecutive failures at step 7 across four different SHAs.** This confirms a persistent Playwright test-code failure that is NOT resolved by SHA changes alone.
+#### Run `25490149751` (SHA `46f9aed`) — 🔄 IN PROGRESS (created 10:23:46) — LATEST
+Status: in_progress at **step 4 (Install dependencies)**. Steps 5–9 pending. This is the run triggered after Observer's `c84a78a` fix (`.toString()` on URL object for `waitForURL` predicate).
 
 ---
 
-### Critical Escalation
+### Context: Observer Fix Applied (per OBSERVER_INBOX.md reply)
 
-**⚠️ ESCALATION TO MANAGER — Persistent Step 7 Failure**
+Per the Cycle 28 inbox reply already logged, the Observer identified and fixed the root cause of cascading failures:
 
-Four consecutive runs have failed at step 7 (Run T-001 tests) across four different SHAs. The `latestObserverQaDetail` for the current in-progress run (`25489311400`) does not include step-level error output yet (step 7 is still in_progress). The detail for the failed runs (`25488605813`, `25488843096`) does not include verbatim Playwright error text in the live data snapshot.
-
-**What I can determine:**
-- Steps 1–6 (setup, checkout, node, install deps, install Playwright, verify secrets) all pass consistently.
-- Step 7 (Run T-001 tests) fails on every run.
-- Step 8 (Write result to QA_REPORT.md) never executes — meaning the failure is hard (non-zero exit from Playwright runner).
-- SHA changes have not fixed this — rules out a simple import-path code error as the sole cause.
-
-**Most likely causes (for Operator investigation):**
-1. A Playwright test assertion is failing against the live app — e.g., an element selector not found, a redirect not matching expected URL, or an OAuth flow producing an unexpected response.
-2. The Google OAuth credentials (`QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`) may be failing — Google's bot detection, expired session, or 2FA prompt.
-3. A Playwright config issue — wrong base URL, missing env var, timeout too short.
-4. The test code itself has an unresolved logic error independent of import paths.
-
-**Operator must:** Pull the GitHub Actions run logs for run `25488843096` or `25488605813` directly from the GitHub UI or API to extract the verbatim Playwright error output. The orchestrator's `latestObserverQaDetail` snapshot does not include the stderr/stdout from step 7. The exact failing test name, assertion, and stack trace are in the GitHub Actions log for those runs.
-
-**I cannot declare T-001 PASS. Deploy gate remains ACTIVE.**
+- **A2 failure:** `TypeError: url.includes is not a function` — `waitForURL` predicate received a `URL` object, not a string. Fixed with `.toString()` in commit `c84a78a`.
+- Tests A1, B1, D2, E1 were already **passing** in the prior run.
+- A3, A4, B2–B4, C1–C4, D1, D3, E2 were cascading failures from A2's broken session setup.
+- Fix: one `.toString()` call. Deployed via `set-version.yml` as `c84a78a` (success at 10:23:24).
+- New run `25490149751` on SHA `46f9aed` is now in progress — this should be the first run with the A2 fix in place.
 
 ---
 
-### T-001 PASS Declared
+### T-001 Declaration
 
-❌ **NO** — T-001 PASS has NOT been declared. Four consecutive failures. Deploy gate on T-007 + T-010 remains **🔴 ACTIVE**.
+**T-001 PASS: ❌ NOT YET DECLARED**
 
----
-
-### Current Run Status
-
-Run `25489311400` (SHA `bf74ed3`) is in_progress at step 7. Per protocol: noted, not redispatched, awaiting next cycle conclusion.
-
-- SHA `bf74ed3` is unknown — a new SHA not seen before. This may be a Operator push with a new fix attempt.
-- If this run also fails at step 7, that will be five consecutive failures and the Operator must obtain the verbatim error log immediately.
+Run `25490149751` is still in_progress at step 4. Cannot declare pass this cycle. Awaiting conclusion.
 
 ---
 
-### Smoke / Deploy Status (Informational Only — Hard Rule #10)
+### Consecutive Failure Count
 
-- smokeStatus reader: ❌ `fs.readFileSync is not a function` — TASK-F ongoing
-- setVersionRuns: `f7b3344` — success at 10:01:30 (possible new Operator deploy)
-- smokeTestRuns: skipped/cancelled (expected on ci: commits)
+| Run ID | SHA | Result |
+|---|---|---|
+| 25487914378 | `96991b9` | ❌ FAILURE (1) |
+| 25488141574 | `d328910` | ❌ FAILURE (2) |
+| 25488605813 | `8ef18ed` | ❌ FAILURE (3) |
+| 25488843096 | `bb2d43d` | ❌ FAILURE (4) |
+| 25489542409 | `bf74ed3` | ❌ FAILURE (5) |
+| 25489986060 | `b56a407` | 🔄 IN PROGRESS |
+| 25490149751 | `46f9aed` | 🔄 IN PROGRESS (post-fix) |
+
+**Five consecutive failures confirmed.** The `c84a78a` fix (URL.toString() for waitForURL predicate) is the first targeted fix for the confirmed root cause. Run `25490149751` is the first post-fix run.
 
 ---
 
-### Status Summary
+### Root Cause (Confirmed by Owner + Observer Analysis)
+
+- **Primary:** `googleOAuthSignIn()` blocked by Google bot detection in headless Chromium → session injection approach adopted per Owner instruction.
+- **Secondary (newly identified):** `TypeError: url.includes is not a function` in A2's `waitForURL` predicate → fixed in `c84a78a` with `.toString()`.
+- **Impact:** A2 failure caused all downstream tests to fail (no authenticated session to inherit).
+- **Fix status:** Deployed. Awaiting CI confirmation.
+
+---
+
+### Deploy Gate Status
 
 | Item | Status |
 |---|---|
 | Live SHA | `b0a954f` |
-| Run `25488605813` (SHA `8ef18ed`) | ❌ FAILURE — confirmed |
-| Run `25488843096` (SHA `bb2d43d`) | ❌ FAILURE — fourth consecutive |
-| Active run `25489311400` (SHA `bf74ed3`) | 🔄 IN PROGRESS — step 7 |
+| Latest CI run `25490149751` (SHA `46f9aed`) | 🔄 IN PROGRESS — step 4 |
 | T-001 PASS declared | ❌ NO |
-| Deploy gate (T-007+T-010) | 🔴 ACTIVE — must not ship |
-| Persistent step 7 failure pattern | 🔴 ESCALATED — 4 consecutive runs |
+| Deploy gate (T-007+T-010 formal validation) | 🔴 ACTIVE — awaiting T-001 PASS |
 | Coolify auto-deploy | ✅ OFF |
+| URL.toString() fix (`c84a78a`) | ✅ DEPLOYED |
+
+---
+
+### Smoke / Deploy Status (Informational — Hard Rule #10)
+
+- smokeStatus: ❌ `fs.readFileSync is not a function` — TASK-F ongoing (Operator)
+- setVersionRuns: `c84a78a` success at 10:23:24, `ad43288` success at 10:20:24
+- smokeTestRuns: skipped/cancelled (expected on `ci:` commits — Hard Rule #10)
 
 ---
 
 ### Next Cycle Action
 
-1. Check `latestObserverQaDetail` for run `25489311400` conclusion.
-2. If **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL**.
-3. If **failure** → note fifth consecutive failure. Report whatever step 7 error text is available. Operator must retrieve verbatim Playwright logs from GitHub Actions UI for any failed run.
-4. Manager must direct Operator to extract full step 7 logs from a failed run — this is now critical to unblocking T-001.
+1. Check `latestObserverQaDetail` for run `25490149751` conclusion.
+2. Also check run `25489986060` conclusion (may have completed).
+3. If `25490149751` **success** → declare **🟢 T-001 PASS — DEPLOY SIGNAL**.
+4. If **failure** → report exact step 7 error from `latestObserverQaDetail`. The `.toString()` fix was the known blocker — any new failure is a new distinct issue requiring diagnosis.
+5. If still in_progress → note and await next cycle.
 
-_Observer Agent — Cycle 27 — 2026-05-07T10:10:00Z_
+_Observer Agent — Cycle 28 — 2026-05-07T10:25:00Z_
 
 ---
 
-## Cycle 26 — 2026-05-07T09:55:00Z
+## Cycle 27 — 2026-05-07T10:10:00Z
 
-[Archived — Run 25488605813 on SHA `8ef18ed` was in_progress at step 7. Run 25488141574 (SHA `d328910`) and 25487914378 (SHA `96991b9`) both failed. Deploy gate active.]
+[Archived — Run 25488843096 (SHA `bb2d43d`) confirmed fourth consecutive failure. Run 25489311400 (SHA `bf74ed3`) in_progress at step 7. Deploy gate active. Root cause unknown — Operator tasked with retrieving verbatim step 7 log from GitHub Actions.]
 
-_Observer Agent — Cycle 26 — 2026-05-07T09:55:00Z_
+_Observer Agent — Cycle 27 — 2026-05-07T10:10:00Z_
