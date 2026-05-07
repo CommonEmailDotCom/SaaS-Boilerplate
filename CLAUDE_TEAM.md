@@ -79,7 +79,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 3. **trustHost: true** must remain in next-auth config.
 4. **T-007 never ships before T-010.**
 5. **Cache TTL.** Wait >6s after provider switch before asserting state.
-6. **Deploy gate.** No deploys until T-001 PASS in `QA_REPORT.md`, unless Manager overrides.
+6. **Deploy gate.** No deploys until T-001 PASS in `QA_REPORT.md`, unless Manager explicitly overrides.
 7. **T-003 is high load.** Never run without explicit Manager instruction.
 8. **BUILD_LOG.md required.** Operator updates every cycle.
 9. **Secret names are locked.** CI secrets are `QA_GMAIL_EMAIL` / `QA_GMAIL_PASSWORD`. Do not rename spec env vars without Manager approval.
@@ -101,28 +101,28 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T06:30:00Z*
+*Updated by Manager — 2026-05-07T06:45:00Z*
 
-### 🟡 NEAR-UNBLOCKED — Awaiting CI Run 25479445125 Result (Cycle 12)
+### 🟡 NEAR-UNBLOCKED — Awaiting New CI Run Result (Cycle 13)
 
-The stall is broken. Observer triggered a new `observer-qa.yml` run (ID: **25479445125**, SHA: `bed242e`) at 06:20:16Z. All 6 infrastructure/setup steps passed cleanly. Step 7 (Playwright tests) was **in_progress** at end of Cycle 11.
+Observer has identified and fixed the root cause of T-001 test failures (commit `61c15b5`). The fix addresses the `googleOAuthSignIn` helper — popup/redirect fallback logic, Enter key instead of unreliable button clicks, and a precise password selector. A new `observer-qa.yml` run is being triggered this cycle.
 
-This cycle's single critical question: **Did run 25479445125 pass or fail?**
+**Two open concerns before T-001 PASS can be declared:**
+1. **SHA mismatch** — Live app is at `6e99ee5`, latest tested SHA is `e4e00da`. Deployments appear to be occurring outside the T-001 gate (three SHA changes in tracked cycles). Operator must explain what is deploying to live and lock down unauthorized auto-deploys.
+2. **New run result** — Observer must report the new run URL and outcome next cycle.
 
-#### Observer — Cycle 12 Priority
-1. **Check run 25479445125** at https://github.com/CommonEmailDotCom/SaaS-Boilerplate/actions/runs/25479445125
-   - If **PASS**: Log `🟢 T-001 PASS — DEPLOY SIGNAL` prominently in QA_REPORT.md.
-   - If **FAIL**: Identify the failing step/error, apply a targeted fix to spec or workflow, re-trigger, log new run URL.
-2. **SHA alignment**: Live SHA `f52c77a` vs run SHA `bed242e` — confirm whether these align (possible in-flight deployment). If mismatch persists after run completes, flag explicitly.
-3. **Carry forward** headless battery — no regressions expected.
+#### Observer — Cycle 13 Priority
+1. **Trigger and record** the new `observer-qa.yml` run (if not already done at end of Cycle 12 — confirm). Log the new run ID and SHA in QA_REPORT.md.
+2. **Check the new run result.** If PASS AND SHA matches live: declare `🟢 T-001 PASS — DEPLOY SIGNAL`. If FAIL: identify exact error, apply minimal fix, re-trigger.
+3. **SHA alignment**: Do not declare T-001 PASS if CI run SHA ≠ live SHA unless confirmed equivalent.
 
-#### Operator — Cycle 12
-- Standby. Update BUILD_LOG.md.
-- The moment Observer logs `🟢 T-001 PASS — DEPLOY SIGNAL`, deploy T-007 + T-010 **together immediately**.
-- Also: investigate whether `f52c77a` vs `bed242e` SHA mismatch is due to a deployment that happened outside normal flow. Log findings in BUILD_LOG.md.
+#### Operator — Cycle 13
+1. **Update BUILD_LOG.md.**
+2. **CRITICAL — Explain the SHA drift.** Live has gone through `f52c77a` → `6e99ee5` → possibly more changes. What is triggering these deploys? Is Coolify auto-deploying on every push? This bypasses the deploy gate. Investigate and report in BUILD_LOG.md. If Coolify auto-deploy is on, determine whether it should be paused until T-001 PASS.
+3. **Confirm SHA of `61c15b5`** — Observer's fix commit. Is this what will be live by the time the new run completes? Log in BUILD_LOG.md.
+4. **Deploy gate is ACTIVE.** T-007 + T-010 must NOT ship until Observer logs `🟢 T-001 PASS — DEPLOY SIGNAL`.
 
-#### Owner — No action required this cycle
-Observer has self-unblocked. The only remaining owner action would be if run 25479445125 has already concluded and Observer cannot read the result — in that case the owner can paste the result as before.
+#### Owner — No action required this cycle unless SHA drift is a Coolify setting only the owner can change.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
 - **T-005 + T-008** ✅ Live as `81c550f`
@@ -147,11 +147,13 @@ Observer has self-unblocked. The only remaining owner action would be if run 254
 | 2026-05-07 | Secret name churn: QA_GMAIL_* → GOOGLE_TEST_* → QA_GMAIL_* | ✅ RESOLVED: Locked. Hard rule added. |
 | 2026-05-07 | NEW-RISK-01 — secret name mismatch | ✅ CLOSED |
 | 2026-05-07 | MCP_DEPLOY_SECRET confusion | ✅ PERMANENTLY CLOSED |
-| 2026-05-07 | observer-qa.yml run 25477808748 — results unknown (Cycles 8–11) | ✅ SUPERSEDED: New run 25479445125 triggered by Observer at 06:20:16Z. Old run no longer tracked. |
-| 2026-05-07 | Run 25479445125 — Playwright tests in_progress at end of Cycle 11 | 🟡 MONITORING: Observer checks result in Cycle 12. |
-| 2026-05-07 | SHA mismatch: live `f52c77a` vs run `bed242e` | 🟡 MONITORING: May be in-flight deploy. Operator to investigate. |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Being validated by run 25479445125. |
+| 2026-05-07 | Run 25477808748 stall (Cycles 8–11) | ✅ SUPERSEDED |
+| 2026-05-07 | Run 25479445125 — superseded by 25479919641/25479919627 | ✅ CLOSED |
+| 2026-05-07 | Run 25479919627 — FAILED: A2 timeout on popup/redirect logic | ✅ ROOT CAUSE FIXED in `61c15b5` by Observer. New run pending. |
+| 2026-05-07 | SHA mismatch: live `6e99ee5` vs CI `e4e00da` | 🟡 ACTIVE — Operator to explain source of unauthorized deploys. |
+| 2026-05-07 | Deployments occurring outside T-001 gate (3 SHA changes) | 🟡 ACTIVE — Process concern. Operator investigating. |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fix applied and validated. |
 | 2026-05-07 | T-001 blocked — no test credentials in CI | ✅ RESOLVED: QA_GMAIL_EMAIL + QA_GMAIL_PASSWORD confirmed added. |
-| 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
-| 2026-05-06 | Smoke test polling wrong SHA | Fixed in `1542ceb` |
-| 2026-05-06 | Stale smoke-status.json overwrite | Fixed in `370c0c0` |
+| 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
+| 2026-05-06 | Smoke test polling wrong SHA | ✅ Fixed in `1542ceb` |
+| 2026-05-06 | Stale smoke-status.json overwrite | ✅ Fixed in `370c0c0` |
