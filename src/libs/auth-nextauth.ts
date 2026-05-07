@@ -4,11 +4,14 @@
  */
 
 import { DrizzleAdapter } from '@auth/drizzle-adapter';
+import { eq } from 'drizzle-orm';
 import NextAuth from 'next-auth';
 
 import { db } from '@/libs/DB';
 import {
   accountSchema,
+  organizationMemberSchema,
+  organizationSchema,
   sessionSchema,
   userSchema,
   verificationTokenSchema,
@@ -56,6 +59,68 @@ export const {
         session.user.id = user.id;
       }
       return session;
+    },
+
+    async signIn({ user, profile }) {
+      // T-005: Auto-create org on first Authentik login
+      // T-008: Populate authentikId from profile.sub if missing
+      try {
+        if (!user.id) return true;
+
+        // T-008: populate authentikId if missing
+        if (profile?.sub) {
+          const existingUser = await db
+            .select()
+            .from(userSchema)
+            .where(eq(userSchema.id, user.id))
+            .limit(1);
+
+          if (existingUser[0] && !existingUser[0].authentikId) {
+            await db
+              .update(userSchema)
+              .set({ authentikId: profile.sub as string })
+              .where(eq(userSchema.id, user.id));
+          }
+        }
+
+        // T-005: check if user already has an org
+        const existingMembership = await db
+          .select()
+          .from(organizationMemberSchema)
+          .where(eq(organizationMemberSchema.userId, user.id))
+          .limit(1);
+
+        if (existingMembership.length === 0) {
+          // No org — create one, make user admin
+          const orgId = crypto.randomUUID();
+          const displayName = user.name ?? user.email?.split('@')[0] ?? 'My Org';
+          const slug = displayName
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-|-$/g, '')
+            .slice(0, 48)
+            + '-' + orgId.slice(0, 8);
+
+          await db.insert(organizationSchema).values({
+            id: orgId,
+            name: displayName,
+            slug,
+            updatedAt: new Date(),
+            createdAt: new Date(),
+          });
+
+          await db.insert(organizationMemberSchema).values({
+            userId: user.id,
+            organizationId: orgId,
+            role: 'admin',
+          });
+        }
+      } catch (err) {
+        // Never block sign-in due to org creation failure
+        console.error('[auth-nextauth] signIn callback error:', err);
+      }
+
+      return true;
     },
   },
   pages: {
