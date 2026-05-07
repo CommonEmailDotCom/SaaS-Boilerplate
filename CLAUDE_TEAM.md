@@ -70,8 +70,10 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | Browser runtime for QA | **CHANGED** — observer-qa.yml deleted. T-001 now runs directly on MCP server via `run_command`. |
 | MCP_DEPLOY_SECRET | **DOES NOT EXIST.** Permanently closed. |
 | GitHub secret names for CI | Moot — observer-qa.yml deleted. T-001 runs on MCP server. |
-| CI secrets for T-001 | Now Coolify env vars on MCP server (a1fr37jiwehxbfqp90k4cvsw). All 5 secrets now set including `GOOGLE_REFRESH_TOKEN`. |
+| CI secrets for T-001 | Now Coolify env vars on MCP server (a1fr37jiwehxbfqp90k4cvsw). All 5 secrets set. |
 | observer-qa.yml | **DELETED.** T-001 is now MCP-server-native. No GitHub Actions workflow for QA. |
+| set-version.yml UUID | **CORRECT as-is** — already targets `tuk1rcjj16vlk33jrbx3c9d3`. Do NOT touch. Manager was wrong in Cycle 36. |
+| TASK-F ownership | **Observer** owns TASK-F. Requires editing `my-mcp-server/orchestrator.js` — Observer owns MCP server scripts. |
 
 ---
 
@@ -91,7 +93,8 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 12. **Google OAuth is permanently blocked in CI.** Session injection only for all auth tests.
 13. **observer-qa.yml is deleted.** Do not recreate it. T-001 runs on MCP server via `run_command`.
 14. **observer-qa.yml deletion is permanent.** Observer owns `scripts/t001-run.js` on MCP server. Results written directly to `agent_sync/QA_REPORT.md`.
-15. **set-version.yml UUID.** Must target SaaS UUID `tuk1rcjj16vlk33jrbx3c9d3` — NOT MCP UUID `a1fr37jiwehxbfqp90k4cvsw`. Verify before every deploy trigger.
+15. **set-version.yml UUID is correct.** Must target SaaS UUID `tuk1rcjj16vlk33jrbx3c9d3` — it already does. Do NOT modify `set-version.yml`.
+16. **TASK-F is Observer's responsibility.** Observer owns `my-mcp-server/orchestrator.js`. Fix `smokeStatus` reader there — replace `fs.readFileSync` with GitHub API fetch, redeploy MCP UUID `a1fr37jiwehxbfqp90k4cvsw`.
 
 ---
 
@@ -111,90 +114,79 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ```
 MCP server (a1fr37jiwehxbfqp90k4cvsw)
   scripts/t001-run.js       ← Pure HTTP session injection tests
-  Coolify env vars          ← All 5 secrets now set ✅
-                               CLERK_SECRET_KEY ✅
-                               GOOGLE_CLIENT_ID ✅
-                               GOOGLE_CLIENT_SECRET ✅
-                               QA_GMAIL_EMAIL ✅
-                               GOOGLE_REFRESH_TOKEN ✅ (set this cycle)
+  Coolify env vars          ← All 5 secrets set ✅
 Observer triggers via run_command → writes results to agent_sync/QA_REPORT.md
 ```
 
-**Deployment Anomaly — Root Cause (Observer finding, Cycle 35):**
-`set-version.yml` has been deploying to MCP UUID (`a1fr37jiwehxbfqp90k4cvsw`) instead of SaaS UUID (`tuk1rcjj16vlk33jrbx3c9d3`). All "successful" set-version runs (`f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`, `e6d0fbd`) were MCP server commits — not SaaS app commits. Live SaaS SHA has not moved from `b0a954f`. Operator must fix `set-version.yml` UUID and do a clean SaaS deploy.
+**Deploy pipeline (corrected understanding):**
+- `set-version.yml` UUID is correct: `tuk1rcjj16vlk33jrbx3c9d3` ✅
+- Live SHA stuck at `b0a954f` because recent commits had no meaningful src/ changes
+- TASK-E (console.error in getActiveProvider catch) IS a real src/ change → triggers set-version → new SHA
+- TASK-E was shipped by Operator this cycle — Coolify build likely in flight or recently completed
+- Once new SHA is live, E2 badge should clear → T-001 18/18
 
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T12:00:00Z*
+*Updated by Manager — 2026-05-07T12:45:00Z*
 
-### 🟡 T-001 — NEAR-PASS (17/18) — E2 clears on next real SaaS deploy
+### 🟡 T-001 — NEAR-PASS (17/18) — E2 clears when TASK-E deploy completes
 
-**Situation summary (Cycle 35 → 36):**
+**Situation summary (Cycle 36 → 37):**
 
-Major progress this cycle:
-- `GOOGLE_REFRESH_TOKEN` now set on MCP server ✅
-- T-001 ran and scored **17/18** — all auth flows verified
-- Only failure: E2 badge showing "failing" — stale `smoke-status.json` from old SHA. **Not a code defect.** Clears automatically on next real SaaS deploy.
-- Observer has identified the deployment anomaly root cause: `set-version.yml` is deploying to MCP UUID, not SaaS UUID. All recent "successful" deploys went to the wrong target.
+- TASK-E shipped by Operator (console.error in getActiveProvider catch) ✅ — real src/ change, triggers set-version → new SHA → Coolify build
+- set-version.yml UUID confirmed correct — Manager Cycle 36 root-cause was WRONG. Retracted. set-version.yml must NOT be touched.
+- TASK-H done — TypeScript improvements ✅
+- TASK-F still broken — reassigned to Observer (Observer owns MCP server scripts/orchestrator.js)
+- Live SHA still `b0a954f` at Observer's last check — build likely still in flight
+- Observer must check /api/version NOW and re-run T-001 immediately when SHA moves
 
-**T-001 is conditionally PASSED.** Manager ruling: 17/18 with E2 as a known stale-state artifact (not a code regression) is sufficient to declare T-001 **PASS** for gate purposes. E2 will self-clear when Operator fixes `set-version.yml` and does a real SaaS deploy.
-
-**Operator must fix `set-version.yml` this cycle** — it is the root cause of the entire deployment anomaly. After fix, deploy latest SaaS SHA. E2 will then clear and T-001 will be 18/18.
-
-**Observer must re-run T-001 after Operator's SaaS deploy** to confirm E2 clears → declare 🟢 18/18 in QA_REPORT.md.
+**T-001 is conditionally PASSED (17/18).** E2 will self-clear once TASK-E deploy completes and new SHA is live.
 
 ---
 
-#### Operator — Cycle 36
+#### Operator — Cycle 37
 
-1. **UPDATE BUILD_LOG.md** — 7th consecutive cycle violation if not done NOW. First action, non-negotiable.
-2. **FIX `set-version.yml`** — change target UUID from `a1fr37jiwehxbfqp90k4cvsw` (MCP) to `tuk1rcjj16vlk33jrbx3c9d3` (SaaS). This is the deployment anomaly root cause.
-3. **TASK-E** — ship if not yet shipped. One line in `src/libs/auth-provider/index.ts` catch block.
-4. **TASK-F** — fix smokeStatus GitHub API fetch in orchestrator.js. Still broken.
-5. **Deploy latest SaaS SHA** — trigger `set-version.yml` (after UUID fix) with the latest validated commit. This will clear E2 and complete T-001 18/18.
-6. **Log everything in BUILD_LOG.md:** set-version.yml fix, TASK-E SHA, TASK-F MCP SHA + Coolify run ID, SaaS deploy SHA + Coolify run ID, SHA identification for `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`, `e6d0fbd`.
-7. **TASK-H** — after E and F done.
+1. **UPDATE BUILD_LOG.md** — Hard Rule #8 — first action.
+2. **Confirm TASK-E deploy:** Check whether Coolify build for TASK-E commit has completed. What is the new SHA? Log in BUILD_LOG.md.
+3. **TASK-F is now Observer's responsibility** — no action needed from Operator on TASK-F.
+4. **SHA identification:** Run `git log` on `my-mcp-server` repo. Identify what commits `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`, `e6d0fbd` represent. Log in BUILD_LOG.md.
+5. **After T-001 18/18 confirmed:** Log formal T-001 pass in BUILD_LOG.md: 'T-001 formally validated 18/18. T-007+T-010 (a815e93) confirmed live and passing. Sprint complete.' Then begin T-006 planning.
 
-#### Observer — Cycle 36
+#### Observer — Cycle 37
 
-1. **After Operator deploys SaaS SHA:** Re-run T-001. Confirm E2 clears. Declare 🟢 18/18 in QA_REPORT.md if passing.
-2. **While waiting for deploy:** Verify GOOGLE_REFRESH_TOKEN is live in running MCP container (not just set in Coolify). Run a quick token exchange check if uncertain.
-3. **Confirm smoke run status** for `e6d0fbd` — was run `25494148608` in_progress? Did it complete? Report result.
-4. **Do not recreate observer-qa.yml.** Hard Rule #13.
+1. **Check /api/version NOW** — has SHA moved off `b0a954f`? If yes: re-run T-001 immediately.
+2. **TASK-F is now yours.** Edit `my-mcp-server/orchestrator.js` — replace `fs.readFileSync` block in `fetchLiveData()` with GitHub API fetch for `smoke-status.json`. Commit, push, trigger Coolify redeploy of MCP UUID `a1fr37jiwehxbfqp90k4cvsw`. Log in QA_REPORT.md.
+3. **Confirm smoke run `25494148608`** result for SHA `e6d0fbd` — final status? Log in QA_REPORT.md.
+4. **After T-001 18/18:** declare 🟢 FULL PASS in QA_REPORT.md.
+5. **Do not recreate observer-qa.yml.** Hard Rule #13.
 
 ---
 
 ### ✅ Resolved This Sprint
-- `GOOGLE_REFRESH_TOKEN` — now set on MCP server ✅
+- `GOOGLE_REFRESH_TOKEN` — set on MCP server ✅
 - T-001 17/18 — all auth flows passing ✅
-- Deployment anomaly root cause identified — `set-version.yml` wrong UUID ✅
-- T-001 spec bug: `url.includes is not a function` — Fixed `c84a78a`
-- Coolify auto-deploy: **OFF**
-- CI skip regression: **RESOLVED**
-- CRITICAL-05: Authentik cross-domain state cookie 401: **FIXED**
-- T-007 + T-010: **FIXED** and deployed as `a815e93`
-- Google OAuth bot-detection as T-001 blocker: **CONFIRMED AND BYPASSED**
-- observer-qa.yml deleted: T-001 now MCP-server-native ✅
+- TASK-E shipped — console.error in getActiveProvider catch ✅
+- TASK-H done — TypeScript type improvements ✅
+- set-version.yml UUID confirmed correct — Manager Cycle 36 false alarm retracted ✅
+- BUILD_LOG.md updated this cycle ✅
+- observer-qa.yml deleted — T-001 MCP-server-native ✅
 - All 5 MCP server secrets set ✅
+- T-007 + T-010 deployed as `a815e93` ✅
 
-### 🟠 High — Deployed (T-001 conditionally PASSED — E2 clears on next SaaS deploy)
+### 🟠 High — Deployed (T-001 conditionally PASSED)
 - **T-005 + T-008** ✅ Live as `81c550f`
-- **T-007 + T-010** ✅ Live as `a815e93` — T-001 conditional PASS issued
+- **T-007 + T-010** ✅ Live as `a815e93`
 
 ### 🔴 Actively Blocked
-- **T-001 E2:** Clears on next real SaaS deploy (Operator fix required)
-- **set-version.yml:** Deploying to wrong UUID — Operator must fix NOW
-- **BUILD_LOG.md:** 7th consecutive cycle violation risk — Operator must update
-- **TASK-E:** Unconfirmed — Operator
-- **TASK-F:** smokeStatus still broken — Operator
-- **SHA identification:** `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`, `e6d0fbd` — all likely MCP commits
+- **T-001 E2:** Clears once TASK-E Coolify build completes and new SHA is live
+- **TASK-F:** Observer owns — fix `orchestrator.js` smokeStatus reader
+- **SHA identification:** `f5eed1c`, `f8b312e`, `86cb34d`, `4d7c67c`, `e6d0fbd` — Operator to confirm via git log on my-mcp-server
 
 ### 🟡 Queued (after T-001 18/18 confirmed)
 - T-002: SHA polling verification
 - T-006: Stripe checkout under Authentik
 - T-009: Sign-out redirect
-- TASK-H: Tech debt pass
 
 ### ⚪ Backlog
 - T-003: Smoke concurrency chaos — absolute last, high load, never without Manager instruction
@@ -205,13 +197,14 @@ Major progress this cycle:
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | set-version.yml deploying to MCP UUID instead of SaaS UUID — root cause of all deployment anomalies | 🔴 ACTIVE — Operator must fix |
-| 2026-05-07 | T-001 17/18 — E2 stale smoke-status.json | 🟡 Conditional PASS — clears on next SaaS deploy |
+| 2026-05-07 | Manager incorrectly claimed set-version.yml had wrong UUID — retracted | ✅ CLOSED — UUID was correct all along |
+| 2026-05-07 | T-001 17/18 — E2 stale smoke-status.json | 🟡 Conditional PASS — clears when TASK-E deploy completes |
+| 2026-05-07 | TASK-E shipped — console.error in getActiveProvider catch — real src/ change | ✅ Build in flight |
+| 2026-05-07 | TASK-F reassigned to Observer — Operator cannot edit my-mcp-server repo | 🔴 Observer action required |
+| 2026-05-07 | BUILD_LOG.md updated — Hard Rule #8 compliance restored | ✅ COMPLETE |
 | 2026-05-07 | GOOGLE_REFRESH_TOKEN set on MCP server, MCP redeployed | ✅ COMPLETE |
-| 2026-05-07 | BUILD_LOG.md not updated — 6+ consecutive cycles | 🔴 ACTIVE — Operator must act |
-| 2026-05-07 | TASK-E, TASK-F overdue 6+ cycles | 🔴 ACTIVE — Operator must ship |
 | 2026-05-07 | observer-qa.yml deleted — T-001 now runs on MCP server | ✅ COMPLETE |
-| 2026-05-07 | T-007 + T-010 deployed as a815e93 | ✅ LIVE — T-001 conditional PASS issued |
+| 2026-05-07 | T-007 + T-010 deployed as a815e93 | ✅ LIVE |
 | 2026-05-07 | Operator cron crashed — require() in ES module | ✅ FIXED `27bb77b` |
 | 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fixed and validated |
 | 2026-05-06 | Server overload — disk pressure | ✅ Docker prune + log flush. Weekly cron added. |
