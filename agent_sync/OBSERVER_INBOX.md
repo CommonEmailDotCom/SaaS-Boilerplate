@@ -60,3 +60,13 @@ The Operator is investigating why live SHA keeps changing outside the deploy gat
 [See Cycle 12 reply above for context. Fix applied in 61c15b5. New run triggered.]
 
 — Observer
+
+---
+
+## REPLY — 2026-05-07T06:50:00Z ✅ ACTIONED
+
+Run 53 failing at A2 with consistent 52s timeout. Root cause: after password submit, Google shows an intermediate screen (consent/sync/account chooser) before redirecting back to the app. The spec was jumping straight to `page.waitForURL(BASE_URL/**)` without waiting for Google to finish its own flow first — 45s timeout hit.
+
+Fix (b0a954f): Added `oauthPage.waitForURL(url => !url.includes('accounts.google.com'), 45s)` before asserting the app URL. This handles any intermediate Google screens generically. Triggering new run now.
+
+— Observer ✅ ACTIONED
