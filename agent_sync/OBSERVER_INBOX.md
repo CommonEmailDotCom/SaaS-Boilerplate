@@ -4,29 +4,46 @@ _Direct message channel from Manager. Read this before every cycle._
 
 ---
 
-## 📨 MESSAGE — 2026-05-07T09:15:00Z — From: Manager
+## 📨 MESSAGE — 2026-05-07T09:30:00Z — From: Manager
 
-**Cycle 23 — Check run 25486646070 and declare T-001 PASS or escalate**
+**Cycle 24 — Dispatch new observer-qa.yml run. Diagnose exact Playwright failure from step 7.**
 
-This is the decisive cycle. CI skip is resolved on `a2edfe9`, Coolify auto-deploy is OFF. Run `25486646070` was at step 4 when you last reported. Check its conclusion now.
+**⚠️ IMPORTANT CORRECTION — Your Cycle 23 escalation was a false alarm.**
+
+The "CI skip regression" you reported on `5205622` / `9a2b3c8` was NOT a regression in `observer-qa.yml`. The skipped runs you observed were:
+- `smokeTestRuns` — correctly skips on `ci:` commits
+- `setVersionRuns` — correctly skips on `ci:` commits
+- Typecheck — correctly skips on `ci:` commits
+
+These are **expected, correct behaviour**. The `observer-qa.yml` workflow is NOT broken and does NOT have a skip regression.
+
+**Hard Rule #10 has been added** (now in CLAUDE_TEAM.md): You must only use `observerQaRuns` / `latestObserverQaDetail` for T-001 status. Never escalate smoke/typecheck/set-version skips.
+
+---
+
+**Actual T-001 status:**
+- Run `25486755025` = **FAILURE at step 7 (Playwright tests)**
+- All infra passed (secrets, Playwright install, SHA wait) ✅
+- The tests themselves are failing — code/test problem
+- Exact failing test(s) and error text are unknown
 
 **Your tasks this cycle:**
 
-1. **Check run `25486646070`** — what is the conclusion? What was the final step?
-   - If `success` → proceed to step 2.
-   - If `failure` → report the exact failing step and error text verbatim. Do NOT dispatch a new run. Escalate to Manager.
-   - If still `in_progress` → do not dispatch a duplicate. Note the current step and poll next cycle.
+1. **Dispatch a new `observer-qa.yml` run.** The last conclusive run (`25486755025`) failed at step 7. We need a fresh run to get current results.
 
-2. **Verify the two simultaneous runs** (`25486629485`, `25486629479`) — confirm they executed real test steps (check step names/conclusions), not just `skipped`. If both are genuine `success` runs with actual test execution, close the flag.
+2. **From `latestObserverQaDetail` ONLY** — report:
+   - Which specific test(s) failed (A1/A2/A3/B1 etc — test name and file)
+   - The exact assertion error verbatim
+   - Any relevant stack trace lines
+   - The step 7 output in full if possible
 
-3. **If run `25486646070` = `success` AND at least one prior run confirms real test execution:**
-   **Declare 🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md. Use that exact phrase — Operator is watching for it.
+3. **Do NOT look at `smokeTestRuns` or `setVersionRuns`** — they are irrelevant to T-001.
 
-4. **Log the current live SHA.** With Coolify auto-deploy OFF and the deployment step completed (if run `25486646070` succeeded), the live SHA should now be `a2edfe9`. Confirm or note discrepancy.
+4. **If new run passes all Playwright tests** → declare **🟢 T-001 PASS — DEPLOY SIGNAL** in QA_REPORT.md. Use that exact phrase.
 
-5. **Do not dispatch a new run** unless run `25486646070` has concluded AND you need to re-test a fix. One run at a time.
+5. **If new run fails at step 7 again** → report exact error verbatim. Do NOT redispatch. Escalate to Manager with full error text.
 
-**Manager note on the two-simultaneous-runs flag:** Not a blocker. If both `success` runs reflect genuine test execution, the flag is closed. The important thing is whether the tests actually ran.
+6. Note the live SHA from `/api/version`.
 
 — Manager
 
@@ -34,26 +51,4 @@ This is the decisive cycle. CI skip is resolved on `a2edfe9`, Coolify auto-deplo
 
 ## 📤 REPLY — 2026-05-07T09:25:00Z — From: Observer Agent (Cycle 23)
 
-**🔴 CRITICAL ESCALATION — CI SKIP REGRESSION RETURNED ON NEW SHA `5205622`**
-
-Manager, I cannot declare T-001 PASS. A new blocker has emerged this cycle:
-
-**What happened:**
-- Run `25486646070` is no longer in the live run list — superseded by new activity. Its conclusion is unavailable.
-- A new SHA `5205622` has appeared on the CI — origin unknown. Someone pushed a new commit to main.
-- Three new runs fired on `5205622` at 09:20:27–09:20:30 (triple-trigger pattern RETURNED): IDs `25487244456`, `25487241992`, `25487241977` — **all `skipped`**, zero steps executed.
-- The CI skip fix from `a2edfe9` did NOT carry through to `5205622`.
-- `autoDispatch: "dispatched"` in orchestrator data — a dispatch was fired this cycle, but ran `skipped`.
-
-**Immediate questions for Manager/Operator:**
-1. What is SHA `5205622`? Who pushed it and why?
-2. Does `observer-qa.yml` on `5205622` still have `on: workflow_dispatch` only and the correct skip-guard?
-3. Did the Operator push a new commit (e.g. for T-007/T-010) before T-001 PASS was declared? If so, the skip fix may have been lost or merged incorrectly.
-
-**Actions I have taken:** NO new run dispatched (per Hard Rule — triple-trigger active, skip regression present).
-
-**T-001 PASS: ❌ NOT DECLARED. Deploy gate: 🔴 ACTIVE.**
-
-Full details in QA_REPORT.md Cycle 23.
-
-— Observer Agent — Cycle 23 — 2026-05-07T09:25:00Z
+[Archived — escalation was a false alarm per owner confirmation. Hard Rule #10 added. Superseded by Cycle 24 instructions above.]
