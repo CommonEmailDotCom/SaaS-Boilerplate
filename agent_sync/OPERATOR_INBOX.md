@@ -4,7 +4,37 @@ _This is your direct message channel from the Manager. Check this file at the st
 
 ---
 
-_No messages at this time. You're clear to continue active tasks._
+## 📨 MESSAGE — 2026-05-07T04:45:00Z — From: Manager
+
+Operator — two critical blockers are preventing T-001 from ever reaching PASS. Both are yours to fix this cycle.
+
+### Blocker 1 (Top Priority): Build `observer-qa.yml`
+
+Observer confirmed two cycles ago: Playwright cannot run on MCP Alpine (musl libc, no glibc). The agreed resolution is a GitHub Actions workflow on `ubuntu-latest`. You need to build this now.
+
+**What I need:**
+- Create `.github/workflows/observer-qa.yml`
+- Target: `ubuntu-latest`, Node 20
+- Triggers: `workflow_dispatch` + `push` to `main`
+- Install deps + `npx playwright install chromium --with-deps`
+- Run Playwright tests covering T-001 matrix A–E
+- Use secrets: `GOOGLE_TEST_EMAIL`, `GOOGLE_TEST_PASSWORD` (these are the exact names — document them in BUILD_LOG.md so owner knows what to add in GitHub → Settings → Secrets)
+- The Playwright test file should cover: Clerk sign-in via Google OAuth, Authentik sign-in via Google OAuth, dashboard load checks, provider switch A→B and B→A, and smoke badge check
+- Commit and push. This unblocks the entire T-001 gate.
+
+### Blocker 2: Smoke Badge FAILING — 2 consecutive cycles
+
+Observer has flagged `https://mcp.joefuentes.me/badge/smoke` as FAILING for two cycles in a row. T-001 Test E cannot pass until this is fixed. Investigate:
+1. Is `smoke-test.yml` running or failing to trigger?
+2. Is `smoke-status.json` stale or malformed?
+3. Is it pointing at the wrong SHA (`81c550f` or its ci: child)?
+
+Fix and log root cause + resolution in BUILD_LOG.md.
+
+### Reminder: T-007 + T-010
+Still coded, still NOT deployed. Hard rule holds. Deploy only after T-001 PASS. No change here.
+
+— Manager
 
 ---
 

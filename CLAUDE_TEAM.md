@@ -66,6 +66,7 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | Long-term auth strategy | Keep **both** Clerk and Authentik permanently. Clerk is not legacy. |
 | Provider switcher access | Admin only. T-007 must not ship before T-010. |
 | Test credentials | Google OAuth credentials only — sufficient for full end-to-end T-001 testing. |
+| Browser runtime for QA | GitHub Actions (`ubuntu-latest`) via `observer-qa.yml` — Playwright works there. |
 
 ---
 
@@ -97,25 +98,30 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T03:45:00Z*
+*Updated by Manager — 2026-05-07T04:45:00Z*
 
-### 🔴 Critical — T-001 Gate
-- **T-001** (Observer): Authentik end-to-end login broken — CRITICAL-05 cross-domain state cookie.
-  - **Fix applied:** `AUTHENTIK_COOKIE__DOMAIN=.joefuentes.me` added to Authentik service in Coolify. Authentik restarted and healthy.
-  - **Next step:** Observer must re-run Test B to confirm CRITICAL-05 is resolved.
-  - **Credentials:** Google OAuth credentials agreed with owner — sufficient for full T-001 A-E.
-  - **GitHub Actions QA workflow** (`observer-qa.yml`) built by tester — needs Google test credentials added as repo secrets to run Playwright tests end-to-end.
+### 🔴 Critical — T-001 Gate (ACTIVE BLOCKER)
+
+T-001 is blocked by two compounding issues. Both must be resolved before PASS is possible:
+
+**Blocker 1 — Browser runtime:** Observer confirmed Playwright cannot run on Alpine Linux (musl libc). **Resolution: Operator must build `observer-qa.yml` GitHub Actions workflow.** This is the agreed path. Owner has confirmed Google OAuth test credentials only — GH Actions `ubuntu-latest` supports glibc Playwright. Operator: this is your top priority this cycle.
+
+**Blocker 2 — Test credentials in CI:** Once `observer-qa.yml` is built, Google test credentials must be added as GitHub repo secrets (`GOOGLE_TEST_EMAIL`, `GOOGLE_TEST_PASSWORD` or equivalent). Operator: document the exact secret names needed in BUILD_LOG.md so owner can add them.
+
+**Blocker 3 — CRITICAL-05 (pending re-test):** `AUTHENTIK_COOKIE__DOMAIN=.joefuentes.me` was applied last cycle. Observer has not yet confirmed resolution via Tests B/D because of the browser runtime blocker. This will be validated once `observer-qa.yml` is live and credentials are in place.
+
+**Smoke badge FAILING:** Observer flagged this two cycles in a row. Operator must investigate and fix before T-001 can pass Test E.
 
 ### 🟠 High — Ready to Deploy (gated on T-001 PASS)
-- **T-005 + T-008** ✅ Coded — `signIn` callback: auto-create org, first user = admin, populate `authentikId`
-- **T-007 + T-010** ✅ Coded — admin role restriction + last-admin guard. Both ship together.
+- **T-005 + T-008** ✅ Live as `81c550f` — auto-create org, first user = admin, populate `authentikId`
+- **T-007 + T-010** ✅ Coded, NOT deployed — ships together after T-001 PASS
 
 ### 🟠 High — Infra
-- **INFRA-001** ✅ Done — weekly Docker prune cron on Hetzner (`0 3 * * 0`)
+- **INFRA-001** ✅ Done — weekly Docker prune cron active (`0 3 * * 0`)
 
 ### 🟡 Queued (after T-001 PASS)
 - T-002: SHA polling verification
-- T-006: Stripe checkout under Authentik
+- T-006: Stripe checkout under Authentik (after T-005, already live)
 - T-009: Sign-out redirect (covered by T-001 Test D)
 
 ### ⚪ Backlog
@@ -127,8 +133,11 @@ src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | `AUTHENTIK_COOKIE__DOMAIN=.joefuentes.me` applied via Coolify API. Awaiting re-test. |
-| 2026-05-07 | Orchestrator not committing | Fixed: max_tokens 8096→16000, context trimming, JSON error logging. Redeploying. |
+| 2026-05-07 | Smoke badge FAILING — 2 consecutive cycles | Operator investigating this cycle |
+| 2026-05-07 | T-001 blocked — no browser runtime on MCP Alpine | Path: GH Actions `observer-qa.yml` (Operator building) |
+| 2026-05-07 | T-001 blocked — no test credentials in CI | Operator to document secret names; owner to add |
+| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | Fix applied. Awaiting browser test confirmation. |
+| 2026-05-07 | Orchestrator not committing | Fixed: max_tokens 8096→16000, context trimming, JSON error logging. |
 | 2026-05-06 | Server overload — disk pressure | Docker prune + log flush. Weekly cron added. |
 | 2026-05-06 | Smoke test polling wrong SHA | Fixed in `1542ceb` |
 | 2026-05-06 | Stale smoke-status.json overwrite | Fixed in `370c0c0` |
