@@ -39,6 +39,10 @@ const CLERK_FAPI = 'https://smashing-bison-72.clerk.accounts.dev';
 const AUTHENTIK_CLIENT_ID = process.env.AUTHENTIK_CLIENT_ID ?? 'aPM2wsr2lAtm96N1prfOC7t1XlDVARmA4GRBvlwa';
 // Clerk test user (testercuttingedgechat@gmail.com) — created via Google OAuth, ID stable
 const CLERK_TEST_USER_ID = process.env.CLERK_TEST_USER_ID ?? 'user_3DOZ3c5b31biCKPnDDSRsUqFwvp';
+const AUTHENTIK_TEST_USERNAME = process.env.AUTHENTIK_TEST_USERNAME ?? '';
+const AUTHENTIK_TEST_PASSWORD = process.env.AUTHENTIK_TEST_PASSWORD ?? '';
+const AUTHENTIK_CLIENT_SECRET = process.env.AUTHENTIK_CLIENT_SECRET ?? '';
+const NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET ?? '';
 
 // ---------------------------------------------------------------------------
 // Programmatic login helpers — API-based, no browser OAuth UI
@@ -129,34 +133,44 @@ async function clerkSignIn(page: Page): Promise<void> {
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
-  if (!GOOGLE_REFRESH_TOKEN) {
-    throw new Error('GOOGLE_REFRESH_TOKEN not set — skipping Authentik test. See setup instructions in file header.');
+  // CI sign-in for Authentik — drives the actual Authentik login UI with the qa-test user.
+  // 1. Navigate to Authentik's login page directly
+  // 2. Fill in username + password
+  // 3. Trigger the OAuth flow to cuttingedgechat.com via the cutting-edge-chat application
+  // This establishes a real browser session so next-auth can complete the callback normally.
+
+  if (!AUTHENTIK_TEST_USERNAME || !AUTHENTIK_TEST_PASSWORD) {
+    throw new Error('AUTHENTIK_TEST_USERNAME or AUTHENTIK_TEST_PASSWORD not set');
   }
-  const idToken = await getGoogleIdToken();
+
+  // Start the OAuth flow — Authentik will show login UI since no session exists
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: AUTHENTIK_CLIENT_ID,      // Authentik OIDC app — for Authentik's authorize endpoint
+    client_id: AUTHENTIK_CLIENT_ID,
     redirect_uri: `${BASE_URL}/api/auth/callback/authentik`,
     scope: 'openid email profile',
-    id_token_hint: idToken,
-    prompt: 'none',
   });
   await page.goto(
     `https://auth.joefuentes.me/application/o/authorize/?${params.toString()}`,
-    { waitUntil: 'commit' }
+    { waitUntil: 'networkidle' }
   );
-  // Accept any redirect back to BASE_URL — including error redirects.
-  // If Authentik returns ?error=login_required (no existing session in CI),
-  // we catch it here and throw a clear error instead of timing out at 30s.
+
+  // Fill in Authentik login form
+  await page.fill('input[name="uidField"]', AUTHENTIK_TEST_USERNAME, { timeout: 10000 });
+  await page.click('[type="submit"]');
+  await page.waitForTimeout(500);
+  await page.fill('input[name="password"]', AUTHENTIK_TEST_PASSWORD, { timeout: 10000 });
+  await page.click('[type="submit"]');
+
+  // Wait for redirect back to cuttingedgechat.com after successful auth
   await page.waitForURL(
     (url) => url.toString().includes(BASE_URL),
     { timeout: 30000 }
   );
   const finalUrl = page.url();
   if (finalUrl.includes('error=')) {
-    const errorParam = new URL(finalUrl).searchParams.get('error');
-    const desc = new URL(finalUrl).searchParams.get('error_description') || '';
-    throw new Error(`Authentik OIDC error: ${errorParam} — ${desc}. prompt=none requires an existing Authentik session.`);
+    const errorParam = new URL(finalUrl).searchParams.get('error') || 'unknown';
+    throw new Error(`Authentik OAuth error after login: ${errorParam}`);
   }
 }
 

@@ -91,6 +91,8 @@ jobs:
           GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
           CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
           AUTHENTIK_CLIENT_ID: ${{ secrets.AUTHENTIK_CLIENT_ID }}
+          AUTHENTIK_TEST_USERNAME: ${{ secrets.AUTHENTIK_TEST_USERNAME }}
+          AUTHENTIK_TEST_PASSWORD: ${{ secrets.AUTHENTIK_TEST_PASSWORD }}
         run: npx playwright test 2>&1 | tee /tmp/playwright-output.txt; echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
