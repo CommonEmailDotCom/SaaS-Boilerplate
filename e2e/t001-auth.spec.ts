@@ -180,7 +180,7 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
     await authentikSignIn(page);
     const cookies = await context.cookies(BASE_URL);
     const sessionCookie = cookies.find(
-      (c) => c.name.startsWith('next-auth') || c.name.startsWith('__Secure-next-auth')
+      (c) => c.name.includes('session-token') || c.name.includes('next-auth') || c.name.includes('authjs')
     );
     expect(sessionCookie).toBeDefined();
   });
