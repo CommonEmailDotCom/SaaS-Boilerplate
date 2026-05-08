@@ -84,7 +84,8 @@ async function clerkSignIn(page: Page): Promise<void> {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
     },
-    body: new URLSearchParams({ identifier: GOOGLE_EMAIL, strategy: 'ticket' }).toString(),
+    // Clerk ticket strategy does not accept 'identifier' — remove it
+    body: new URLSearchParams({ strategy: 'ticket' }).toString(),
   });
   const data = await resp.json() as any;
   const token: string | undefined = data?.client?.sessions?.[0]?.last_active_token?.jwt;
@@ -103,6 +104,9 @@ async function clerkSignIn(page: Page): Promise<void> {
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
+  if (!GOOGLE_REFRESH_TOKEN) {
+    throw new Error('GOOGLE_REFRESH_TOKEN not set — skipping Authentik test. See setup instructions in file header.');
+  }
   const idToken = await getGoogleIdToken();
   const params = new URLSearchParams({
     response_type: 'code',
