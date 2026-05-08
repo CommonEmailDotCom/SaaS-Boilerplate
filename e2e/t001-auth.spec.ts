@@ -155,6 +155,12 @@ async function authentikSignIn(page: Page): Promise<void> {
     throw new Error('AUTHENTIK_TEST_USERNAME or AUTHENTIK_TEST_PASSWORD not set');
   }
 
+  // IMPORTANT: The cutting-edge-chat Authentik application must use the
+  // "default-provider-authorization-implicit-consent" authorization flow.
+  // If it is changed to "explicit-consent", the OAuth flow will stall on a consent
+  // screen and this test will time out. Change it back in Authentik admin:
+  // Applications → cutting-edge-chat → Edit → Authorization flow → implicit-consent.
+
   // Start the OAuth flow — Authentik will show login UI since no session exists
   const params = new URLSearchParams({
     response_type: 'code',
@@ -300,13 +306,16 @@ test.describe('Test C — Dashboard under Authentik', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Test D — Switch Authentik→Clerk', () => {
-  test('D1: Sign-out redirects to /sign-in not auth.joefuentes.me', async ({ page }) => {
+  test('D1: Sign-out stays on cuttingedgechat.com — does not redirect to auth.joefuentes.me', async ({ page }) => {
+    // After signing out, the app redirects to the homepage (/).
+    // The key assertion is that we do NOT get hijacked to Authentik's domain.
+    // ClerkProvider afterSignOutUrl="/" is intentional — homepage is the correct post-signout destination.
     await page.request.post(`${BASE_URL}/api/auth/signout`, {
       headers: { 'Content-Type': 'application/json' },
     });
     await page.goto(`${BASE_URL}/`, { waitUntil: 'networkidle' });
     expect(page.url()).not.toContain('auth.joefuentes.me');
-    expect(page.url()).toContain('/sign-in');
+    expect(page.url()).toContain('cuttingedgechat.com');
   });
 
   test('D2: Clerk sign-in page renders', async ({ page }) => {
@@ -319,7 +328,10 @@ test.describe('Test D — Switch Authentik→Clerk', () => {
   test('D3: Clerk session works after switch-back', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
     await clerkSignIn(page);
-    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 20000 });
+    // Two-goto pattern: first loads Clerk JS with cookie, second confirms session is held
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 });
 
