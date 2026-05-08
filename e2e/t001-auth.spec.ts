@@ -60,12 +60,8 @@ async function switchToProvider(provider: 'clerk' | 'authentik', page?: Page): P
     await pool.end();
   } else if (page) {
     // CI: use admin API with Clerk session
-    // Only sign in if not already authenticated
-    const isSignedIn = await page.evaluate(() => !!(window as any).Clerk?.user).catch(() => false);
-    if (!isSignedIn) {
-      await clerkSignIn(page);
-    }
-    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    // Always sign in fresh — ensures org context (orgRole) is set correctly
+    await clerkSignIn(page);
     const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
       data: JSON.stringify({ provider }),
       headers: { 'Content-Type': 'application/json' },
@@ -127,10 +123,11 @@ test.describe('Test A — Clerk baseline', () => {
 
   test('A3: Dashboard shows content', async ({ page }) => {
     await clerkSignIn(page);
-    // Navigate to dashboard, reload once to ensure org context is fully committed
-    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-    await page.reload({ waitUntil: 'networkidle' });
-    await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
+    // Poll until org context is committed server-side (dashboard returns null until orgId is set)
+    await expect(async () => {
+      await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+      await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 3000 });
+    }).toPass({ timeout: 30000, intervals: [3000] });
   });
 
   test('A4: Billing page loads without 401/500', async ({ page }) => {
