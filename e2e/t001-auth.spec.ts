@@ -10,6 +10,9 @@
  * input[name="username"] hit light DOM placeholders and do nothing. Use getByLabel()
  * which Playwright resolves through shadow roots automatically.
  *
+ * Authentik login flow is multi-step: username submitted first, then password
+ * appears on the same or a subsequent page depending on the flow config.
+ *
  * Required env vars:
  *   CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, QA_GMAIL_EMAIL
  *   AUTHENTIK_TEST_USERNAME, AUTHENTIK_TEST_PASSWORD
@@ -75,7 +78,7 @@ async function authentikSignIn(page: Page): Promise<void> {
   // 4. Fill login form using getByLabel — Authentik uses Lit web components with
   //    Shadow DOM. input[name="username"] hits a light DOM placeholder and does nothing.
   //    getByLabel() resolves through shadow roots automatically.
-  // 5. Press Enter — triggers Authentik's JS submit handler
+  // 5. Authentik flow is multi-step: fill username → submit → fill password → submit
 
   if (!AUTHENTIK_TEST_USERNAME || !AUTHENTIK_TEST_PASSWORD) {
     throw new Error('AUTHENTIK_TEST_USERNAME or AUTHENTIK_TEST_PASSWORD not set');
@@ -101,8 +104,14 @@ async function authentikSignIn(page: Page): Promise<void> {
   // Step 3: navigate to Authentik — PKCE cookie is already in browser context
   await page.goto(authentikUrl, { waitUntil: 'networkidle' });
 
-  // Step 4+5: fill via getByLabel (pierces Shadow DOM) and press Enter
+  // Step 4: fill username and submit — Authentik may show username only first,
+  // then password on the same or next page depending on flow config
   await page.getByLabel(/username/i).fill(AUTHENTIK_TEST_USERNAME);
+  await page.getByLabel(/username/i).press('Enter');
+
+  // Step 5: wait for password field and fill it
+  // (may already be visible if both fields on one page, or loads after username submit)
+  await page.getByLabel(/password/i).waitFor({ timeout: 10000 });
   await page.getByLabel(/password/i).fill(AUTHENTIK_TEST_PASSWORD);
   await page.getByLabel(/password/i).press('Enter');
 
