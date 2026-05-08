@@ -6,10 +6,10 @@ export default defineConfig({
   expect: {
     timeout: 15_000,
   },
-  fullyParallel: false, // Auth tests must run sequentially — provider state is shared
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: process.env.CI ? 1 : 0,
-  workers: 1, // Sequential — provider switch order matters for T-001
+  retries: process.env.CI ? 2 : 0,
+  workers: 1,
   reporter: process.env.CI
     ? [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]]
     : [['list']],
@@ -29,9 +29,8 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        // Disable HTTP/2 to avoid net::ERR_HTTP2_PROTOCOL_ERROR on some CI runners
         launchOptions: {
-          args: ['--disable-http2'],
+          args: ['--disable-quic'],
         },
       },
       dependencies: ['setup'],

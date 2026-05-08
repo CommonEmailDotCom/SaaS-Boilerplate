@@ -29,7 +29,7 @@ export default defineConfig({
         ...devices['Desktop Chrome'],
         launchOptions: {
           executablePath: '/usr/lib/chromium/chromium',
-          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-quic'],
         },
       },
       dependencies: ['setup'],

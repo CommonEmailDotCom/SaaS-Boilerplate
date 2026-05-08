@@ -1,4 +1,3 @@
-import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 
 import { getActiveProvider } from '@/libs/auth-provider';
@@ -17,7 +16,7 @@ export async function generateMetadata(props: { params: { locale: string } }) {
 }
 
 export default async function DashboardLayout(props: { children: React.ReactNode }) {
-  const t = useTranslations('DashboardLayout');
+  const t = await getTranslations('DashboardLayout');
   const sha = process.env.NEXT_PUBLIC_COMMIT_SHA ?? 'unknown';
   const provider = await getActiveProvider();
 
