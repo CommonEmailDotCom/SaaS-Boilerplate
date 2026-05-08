@@ -1,6 +1,7 @@
 import { useTranslations } from 'next-intl';
 import { getTranslations } from 'next-intl/server';
 
+import { getActiveProvider } from '@/libs/auth-provider';
 import { DashboardHeader } from '@/features/dashboard/DashboardHeader';
 
 export async function generateMetadata(props: { params: { locale: string } }) {
@@ -15,15 +16,17 @@ export async function generateMetadata(props: { params: { locale: string } }) {
   };
 }
 
-export default function DashboardLayout(props: { children: React.ReactNode }) {
+export default async function DashboardLayout(props: { children: React.ReactNode }) {
   const t = useTranslations('DashboardLayout');
   const sha = process.env.NEXT_PUBLIC_COMMIT_SHA ?? 'unknown';
+  const provider = await getActiveProvider();
 
   return (
     <>
       <div className="shadow-md">
         <div className="mx-auto flex max-w-screen-xl items-center justify-between px-3 py-4">
           <DashboardHeader
+            provider={provider}
             menu={[
               {
                 href: '/dashboard',

@@ -22,8 +22,15 @@ export const DashboardHeader = (props: {
     href: string;
     label: string;
   }[];
+  provider?: string;
 }) => {
   const locale = useLocale();
+  const isAuthentik = props.provider === 'authentik';
+
+  const handleAuthentikSignOut = async () => {
+    await fetch('/api/auth/signout', { method: 'POST' });
+    window.location.href = '/';
+  };
 
   return (
     <>
@@ -44,21 +51,23 @@ export const DashboardHeader = (props: {
           <path d="M17 5 7 19" />
         </svg>
 
-        <OrganizationSwitcher
-          organizationProfileMode="navigation"
-          organizationProfileUrl={getI18nPath(
-            '/dashboard/organization-profile',
-            locale,
-          )}
-          afterCreateOrganizationUrl="/dashboard"
-          hidePersonal
-          skipInvitationScreen
-          appearance={{
-            elements: {
-              organizationSwitcherTrigger: 'max-w-28 sm:max-w-52',
-            },
-          }}
-        />
+        {!isAuthentik && (
+          <OrganizationSwitcher
+            organizationProfileMode="navigation"
+            organizationProfileUrl={getI18nPath(
+              '/dashboard/organization-profile',
+              locale,
+            )}
+            afterCreateOrganizationUrl="/dashboard"
+            hidePersonal
+            skipInvitationScreen
+            appearance={{
+              elements: {
+                organizationSwitcherTrigger: 'max-w-28 sm:max-w-52',
+              },
+            }}
+          />
+        )}
 
         <nav className="ml-3 max-lg:hidden">
           <ul className="flex flex-row items-center gap-x-3 text-lg font-medium [&_a:hover]:opacity-100 [&_a]:opacity-75">
@@ -85,12 +94,15 @@ export const DashboardHeader = (props: {
                       <Link href={item.href}>{item.label}</Link>
                     </DropdownMenuItem>
                   ))}
+                  {isAuthentik && (
+                    <DropdownMenuItem onSelect={handleAuthentikSignOut}>
+                      Sign out
+                    </DropdownMenuItem>
+                  )}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
           </li>
-
-          {/* PRO: Dark mode toggle button */}
 
           <li data-fade>
             <LocaleSwitcher />
@@ -101,15 +113,27 @@ export const DashboardHeader = (props: {
           </li>
 
           <li>
-            <UserButton
-              userProfileMode="navigation"
-              userProfileUrl="/dashboard/user-profile"
-              appearance={{
-                elements: {
-                  rootBox: 'px-2 py-1.5',
-                },
-              }}
-            />
+            {isAuthentik
+              ? (
+                  <button
+                    type="button"
+                    onClick={handleAuthentikSignOut}
+                    className="px-2 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground"
+                  >
+                    Sign out
+                  </button>
+                )
+              : (
+                  <UserButton
+                    userProfileMode="navigation"
+                    userProfileUrl="/dashboard/user-profile"
+                    appearance={{
+                      elements: {
+                        rootBox: 'px-2 py-1.5',
+                      },
+                    }}
+                  />
+                )}
           </li>
         </ul>
       </div>
