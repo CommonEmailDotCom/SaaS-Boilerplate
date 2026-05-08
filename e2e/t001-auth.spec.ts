@@ -54,7 +54,7 @@ async function switchToProvider(_page: Page, provider: 'clerk' | 'authentik'): P
   // PG_CONNECTION_STRING must be in test env.
   const pgStr = process.env.PG_CONNECTION_STRING;
   if (!pgStr) throw new Error('PG_CONNECTION_STRING not set — cannot switch provider');
-  const { Pool } = await import('pg');
+  const pg = await import('pg'); const Pool = pg.Pool || pg.default?.Pool;
   const pool = new Pool({ connectionString: pgStr });
   await pool.query(
     'UPDATE app_config SET value = $1 WHERE key = $2',
