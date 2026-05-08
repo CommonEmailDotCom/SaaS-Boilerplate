@@ -67,8 +67,8 @@ All agents have tools. **VERIFY BEFORE CLAIMING.**
 | `write_file(path, content)` | Write files — no cap |
 | `delete_file(path)` | Delete a file |
 | `run_command(command, cwd?)` | Shell commands — **output capped at 5000 chars** |
-| `git_commit_push(message)` | Commit and push |
-| `git_pull()` | Pull latest |
+| ~~`git_commit_push`~~ | **NOT available** — orchestrator commits with correct per-agent identity |
+| `git_pull()` | Pull latest from main |
 | `coolify_trigger_deploy(app_uuid)` | Trigger Coolify deploy |
 | `query_postgres(sql, params?)` | Run SQL |
 
