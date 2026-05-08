@@ -31,4 +31,6 @@ Critical codebase rule: getAuthProvider() must be async function returning Promi
 — never alias to getActiveProvider. This has broken the build 6+ times.
 
 Read CLAUDE_CHAT_BRAIN_DUMP_FULL.md for full architecture, lessons learned, and planned work.
+
+To check agent token usage: runtime logs are in Coolify stdout (not on disk). Use run_command with the Coolify API: fetch COOLIFY_URL+"/api/v1/applications/a1fr37jiwehxbfqp90k4cvsw/logs" and filter lines containing "tokens:". See full.md for exact command.
 ```
