@@ -59,15 +59,31 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 
 All agents have tools. **VERIFY BEFORE CLAIMING.**
 
-| Tool | Use |
+### Available tools (write/action only)
+
+| Tool | Notes |
 |---|---|
-| `run_command` | Shell commands, curl, ls, git |
-| `write_file` | Write files to repo |
-| `read_file` | Read files from repo |
+| `run_command` | Shell commands, curl, ls, git — **output capped at 5000 chars** |
+| `write_file` | Write files to repo — no cap |
+| `delete_file` | Delete a file |
 | `git_commit_push` | Commit and push |
 | `git_pull` | Pull latest |
 | `coolify_trigger_deploy` | Trigger Coolify deploy |
 | `query_postgres` | Run SQL |
+
+### NOT available as tools
+
+| Tool | Why | What to use instead |
+|---|---|---|
+| `read_file` | Orchestrator pre-fetches all context files | Use the injected text already in your message |
+| `list_directory` | Not needed — use `run_command` with `ls` | `run_command: ls src/libs/` |
+| `coolify_list_deployments` | Deployment state is in LIVE DATA | Check `liveData.setVersionRuns` in your context |
+| `coolify_deployment_logs` | Not in scope | Check build log via Coolify UI if needed |
+
+### Caps — plan accordingly
+- `run_command` output **hard capped at 5000 chars**. You will see `[...output truncated...]` if hit.
+- Use `head -N`, `tail -N`, `grep` instead of commands that dump entire files.
+- `write_file` has no cap — write complete file content as needed.
 
 **If MCP tools fail** (auth error, connection error): fall back to plain JSON completion and commit the heartbeat. Do NOT halt the cycle. Do NOT spiral into confusion about whether tools exist — they do, they may just be temporarily unavailable.
 
