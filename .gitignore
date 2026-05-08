@@ -49,3 +49,6 @@ local
 
 # vercel
 .vercel
+repo-manager/
+repo-operator/
+repo-observer/
