@@ -18,13 +18,20 @@ export default defineConfig({
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     video: 'on-first-retry',
-    // Trust the live app's self-signed or Traefik-managed cert if needed
     ignoreHTTPSErrors: false,
   },
   projects: [
     {
+      // Global setup: initialises Clerk testing token via clerkSetup()
+      // Must be a project-based setup (not globalSetup function) so that
+      // CLERK_FAPI and CLERK_TESTING_TOKEN env vars propagate to test workers.
+      name: 'setup',
+      testMatch: /global\.setup\.ts/,
+    },
+    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
     },
   ],
 });
