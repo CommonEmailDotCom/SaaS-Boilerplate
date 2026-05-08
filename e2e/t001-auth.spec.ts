@@ -122,7 +122,10 @@ async function clerkSignIn(page: Page): Promise<void> {
     secure: true,
     sameSite: 'Lax',
   }]);
-  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+  // Cookie injected — caller must navigate.
+  // Clerk middleware requires its own JS to have initialised on a prior page load
+  // before it recognises an injected __session cookie.
+  // Pattern that works: goto('/dashboard') once (loads Clerk JS + cookie), then goto again.
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
@@ -142,10 +145,19 @@ async function authentikSignIn(page: Page): Promise<void> {
     `https://auth.joefuentes.me/application/o/authorize/?${params.toString()}`,
     { waitUntil: 'commit' }
   );
+  // Accept any redirect back to BASE_URL — including error redirects.
+  // If Authentik returns ?error=login_required (no existing session in CI),
+  // we catch it here and throw a clear error instead of timing out at 30s.
   await page.waitForURL(
-    (url) => url.toString().includes(BASE_URL) && !url.toString().includes('error'),
+    (url) => url.toString().includes(BASE_URL),
     { timeout: 30000 }
   );
+  const finalUrl = page.url();
+  if (finalUrl.includes('error=')) {
+    const errorParam = new URL(finalUrl).searchParams.get('error');
+    const desc = new URL(finalUrl).searchParams.get('error_description') || '';
+    throw new Error(`Authentik OIDC error: ${errorParam} — ${desc}. prompt=none requires an existing Authentik session.`);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -163,7 +175,11 @@ test.describe('Test A — Clerk baseline', () => {
   test('A2: Clerk programmatic sign-in → /dashboard loads', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
     await clerkSignIn(page);
-    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 20000 });
+    // First goto loads Clerk JS with the injected cookie in scope
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+    // Second goto confirms we stay on dashboard (not redirected to sign-in)
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+    await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 
   test('A3: Dashboard shows content', async ({ page }) => {
