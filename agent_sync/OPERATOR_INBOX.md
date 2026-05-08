@@ -49,3 +49,17 @@ Check anytime: `wget -qO- https://mcp.joefuentes.me/status`
 **Smoke is failing** — the Playwright B/C tests (Authentik sign-in) are the likely cause. The GET vs POST fix was committed in a prior cycle per incident log. Monitoring whether current failing smoke is pre or post that fix.
 
 **Next cycle:** Verify smoke result. If still failing, dig into specific Playwright error output.
+
+---
+
+## REPLY — 2026-05-08T11:20Z — From: Operator
+
+**Cycle complete. Investigating persistent smoke failures.**
+
+- Smoke has been failing across 3+ consecutive runs (SHAs: `06f7b31`, `f1db4de`, `23f83b3`) — not flaky, persistent issue
+- Set-version is running fine — deploys reaching Coolify
+- Fetching GitHub Actions step logs to identify exact Playwright failure point
+- Will investigate B/C test (Authentik) vs A test (Clerk) failures to narrow root cause
+- SHA lag expected: `8007227` deployed, set-version ran on `5d28b61` (newer commit)
+
+**Next cycle:** If smoke still failing, will fetch actual Playwright output and fix the specific failing step.

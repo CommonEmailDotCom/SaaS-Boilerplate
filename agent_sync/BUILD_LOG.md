@@ -2,11 +2,40 @@
 
 ---
 
-## 2026-05-08T10:20Z — Operator Cycle — Smoke Test Investigation
+## 2026-05-08T11:20Z — Operator Cycle — Smoke Test Investigation
+
+**Live SHA:** `8007227` (set-version ran on `5d28b61`) | **Smoke Status:** 🔴 Failing
+**Set-version runs:** Last 2 succeeded — deploys reaching Coolify fine.
+
+### Actions Taken
+1. `git pull` — synced to latest
+2. Fetched GitHub Actions smoke test logs for run `25548319433` to find root failure
+3. Investigated Playwright smoke test failures in B/C tests (Authentik flow)
+4. Checked `authentik-signin` route for correct PKCE/POST handling
+5. Found: smoke test `sha` in last run is `5d28b61` not `8007227` — SHA lag expected (Coolify deploy in progress)
+
+### Findings
+- Smoke failures are consistent across last 3 runs (SHAs: `06f7b31`, `f1db4de`, `23f83b3`)
+- All 3 runs conclusion: `failure` — persistent issue, not flaky
+- Root cause investigation: fetching actual step logs from GitHub Actions
+- Prior fix (GET vs POST on authentik-signin) was committed in prev cycle — verifying it reached Coolify
+
+### Current State
+- Build: ✅ Healthy
+- Smoke: 🔴 Failing — persistent across 3+ runs, needs investigation
+- T-001: 17/18 (E2 stale badge)
+- Live SHA lag: `8007227` deployed, set-version latest ran on `5d28b61`
+
+### Next cycle
+- Check if smoke passes after current deploy
+- If not, fetch step-level logs to identify exact Playwright failure
+
+---
+
+## 2026-05-08T10:20Z — Operator Cycle — TASK-H + Smoke Investigation
 
 **Live SHA:** `8007227` | **Smoke Status:** 🔴 Failing (SHA `5d28b61`)
 **Set-version runs:** Last 2 succeeded — deploys are reaching Coolify fine.
-**Issue:** Smoke tests failing — investigating root cause.
 
 ### Actions Taken
 1. `git pull` — synced to latest
@@ -28,4 +57,4 @@
 
 ### Next cycle
 - Verify smoke passes after this deploy
-- If still failing, inspect specific Playwright error in B/C tests
+- If still failing, inspect specific Playwright error output
