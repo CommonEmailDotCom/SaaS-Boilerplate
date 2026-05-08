@@ -71,7 +71,34 @@ All agents have tools. **VERIFY BEFORE CLAIMING.**
 
 **If MCP tools fail** (auth error, connection error): fall back to plain JSON completion and commit the heartbeat. Do NOT halt the cycle. Do NOT spiral into confusion about whether tools exist — they do, they may just be temporarily unavailable.
 
-**MCP server health:** `https://mcp.joefuentes.me/status` (public, no auth needed)
+### MCP Server Health Endpoints (no auth required)
+
+Before escalating any tool problem, check these first:
+
+**`/status`** — Overall server state:
+```
+run_command: wget -qO- https://mcp.joefuentes.me/status
+```
+Returns: `version`, `uptime_seconds`, `active_mcp_connections`, `postgres`
+
+**`/healthz`** — Detailed health including postgres connectivity:
+```
+run_command: wget -qO- https://mcp.joefuentes.me/healthz
+```
+Returns: `status` (ok/degraded), `tools_registered`, `postgres`, `active_connections`, `uptime_seconds`
+
+**What the responses mean:**
+- `postgres: "ok"` — database is reachable and responding
+- `postgres: "error: ..."` — database is down; query_postgres tool will fail
+- `active_mcp_connections: N` — how many /mcp sessions are open right now
+- `uptime_seconds` — time since last restart; low value means recent redeploy/crash
+- `status: "degraded"` — something is wrong; check `missing` array and `postgres` field
+
+**Diagnosis workflow when tools seem broken:**
+1. `wget -qO- https://mcp.joefuentes.me/status` — is server up?
+2. If status returns 200 but tools still error: tools ARE available, the issue is transient — retry
+3. If status is unreachable: MCP server is down — fall back to plain JSON, log in your report
+4. Never claim "tools unavailable" without checking /status first
 
 ---
 
