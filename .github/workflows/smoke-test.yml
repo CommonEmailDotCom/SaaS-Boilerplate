@@ -30,26 +30,11 @@ jobs:
 
       - name: Get deployed SHA
         id: sha
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # set-version deploys the code commit, then creates a ci: bump on top.
-          # We need the code commit SHA (parent of the ci: bump) for polling.
-          CI_SHA="${{ github.event.workflow_run.head_sha }}"
-          CI_MSG=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
-            "https://api.github.com/repos/${{ github.repository }}/commits/${CI_SHA}" \
-            | jq -r '.commit.message' 2>/dev/null || echo "")
-
-          if echo "$CI_MSG" | grep -q "^ci:"; then
-            SHORT_SHA=$(curl -sf -H "Authorization: Bearer $GITHUB_TOKEN" \
-              "https://api.github.com/repos/${{ github.repository }}/commits/${CI_SHA}" \
-              | jq -r '.parents[0].sha' 2>/dev/null | cut -c1-7)
-            echo "CI bump detected — polling for parent: $SHORT_SHA"
-          else
-            SHORT_SHA=$(echo "$CI_SHA" | cut -c1-7)
-            echo "Direct commit — polling for: $SHORT_SHA"
-          fi
-
+          # Read the SHA directly from .env.production — this is exactly what
+          # gets baked into the Docker image. No parent-commit guessing needed.
+          SHORT_SHA=$(grep NEXT_PUBLIC_COMMIT_SHA .env.production | cut -d= -f2)
+          echo "Polling for SHA from .env.production: $SHORT_SHA"
           echo "sha=${SHORT_SHA}" >> $GITHUB_OUTPUT
 
       - name: Wait for deployment
