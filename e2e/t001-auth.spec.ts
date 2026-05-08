@@ -47,7 +47,7 @@ const CLERK_TEST_USER_ID = process.env.CLERK_TEST_USER_ID ?? 'user_3DOZ3c5b31biC
 function getGoogleIdToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     const body = new URLSearchParams({
-      client_id: AUTHENTIK_CLIENT_ID,
+      client_id: GOOGLE_CLIENT_ID,       // Google OAuth app — for token exchange with Google
       client_secret: GOOGLE_CLIENT_SECRET,
       refresh_token: GOOGLE_REFRESH_TOKEN,
       grant_type: 'refresh_token',
@@ -122,7 +122,7 @@ async function clerkSignIn(page: Page): Promise<void> {
     secure: true,
     sameSite: 'Lax',
   }]);
-  await page.reload({ waitUntil: 'networkidle' });
+  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
@@ -132,7 +132,7 @@ async function authentikSignIn(page: Page): Promise<void> {
   const idToken = await getGoogleIdToken();
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: GOOGLE_CLIENT_ID,
+    client_id: AUTHENTIK_CLIENT_ID,      // Authentik OIDC app — for Authentik's authorize endpoint
     redirect_uri: `${BASE_URL}/api/auth/callback/authentik`,
     scope: 'openid email profile',
     id_token_hint: idToken,
