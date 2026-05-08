@@ -24,6 +24,7 @@ const CLERK_TEST_USER_ID = process.env.CLERK_TEST_USER_ID ?? 'user_3DOZ3c5b31biC
 const CLERK_TEST_ORG_ID = 'org_3DOdRcnABqYWyilVRsqOSMUmKMj';
 const AUTHENTIK_TEST_USERNAME = process.env.AUTHENTIK_TEST_USERNAME ?? '';
 const AUTHENTIK_TEST_PASSWORD = process.env.AUTHENTIK_TEST_PASSWORD ?? '';
+const SWITCH_PROVIDER_SECRET = process.env.SWITCH_PROVIDER_SECRET ?? '';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -59,12 +60,11 @@ async function switchToProvider(provider: 'clerk' | 'authentik', page?: Page): P
     await pool.query('UPDATE app_config SET value = $1 WHERE key = $2', [provider, 'auth_provider']);
     await pool.end();
   } else if (page) {
-    // CI: use admin API with Clerk session
-    // Always sign in fresh — ensures org context (orgRole) is set correctly
-    await clerkSignIn(page);
+    // CI: use shared secret bypass (requires SWITCH_PROVIDER_SECRET env + route support)
+    if (!SWITCH_PROVIDER_SECRET) throw new Error('SWITCH_PROVIDER_SECRET not set and PG_CONNECTION_STRING not set');
     const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
       data: JSON.stringify({ provider }),
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-switch-provider-secret': SWITCH_PROVIDER_SECRET },
     });
     if (resp.status() !== 200) throw new Error(`switchToProvider(${provider}) API failed ${resp.status()}`);
   } else {

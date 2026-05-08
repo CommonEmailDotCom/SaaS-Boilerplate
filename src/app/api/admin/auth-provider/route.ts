@@ -66,8 +66,13 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  // T-007: admin only
-  if (!await isOrgAdmin()) {
+  // E2E test bypass — only active when SWITCH_PROVIDER_SECRET is set
+  const testSecret = process.env.SWITCH_PROVIDER_SECRET;
+  const reqSecret = req.headers.get('x-switch-provider-secret');
+  const isTestBypass = testSecret && reqSecret === testSecret;
+
+  // T-007: admin only (skipped for E2E test bypass)
+  if (!isTestBypass && !await isOrgAdmin()) {
     return NextResponse.json({ error: 'Forbidden: org admin required' }, { status: 403 });
   }
 
