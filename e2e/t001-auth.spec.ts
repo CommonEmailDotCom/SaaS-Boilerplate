@@ -22,7 +22,7 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { clerk } from '@clerk/testing/playwright';
+import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright';
 
 const BASE_URL = process.env.TEST_BASE_URL ?? 'https://cuttingedgechat.com';
 const MCP_URL = 'https://mcp.joefuentes.me';
@@ -37,9 +37,15 @@ const AUTHENTIK_TEST_PASSWORD = process.env.AUTHENTIK_TEST_PASSWORD ?? '';
 async function clerkSignIn(page: Page): Promise<void> {
   // Uses @clerk/testing/playwright which correctly handles Clerk dev instance
   // requirements including the __clerk_db_jwt dev browser cookie.
-  // emailAddress param uses Backend API to sign in — no email verification needed.
-  // Must navigate to an unprotected page first so Clerk JS is loaded.
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  //
+  // Flow:
+  // 1. setupClerkTestingToken() injects __clerk_testing_token into the page
+  //    so Clerk's bot detection is bypassed
+  // 2. Navigate to /sign-in so Clerk JS loads and window.Clerk is available
+  // 3. clerk.signIn() with emailAddress uses Backend API to find user,
+  //    create a sign-in ticket, and authenticate via ticket strategy
+  await setupClerkTestingToken({ page });
+  await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
   await clerk.signIn({
     page,
     emailAddress: GOOGLE_EMAIL,
