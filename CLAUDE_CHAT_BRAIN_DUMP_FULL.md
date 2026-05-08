@@ -327,6 +327,8 @@ Self-hosted secrets manager to run as a Coolify service. Plan:
 
 ## Token / Cost Awareness
 
+**Important: Claude has no access to real Anthropic usage or billing data.** No tool exists to query actual token consumption or costs. The estimates below are calculated manually from token counts visible in the MCP server orchestrator logs (look for lines like "-> stop_reason: end_turn, tokens: 193206in / 6210out" in Coolify logs for app a1fr37jiwehxbfqp90k4cvsw). Formula: input_tokens x 3/1M + output_tokens x 15/1M for Sonnet 4. For real numbers go to console.anthropic.com directly.
+
 Anthropic API costs come from two places:
 1. **Agent cycles** — ~$3-4/day at current optimized token counts (~15-25k per Operator cycle)
 2. **Chat sessions** — context grows with every message; long sessions cost more per message than agent cycles
