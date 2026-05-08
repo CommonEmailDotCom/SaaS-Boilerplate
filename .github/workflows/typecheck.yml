@@ -8,6 +8,11 @@ on:
       - "CLAUDE_TEAM.md"
       - "smoke-status.json"
       - "**.md"
+      - ".github/**"
+      - "e2e/**"
+      - "tests/**"
+      - "playwright.config.ts"
+      - "scripts/**"
   pull_request:
     branches: [main]
 
