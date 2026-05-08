@@ -60,7 +60,11 @@ async function switchToProvider(provider: 'clerk' | 'authentik', page?: Page): P
     await pool.end();
   } else if (page) {
     // CI: use admin API with Clerk session
-    await clerkSignIn(page);
+    // Only sign in if not already authenticated
+    const isSignedIn = await page.evaluate(() => !!(window as any).Clerk?.user).catch(() => false);
+    if (!isSignedIn) {
+      await clerkSignIn(page);
+    }
     await page.goto(BASE_URL, { waitUntil: 'networkidle' });
     const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
       data: JSON.stringify({ provider }),
