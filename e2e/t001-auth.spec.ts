@@ -50,13 +50,26 @@ async function clerkSignIn(page: Page): Promise<void> {
   if (!result.ok) throw new Error('Clerk sign-in failed: ' + result.status);
 }
 
-async function switchToProvider(provider: 'clerk' | 'authentik'): Promise<void> {
+async function switchToProvider(provider: 'clerk' | 'authentik', page?: Page): Promise<void> {
   const pgStr = process.env.PG_CONNECTION_STRING;
-  if (!pgStr) throw new Error('PG_CONNECTION_STRING not set');
-  const { Pool } = require('pg');
-  const pool = new Pool({ connectionString: pgStr });
-  await pool.query('UPDATE app_config SET value = $1 WHERE key = $2', [provider, 'auth_provider']);
-  await pool.end();
+  if (pgStr) {
+    // Local: direct DB write — fastest, no auth needed
+    const { Pool } = require('pg');
+    const pool = new Pool({ connectionString: pgStr });
+    await pool.query('UPDATE app_config SET value = $1 WHERE key = $2', [provider, 'auth_provider']);
+    await pool.end();
+  } else if (page) {
+    // CI: use admin API with Clerk session
+    await clerkSignIn(page);
+    await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+    const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
+      data: JSON.stringify({ provider }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (resp.status() !== 200) throw new Error(`switchToProvider(${provider}) API failed ${resp.status()}`);
+  } else {
+    throw new Error('switchToProvider: PG_CONNECTION_STRING not set and no page provided for API fallback');
+  }
   await new Promise(r => setTimeout(r, 6000));
 }
 
@@ -129,9 +142,8 @@ test.describe('Test A — Clerk baseline', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Test B — Switch Clerk→Authentik', () => {
-  test.afterEach(async () => {
-    // Restore clerk after each test so next test starts clean
-    await switchToProvider('clerk');
+  test.afterEach(async ({ page }) => {
+    await switchToProvider('clerk', page);
   });
 
   test('B1: Authentik signin route redirects to auth.joefuentes.me', async ({ page }) => {
@@ -141,13 +153,13 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
   });
 
   test('B2: Authentik programmatic sign-in → /dashboard', async ({ page }) => {
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 
   test('B3: next-auth session cookie present after Authentik login', async ({ page, context }) => {
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     const cookies = await context.cookies(BASE_URL);
     const sessionCookie = cookies.find(
@@ -157,7 +169,7 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
   });
 
   test('B4: No CRITICAL-05 — /api/auth/session returns 200', async ({ page }) => {
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     const res = await page.request.get(`${BASE_URL}/api/auth/session`);
     expect(res.status()).toBe(200);
@@ -169,12 +181,12 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
 // ---------------------------------------------------------------------------
 
 test.describe('Test C — Dashboard under Authentik', () => {
-  test.afterEach(async () => {
-    await switchToProvider('clerk');
+  test.afterEach(async ({ page }) => {
+    await switchToProvider('clerk', page);
   });
 
   test('C1: /dashboard loads without 401/500', async ({ page }) => {
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     const res = await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
@@ -182,14 +194,14 @@ test.describe('Test C — Dashboard under Authentik', () => {
   });
 
   test('C2: Org context visible on dashboard', async ({ page }) => {
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
   test('C3: Billing page loads without 401/500 under Authentik', async ({ page }) => {
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     const res = await page.goto(`${BASE_URL}/dashboard/billing`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
@@ -201,7 +213,7 @@ test.describe('Test C — Dashboard under Authentik', () => {
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
-    await switchToProvider('authentik');
+    await switchToProvider('authentik', page);
     await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     const critical = errors.filter(
