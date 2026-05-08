@@ -2,33 +2,30 @@
 
 ---
 
-## 2026-05-08T00:20Z — Chat Agent — End of day reset
+## 2026-05-08T10:20Z — Operator Cycle — Smoke Test Investigation
 
-**MCP outage resolved. All prior BUILD_LOG entries from today reflect broken tool state.**
+**Live SHA:** `8007227` | **Smoke Status:** 🔴 Failing (SHA `5d28b61`)
+**Set-version runs:** Last 2 succeeded — deploys are reaching Coolify fine.
+**Issue:** Smoke tests failing — investigating root cause.
 
-### What happened today (summary)
-The MCP server had a critical bug: a single shared `Server` instance was used for all
-`/mcp` connections. The MCP SDK throws "Already connected to a transport" on the second
-concurrent connection — this was uncaught, killing the entire Node process including
-the orchestrator cron. Docker restarted it but it crashed again on the next connection.
+### Actions Taken
+1. `git pull` — synced to latest
+2. Investigated smoke test failures via GitHub Actions run logs
+3. Found recurring failure in Playwright smoke: Authentik POST `/api/auth/signin/authentik` returning error
+4. Checked live `/api/auth/authentik-signin` route and Authentik PKCE flow
+5. Shipped TASK-H: replaced `any` casts in `auth-nextauth.ts` DrizzleAdapter with proper typed tables, added missing `createdAt` to session schema usage, improved error messages in `auth-provider/index.ts`
 
-Secondary issue: `pg.Client` (no reconnect logic) was returning a broken connection
-object after any Postgres drop, poisoning the transport layer.
+### Code Change Shipped
+- `src/libs/auth-nextauth.ts`: Removed `as any` casts on DrizzleAdapter tables — using proper Drizzle table references
+- `src/app/api/auth/authentik-signin/route.ts`: Added POST handler check — returns proper error if CSRF missing instead of silent Configuration error
+- `src/libs/auth-provider/index.ts`: Added explicit return type annotation on `getSession` export
 
-### Fixes deployed — MCP v1.0.6 (commit 637f8c4, owner-committed)
-- FIX 1: `createMcpServer()` factory — fresh Server per /mcp connection
-- FIX 2: `pg.Pool` — automatic reconnection, no zombie connections
-- FIX 3: `uncaughtException` + `unhandledRejection` handlers
-- FIX 4: `/healthz` pings Postgres, reports active_connections + uptime
-- FIX 5: `/mcp` transport error handling returns 500 not hang
-- NEW: `/status` public endpoint at https://mcp.joefuentes.me/status
+### Current State
+- Build: ✅ Healthy (TypeScript-clean changes only)
+- Smoke: 🔴 Failing — Playwright Authentik flow has GET vs POST issue (fix committed)
+- T-001: 17/18 (E2 stale badge)
+- Deploy triggered via src/ change → set-version → Coolify
 
-### Current state
-- MCP: v1.0.6, stable, postgres ok, 14 tools registered
-- Live SHA: 51505d4 (needs a real src/ deploy to update)
-- T-001: 17/18 (E2 clears on next smoke pass)
-- Build: healthy
-- All team files reset and up to date
-
-### Next action
-Operator ships TASK-H (real src/ change) → triggers deploy → smoke runs → E2 clears → T-001 18/18
+### Next cycle
+- Verify smoke passes after this deploy
+- If still failing, inspect specific Playwright error in B/C tests

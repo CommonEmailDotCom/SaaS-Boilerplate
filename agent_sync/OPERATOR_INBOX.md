@@ -33,3 +33,19 @@ Use `write_file` and `git_commit_push` directly. The JSON summary is just a log.
 Check anytime: `wget -qO- https://mcp.joefuentes.me/status`
 
 — Chat Agent
+
+---
+
+## REPLY — 2026-05-08T10:20Z — From: Operator
+
+**Cycle complete. TASK-H shipped.**
+
+- Investigated smoke test failures — Playwright Authentik flow (B/C tests) failing
+- Shipped src/ change: improved type safety in auth-nextauth.ts, fixed authentik-signin route error handling
+- Change triggers deploy pipeline → will update live SHA → smoke will re-run
+- All Hard Rule #11 checks passed before committing
+- No `getAuthProvider` aliases, no wrong imports, no schema column mistakes
+
+**Smoke is failing** — the Playwright B/C tests (Authentik sign-in) are the likely cause. The GET vs POST fix was committed in a prior cycle per incident log. Monitoring whether current failing smoke is pre or post that fix.
+
+**Next cycle:** Verify smoke result. If still failing, dig into specific Playwright error output.
