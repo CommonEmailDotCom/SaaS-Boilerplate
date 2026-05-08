@@ -36,6 +36,7 @@ const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
 const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? '';
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY ?? '';
 const CLERK_FAPI = 'https://smashing-bison-72.clerk.accounts.dev';
+const AUTHENTIK_CLIENT_ID = process.env.AUTHENTIK_CLIENT_ID ?? 'aPM2wsr2lAtm96N1prfOC7t1XlDVARmA4GRBvlwa';
 
 // ---------------------------------------------------------------------------
 // Programmatic login helpers — API-based, no browser OAuth UI
@@ -44,7 +45,7 @@ const CLERK_FAPI = 'https://smashing-bison-72.clerk.accounts.dev';
 function getGoogleIdToken(): Promise<string> {
   return new Promise((resolve, reject) => {
     const body = new URLSearchParams({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: AUTHENTIK_CLIENT_ID,
       client_secret: GOOGLE_CLIENT_SECRET,
       refresh_token: GOOGLE_REFRESH_TOKEN,
       grant_type: 'refresh_token',
@@ -78,18 +79,30 @@ function getGoogleIdToken(): Promise<string> {
 }
 
 async function clerkSignIn(page: Page): Promise<void> {
-  const resp = await fetch(`${CLERK_FAPI}/v1/client/sign_ins`, {
+  // Step 1: Get a Testing Token from Clerk Backend API
+  const tokenResp = await fetch('https://api.clerk.com/v1/testing_tokens', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  const tokenData = await tokenResp.json() as any;
+  const testingToken: string | undefined = tokenData?.token;
+  if (!testingToken) throw new Error('Clerk testing token fetch failed: ' + JSON.stringify(tokenData).substring(0, 300));
+
+  // Step 2: Use the testing token in the FAPI sign-in request
+  const resp = await fetch(`${CLERK_FAPI}/v1/client/sign_ins?__clerk_testing_token=${testingToken}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/x-www-form-urlencoded',
       'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
     },
-    // Clerk ticket strategy does not accept 'identifier' — remove it
-    body: new URLSearchParams({ strategy: 'ticket' }).toString(),
+    body: new URLSearchParams({ strategy: 'ticket', ticket: testingToken }).toString(),
   });
   const data = await resp.json() as any;
   const token: string | undefined = data?.client?.sessions?.[0]?.last_active_token?.jwt;
-  if (!token) throw new Error('Clerk testing token API failed: ' + JSON.stringify(data).substring(0, 300));
+  if (!token) throw new Error('Clerk sign-in failed: ' + JSON.stringify(data).substring(0, 300));
 
   await page.context().addCookies([{
     name: '__session',
