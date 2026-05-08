@@ -22,15 +22,18 @@ export default defineConfig({
   },
   projects: [
     {
-      // Global setup: initialises Clerk testing token via clerkSetup()
-      // Must be a project-based setup (not globalSetup function) so that
-      // CLERK_FAPI and CLERK_TESTING_TOKEN env vars propagate to test workers.
       name: 'setup',
       testMatch: /global\.setup\.ts/,
     },
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      use: {
+        ...devices['Desktop Chrome'],
+        // Disable HTTP/2 to avoid net::ERR_HTTP2_PROTOCOL_ERROR on some CI runners
+        launchOptions: {
+          args: ['--disable-http2'],
+        },
+      },
       dependencies: ['setup'],
     },
   ],
