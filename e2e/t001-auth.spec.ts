@@ -208,8 +208,7 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
     expect(res.status()).toBe(200);
   });
 
-  test.afterAll(async () => {
-    // Leave provider as clerk after B tests in case C tests don't run
+  test.afterEach(async () => {
     await ensureProviderIsClerk();
   });
 });
@@ -260,7 +259,7 @@ test.describe('Test C — Dashboard under Authentik', () => {
     expect(critical).toHaveLength(0);
   });
 
-  test.afterAll(async () => {
+  test.afterEach(async () => {
     await ensureProviderIsClerk();
   });
 });
