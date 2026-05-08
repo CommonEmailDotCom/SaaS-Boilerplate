@@ -5,7 +5,7 @@
  * Provider switching:
  *   B/C tests switch provider to 'authentik' via DB before running.
  *   afterEach restores provider to 'clerk' via DB after each B/C test.
- *   PG_CONNECTION_STRING must be in env for switchToProvider to work.
+ *   PG_CONNECTION_STRING is optional (local only). CI uses admin API path.
  *   Run `UPDATE app_config SET value='clerk' WHERE key='auth_provider'` before starting.
  *
  * Authentik uses Lit web components with Shadow DOM.

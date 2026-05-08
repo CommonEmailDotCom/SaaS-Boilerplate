@@ -94,7 +94,6 @@ jobs:
           AUTHENTIK_TEST_USERNAME: ${{ secrets.AUTHENTIK_TEST_USERNAME }}
           AUTHENTIK_TEST_PASSWORD: ${{ secrets.AUTHENTIK_TEST_PASSWORD }}
           CLERK_PUBLISHABLE_KEY: pk_test_c21hc2hpbmctYmlzb24tNzIuY2xlcmsuYWNjb3VudHMuZGV2JA
-          PG_CONNECTION_STRING: ${{ secrets.PG_CONNECTION_STRING }}
         run: npx playwright test 2>&1 | tee /tmp/playwright-output.txt; echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
