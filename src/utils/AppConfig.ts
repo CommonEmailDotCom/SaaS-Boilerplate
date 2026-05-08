@@ -4,6 +4,7 @@ import { BILLING_INTERVAL, type PricingPlan } from '@/types/Subscription';
 
 const localePrefix: LocalePrefix = 'as-needed';
 
+// Last updated: 2026-05-07
 export const AppConfig = {
   name: 'Cutting Edge Chat',
   locales: [
