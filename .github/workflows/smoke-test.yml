@@ -98,6 +98,13 @@ jobs:
       - name: Run smoke tests
         id: playwright
         if: steps.deploy_wait.outputs.timed_out != 'true'
+        env:
+          TEST_BASE_URL: https://cuttingedgechat.com
+          QA_GMAIL_EMAIL: ${{ secrets.QA_GMAIL_EMAIL }}
+          GOOGLE_REFRESH_TOKEN: ${{ secrets.GOOGLE_REFRESH_TOKEN }}
+          GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID }}
+          GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
         run: npx playwright test 2>&1 | tee /tmp/playwright-output.txt; echo "exit_code=${PIPESTATUS[0]}" >> $GITHUB_OUTPUT
         continue-on-error: true
 
