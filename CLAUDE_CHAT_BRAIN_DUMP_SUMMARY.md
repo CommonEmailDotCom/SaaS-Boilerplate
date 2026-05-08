@@ -32,5 +32,6 @@ Critical codebase rule: getAuthProvider() must be async function returning Promi
 
 Read CLAUDE_CHAT_BRAIN_DUMP_FULL.md for full architecture, lessons learned, and planned work.
 
-To check agent token usage: runtime logs are in Coolify stdout (not on disk). Use run_command with the Coolify API: fetch COOLIFY_URL+"/api/v1/applications/a1fr37jiwehxbfqp90k4cvsw/logs" and filter lines containing "tokens:". See full.md for exact command.
+To check AGENT token usage: runtime logs are Coolify stdout only (not on disk). Use run_command fetching COOLIFY_URL+"/api/v1/applications/a1fr37jiwehxbfqp90k4cvsw/logs", filter lines containing "tokens:". Format: "stop_reason: end_turn, tokens: Xin / Yout". Cost: input x $3/MTok + output x $15/MTok.
+To check CHAT SESSION usage: not available programmatically — check console.anthropic.com or estimate manually.
 ```

@@ -329,22 +329,26 @@ Self-hosted secrets manager to run as a Coolify service. Plan:
 
 **Important: Claude has no access to real Anthropic usage or billing data.** No tool exists to query actual token consumption or costs. The estimates below are calculated manually from token counts visible in the MCP server orchestrator logs (look for lines like "-> stop_reason: end_turn, tokens: 193206in / 6210out" in Coolify logs for app a1fr37jiwehxbfqp90k4cvsw). Formula: input_tokens x 3/1M + output_tokens x 15/1M for Sonnet 4. For real numbers go to console.anthropic.com directly.
 
-**Exact command to read runtime token logs from the MCP container:**
+**To check AGENT token usage (orchestrator cycles):**
 
-The orchestrator logs to stdout, which Coolify captures. Read it via the Coolify API using run_command:
+The orchestrator logs to stdout, which Coolify captures. Use run_command:
 
     node -e "
     const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
     fetch(U+'/api/v1/applications/a1fr37jiwehxbfqp90k4cvsw/logs',{headers:{'Authorization':'Bearer '+T}})
       .then(r=>r.json()).then(d=>{
-        const lines=(d.logs||'').split('\n').filter(l=>l.trim());
-        lines.slice(-30).forEach(l=>console.log(l.trim()));
+        const lines=(d.logs||'').split('\n').filter(l=>l.includes('tokens:'));
+        lines.slice(-20).forEach(l=>console.log(l.trim()));
       });
     "
 
-Token lines look like: -> stop_reason: end_turn, tokens: 25000in / 3000out
-They only appear when a Claude API call succeeds. If agents are erroring (fetch failed), no token lines will appear.
+Format: -> stop_reason: end_turn, tokens: Xin / Yout
+Cost formula: input x $3/MTok + output x $15/MTok (Sonnet 4)
+Token lines only appear on successful Claude API calls. If agents are erroring (fetch failed) there will be no token lines.
 Do NOT look for a logs/ directory on disk — the orchestrator only logs to stdout, not files.
+
+**To check CHAT SESSION token usage:**
+Not available programmatically. Estimate manually by counting tokens in files read + tool results + conversation length, or check console.anthropic.com directly.
 
 Anthropic API costs come from two places:
 1. **Agent cycles** — ~$3-4/day at current optimized token counts (~15-25k per Operator cycle)
