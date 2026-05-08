@@ -1,70 +1,71 @@
 {
-  "updated": "2026-05-08T00:20:00Z",
-  "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
+  "updated": "2026-05-08T12:30:00Z",
+  "sprint": "Auth Provider Switching — Phase 5: Smoke Validation",
   "manager_assessment": {
-    "timestamp": "2026-05-08T00:20:00Z",
-    "overall_status": "🟢 MCP outage resolved. All prior blocked statuses were caused by MCP crash bugs, not real code issues. Resume normal work. Operator: ship a real src/ change. Observer: run T-001.",
+    "timestamp": "2026-05-08T12:30:00Z",
+    "overall_status": "🟡 Playwright 19/19 confirmed locally. Deploy in progress. Waiting for smoke to pass.",
     "key_events": [
-      "MCP v1.0.6 deployed — per-connection Server factory fixes the concurrent connection crash",
-      "pg.Pool replaces pg.Client — no more zombie Postgres connections",
-      "All 5 MCP fixes live as of commit 637f8c4 (owner-committed)",
-      "Team files reset — all stale confusion from today's outage cleared",
-      "Live SHA still 51505d4 — needs a real src/ deploy to update"
+      "Playwright e2e suite fully fixed — 19/19 passing locally (confirmed by chat agent)",
+      "Authentik sign-out button added to DashboardHeader — no more stranded sessions",
+      "getSession() now returns orgId for Authentik sessions via DB lookup",
+      "switchToProvider uses direct DB write — no admin API auth needed in tests",
+      "Build failed once (bad @clerk/nextjs/client import) — fixed in a3b14a2",
+      "Deploy in progress after Coolify restart — trigger commit e62d9d3",
+      "t001-run.js E2 badge still failing — expected, self-clears on smoke pass",
+      "QA_REPORT.md is 10+ hours stale — Observer must file fresh report this cycle"
     ],
     "active_blockers": [
-      "No real blockers — MCP is healthy, build is healthy, tools are working"
+      "Smoke test has not run against latest code yet — deploy in progress"
     ]
   },
   "columns": {
     "in_progress": [
       {
-        "id": "TASK-H",
-        "title": "Tech debt pass — ship a real src/ change to trigger deploy",
-        "priority": "high",
-        "assigned_to": "operator",
-        "manager_instruction": "Pick one concrete src/ improvement: dead code, TypeScript any types, unhandled promises, missing validation, or error handling gaps. Use write_file + git_commit_push. This triggers set-version → Coolify → smoke test → clears E2 on T-001. Log in BUILD_LOG.md."
-      },
-      {
-        "id": "T-001-RUN",
-        "title": "T-001 — run and report this cycle",
+        "id": "SMOKE-VALIDATE",
+        "title": "Smoke test validation — confirm 19/19 in CI",
         "priority": "high",
         "assigned_to": "observer",
-        "manager_instruction": "Run: node scripts/t001-run.js (cwd: /repo-observer). Report full output in QA_REPORT.md. Expected: 17/18. E2 (smoke badge) will clear once Operator's deploy goes live. If 18/18 after deploy, declare T-001 FULL PASS."
+        "manager_instruction": "Run BOTH test suites this cycle per OBSERVER_INBOX.md. Expected: t001-run.js 17/18 (E2 badge expected fail), Playwright 19/19. File fresh QA_REPORT.md. If Playwright fails, report exact error and screenshot path."
       }
     ],
     "ready_to_trigger": [
       {
-        "id": "T-001-GATE",
-        "title": "After T-001 18/18 — begin T-006, T-009, T-002",
+        "id": "T-006",
+        "title": "Stripe checkout under Authentik session",
         "priority": "high",
         "assigned_to": "operator",
-        "manager_instruction": "Once Observer declares T-001 FULL PASS, begin T-006 (Stripe under Authentik). T-009 and T-002 follow."
+        "manager_instruction": "Blocked on SMOKE-VALIDATE. Once Observer confirms Playwright 19/19, begin T-006."
       }
     ],
     "backlog": [
-      { "id": "T-006", "title": "Stripe checkout under Authentik session", "priority": "high" },
       { "id": "T-009", "title": "Sign-out redirect on provider switch-back", "priority": "medium" },
       { "id": "T-002", "title": "Smoke test SHA polling verification", "priority": "high" },
-      { "id": "MCP-WATCHDOG", "title": "Orchestrator startup health watchdog + self-healing redeploy", "priority": "medium", "manager_instruction": "Planned for next session. Orchestrator pings /healthz every 5min, triggers coolify redeploy if 3 consecutive failures. Also: /status reset coordination lock." }
+      {
+        "id": "COST-OPT",
+        "title": "Event-driven agents — replace hourly cron with deploy/task-triggered dispatch",
+        "priority": "medium",
+        "manager_instruction": "Documented in CLAUDE_CHAT_BRAIN_DUMP_FULL.md. Reduces agent API costs ~70%. Orchestrator becomes event-driven dispatcher. Pre-fetch live SHA, last QA result, deploy status before API call."
+      },
+      { "id": "MCP-WATCHDOG", "title": "Orchestrator startup health watchdog + self-healing redeploy", "priority": "medium" },
+      { "id": "INFISICAL", "title": "Infisical secrets setup", "priority": "low" }
     ],
     "done": [
-      { "id": "MCP-V106", "title": "MCP server v1.0.6 — crash fixes", "closed_note": "✅ 637f8c4 — per-connection Server, pg.Pool, uncaughtException, /status endpoint." },
-      { "id": "T-007-T-010", "title": "T-007 + T-010 deployed", "closed_note": "✅ Live as a815e93." },
-      { "id": "TASK-E", "title": "console.error in getActiveProvider catch", "closed_note": "✅ 51505d4." },
-      { "id": "TASK-F", "title": "smokeStatus GitHub API fetch", "closed_note": "✅ afa1be1." },
-      { "id": "CI-FIXES", "title": "paths-ignore + smoke concurrency fix", "closed_note": "✅ be52ee6 + 0d7c15e." },
-      { "id": "MCP-TOOLS-ALL-AGENTS", "title": "All 3 agents have MCP tools with fallback", "closed_note": "✅ Manager, Operator, Observer all have tools + graceful fallback." },
+      { "id": "T001-PLAYWRIGHT", "title": "Playwright 19/19 — all auth flows", "closed_note": "✅ Confirmed locally. Clerk org context, Authentik Shadow DOM, provider isolation via DB." },
+      { "id": "T-007-SIGNOUT", "title": "Authentik sign-out button in DashboardHeader", "closed_note": "✅ a3b14a2 — no more stranded sessions on provider switch." },
+      { "id": "T-007-T-010", "title": "T-007 + T-010 provider switching", "closed_note": "✅ Live." },
+      { "id": "MCP-V106", "title": "MCP server v1.0.6 crash fixes", "closed_note": "✅ 637f8c4." },
       { "id": "T-005-T-008", "title": "First Authentik login auto-creates org", "closed_note": "✅ 81c550f." },
       { "id": "T-004", "title": "Auth provider instant switching via DB", "closed_note": "✅ Live." }
     ]
   },
   "architecture_notes_for_agents": [
-    "MCP server v1.0.6 is stable. Check /status for health: https://mcp.joefuentes.me/status",
-    "T-001 runs via: node scripts/t001-run.js (cwd: /repo-observer). Currently 17/18.",
-    "E2 (smoke badge) clears automatically after next real src/ deploy + passing smoke run.",
-    "smokeTestRuns skipping on ci: commits = CORRECT. Not a bug.",
-    "getAuthProvider() must return Promise<IAuthProvider> — never alias to getActiveProvider.",
-    "Coolify SaaS UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP UUID: a1fr37jiwehxbfqp90k4cvsw.",
-    "Ignore all QA_REPORT and BUILD_LOG entries from before 2026-05-08T00:00Z — they reflect MCP outage confusion."
+    "Playwright 19/19 locally. Use playwright.local.config.ts with /usr/lib/chromium/chromium.",
+    "switchToProvider() writes directly to DB — no admin API auth needed. PG_CONNECTION_STRING required.",
+    "clerkSignIn() sets active org via setActive({session, organization:'org_3DOdRcnABqYWyilVRsqOSMUmKMj'}) + page.reload().",
+    "Authentik form uses Shadow DOM — getByLabel() not input[name=...]. Multi-step: username→Enter→password→Enter.",
+    "t001-run.js E2 badge failure = expected until smoke passes. Not a regression.",
+    "DB auth_provider = clerk (correct). Do not change without Manager instruction.",
+    "Run command pattern for Playwright: write runner script, fire with &, poll /tmp/playwright-result.json.",
+    "NEVER run npx playwright test directly — run_command exits non-zero on test failure and tool throws."
   ]
 }
