@@ -90,6 +90,22 @@ jobs:
       - name: Trigger Coolify deployment
         if: steps.deploy.outputs.committed == 'true'
         run: |
+          # Wait until no Coolify deployment is in progress before triggering.
+          # This prevents concurrent deploys from colliding on Docker container names.
+          echo "Checking for in-progress Coolify deployments..."
+          for i in $(seq 1 24); do
+            STATUS=$(curl -sf \
+              "https://mcp.joefuentes.me/deploy-status?uuid=tuk1rcjj16vlk33jrbx3c9d3" \
+              -H "Authorization: Bearer ${{ secrets.MCP_BEARER_TOKEN }}" \
+              | node -e "let d='';process.stdin.on('data',c=>d+=c).on('end',()=>{try{console.log(JSON.parse(d).status)}catch{console.log('unknown')}})" 2>/dev/null || echo "unknown")
+            echo "Attempt $i: status=$STATUS"
+            if [ "$STATUS" = "idle" ] || [ "$STATUS" = "unknown" ]; then
+              break
+            fi
+            echo "Deploy in progress, waiting 15s..."
+            sleep 15
+          done
+
           RESPONSE=$(curl -s -w "\nHTTP_STATUS:%{http_code}" -X POST \
             "https://mcp.joefuentes.me/trigger-deploy?uuid=tuk1rcjj16vlk33jrbx3c9d3" \
             -H "Authorization: Bearer ${{ secrets.MCP_BEARER_TOKEN }}" \
