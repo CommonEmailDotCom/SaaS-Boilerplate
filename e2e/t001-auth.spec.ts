@@ -126,6 +126,19 @@ async function authentikSignIn(page: Page): Promise<void> {
     const errorParam = new URL(finalUrl).searchParams.get('error') || 'unknown';
     throw new Error(`Authentik OAuth error: ${errorParam}`);
   }
+
+  // Switch the active provider to 'authentik' in the DB so the app recognises
+  // the Authentik session. getSession() checks getActiveProvider() — if the DB
+  // still says 'clerk', the dashboard returns null for Authentik sessions.
+  const switchResp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
+    data: JSON.stringify({ provider: 'authentik' }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (switchResp.status() !== 200) {
+    throw new Error(`Failed to switch provider to authentik: ${switchResp.status()}`);
+  }
+  // Wait for 5s cache TTL to expire
+  await page.waitForTimeout(6000);
 }
 
 // ---------------------------------------------------------------------------
@@ -237,6 +250,14 @@ test.describe('Test C — Dashboard under Authentik', () => {
 
 test.describe('Test D — Switch Authentik→Clerk', () => {
   test('D1: Sign-out stays on cuttingedgechat.com', async ({ page }) => {
+    // Switch provider back to clerk — sign in as Authentik first to get auth context
+    await authentikSignIn(page);
+    // authentikSignIn already switched to 'authentik' — now switch back to 'clerk'
+    await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
+      data: JSON.stringify({ provider: 'clerk' }),
+      headers: { 'Content-Type': 'application/json' },
+    });
+    await page.waitForTimeout(6000); // wait for cache TTL
     await page.request.post(`${BASE_URL}/api/auth/signout`, {
       headers: { 'Content-Type': 'application/json' },
     });

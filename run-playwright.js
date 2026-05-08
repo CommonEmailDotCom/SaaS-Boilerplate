@@ -4,10 +4,8 @@ const T = process.env.COOLIFY_API_TOKEN;
 const U = process.env.COOLIFY_URL || 'http://coolify:8080';
 
 async function getEnv(uuid, key) {
-  const envs = await fetch(U+'/api/v1/applications/'+uuid+'/envs', {
-    headers: {'Authorization': 'Bearer '+T}
-  }).then(r => r.json());
-  return envs.find(e => e.key === key)?.real_value || '';
+  const envs = await fetch(U+'/api/v1/applications/'+uuid+'/envs', {headers:{'Authorization':'Bearer '+T}}).then(r=>r.json());
+  return envs.find(e=>e.key===key)?.real_value||'';
 }
 
 async function main() {
@@ -20,15 +18,19 @@ async function main() {
     AUTHENTIK_TEST_PASSWORD: 'Hbj6ZVk5fHXhstz',
   };
 
-  // Run just the three failing tests
-  const cmd = 'npx playwright test e2e/t001-auth.spec.ts --grep "B3|C2|C4" --config=playwright.local.config.ts --project=chromium';
+  // Pull latest
+  try { execSync('git pull --rebase origin main', { cwd: '/repo-manager', stdio: 'pipe' }); } catch(e) {}
+
+  const cmd = 'npx playwright test e2e/t001-auth.spec.ts --config=playwright.local.config.ts --project=chromium';
+  console.log('Running:', cmd);
+  console.log('Live SHA:', require('child_process').execSync('node -e "fetch(\'https://cuttingedgechat.com/api/version\').then(r=>r.json()).then(d=>process.stdout.write(d.sha))"').toString());
 
   let output, exitCode;
   try {
-    output = execSync(cmd, { cwd: '/repo-observer', env, timeout: 300000, stdio: 'pipe' }).toString();
+    output = execSync(cmd, { cwd: '/repo-manager', env, timeout: 600000, stdio: 'pipe' }).toString();
     exitCode = 0;
   } catch(e) {
-    output = (e.stdout ? e.stdout.toString() : '') + (e.stderr ? e.stderr.toString() : '');
+    output = (e.stdout?e.stdout.toString():'') + (e.stderr?e.stderr.toString():'');
     exitCode = e.status || 1;
   }
 
