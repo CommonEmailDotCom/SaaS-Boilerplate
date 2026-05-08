@@ -1,91 +1,70 @@
 {
-  "updated": "2026-05-07T14:45:00.113Z",
+  "updated": "2026-05-08T00:20:00Z",
   "sprint": "Auth Provider Switching — Phase 5: End-to-End Validation",
-  "project": "Cutting Edge Chat — https://cuttingedgechat.com",
-  "repo": "https://github.com/CommonEmailDotCom/SaaS-Boilerplate",
   "manager_assessment": {
-    "timestamp": "2026-05-07T14:45:00.113Z",
-    "overall_status": "🔴 TWO URGENT ISSUES: (1) MCP server never redeployed after b5fc42f — Observer blocked for 2+ cycles on identical blocker. (2) Smoke test failing at 51505d4 — not investigated. Operator has not shipped TASK-H. Both agents stuck.",
+    "timestamp": "2026-05-08T00:20:00Z",
+    "overall_status": "🟢 MCP outage resolved. All prior blocked statuses were caused by MCP crash bugs, not real code issues. Resume normal work. Operator: ship a real src/ change. Observer: run T-001.",
     "key_events": [
-      "MCP server (a1fr37jiwehxbfqp90k4cvsw) NOT redeployed after b5fc42f commit — Operator must trigger this NOW",
-      "Smoke run 25500900931 at SHA 51505d4 shows FAILING — Operator must investigate",
-      "Observer blocked identically for Cycles 41 and 42 — same two blockers, no progress",
-      "Operator has not shipped TASK-H — BUILD_LOG has no entry since b5fc42f",
-      "TASK-F and TASK-E confirmed done per Owner Decisions"
+      "MCP v1.0.6 deployed — per-connection Server factory fixes the concurrent connection crash",
+      "pg.Pool replaces pg.Client — no more zombie Postgres connections",
+      "All 5 MCP fixes live as of commit 637f8c4 (owner-committed)",
+      "Team files reset — all stale confusion from today's outage cleared",
+      "Live SHA still 51505d4 — needs a real src/ deploy to update"
     ],
     "active_blockers": [
-      "MCP server stale — Operator must call coolify_trigger_deploy(a1fr37jiwehxbfqp90k4cvsw) this cycle",
-      "Smoke test failing at 51505d4 — must investigate before assuming stable",
-      "T-001 E2 — smoke badge may clear once MCP redeployed and smoke passes"
+      "No real blockers — MCP is healthy, build is healthy, tools are working"
     ]
   },
   "columns": {
     "in_progress": [
       {
-        "id": "MCP-REDEPLOY",
-        "title": "Redeploy MCP server — UUID a1fr37jiwehxbfqp90k4cvsw",
-        "priority": "CRITICAL",
-        "assigned_to": "operator",
-        "manager_instruction": "This is NOT a human task. Use coolify_trigger_deploy tool with UUID a1fr37jiwehxbfqp90k4cvsw. The orchestrator fix b5fc42f is committed but the container is running stale code. Observer has been blocked for 2 cycles because of this. Do it NOW as step 1 of your cycle. Log result in BUILD_LOG.md."
-      },
-      {
-        "id": "SMOKE-INVESTIGATE",
-        "title": "Investigate smoke test failure at SHA 51505d4",
-        "priority": "CRITICAL",
-        "assigned_to": "operator",
-        "manager_instruction": "Observer flagged smoke run 25500900931 showing 'failing' at 51505d4. Use run_command to check smoke test logs or curl the live app endpoints to verify health. Determine: transient failure or app-level regression. Log findings in BUILD_LOG.md. If regression, identify and fix immediately."
-      },
-      {
         "id": "TASK-H",
-        "title": "Tech debt pass — overdue, no entry in BUILD_LOG since b5fc42f",
+        "title": "Tech debt pass — ship a real src/ change to trigger deploy",
         "priority": "high",
         "assigned_to": "operator",
-        "manager_instruction": "After MCP-REDEPLOY and SMOKE-INVESTIGATE are done. Pick one concrete improvement: dead code removal, unhandled promises, TypeScript any types, missing validation. Use write_file and git_commit_push directly. Log in BUILD_LOG.md. Do NOT skip this again."
+        "manager_instruction": "Pick one concrete src/ improvement: dead code, TypeScript any types, unhandled promises, missing validation, or error handling gaps. Use write_file + git_commit_push. This triggers set-version → Coolify → smoke test → clears E2 on T-001. Log in BUILD_LOG.md."
       },
       {
-        "id": "T-001-DISPATCH",
-        "title": "T-001 — run after MCP redeploy, get to 18/18",
+        "id": "T-001-RUN",
+        "title": "T-001 — run and report this cycle",
         "priority": "high",
         "assigned_to": "observer",
-        "manager_instruction": "Wait for Operator to confirm MCP redeploy complete, then use run_command to execute scripts/t001-run.js. The script is in the repo — it will be available once the container picks up latest code. Report full results in QA_REPORT.md. When 18/18 passes, declare T-001 FULL PASS."
+        "manager_instruction": "Run: node scripts/t001-run.js (cwd: /repo-observer). Report full output in QA_REPORT.md. Expected: 17/18. E2 (smoke badge) will clear once Operator's deploy goes live. If 18/18 after deploy, declare T-001 FULL PASS."
       }
     ],
     "ready_to_trigger": [
       {
-        "id": "T-007-T-010-VALIDATE",
-        "title": "Formally validate T-007 + T-010 after T-001 18/18",
+        "id": "T-001-GATE",
+        "title": "After T-001 18/18 — begin T-006, T-009, T-002",
         "priority": "high",
         "assigned_to": "operator",
-        "manager_instruction": "Both are live as a815e93. After Observer declares T-001 PASS, log formal validation in BUILD_LOG.md."
+        "manager_instruction": "Once Observer declares T-001 FULL PASS, begin T-006 (Stripe under Authentik). T-009 and T-002 follow."
       }
     ],
     "backlog": [
-      { "id": "T-006", "title": "Stripe checkout under Authentik", "priority": "high", "manager_instruction": "After T-001 18/18." },
-      { "id": "T-009", "title": "Sign-out redirect on provider switch-back", "priority": "medium", "manager_instruction": "After T-001 18/18." },
-      { "id": "T-002", "title": "Smoke test SHA polling verification", "priority": "high", "manager_instruction": "After T-001 18/18." }
+      { "id": "T-006", "title": "Stripe checkout under Authentik session", "priority": "high" },
+      { "id": "T-009", "title": "Sign-out redirect on provider switch-back", "priority": "medium" },
+      { "id": "T-002", "title": "Smoke test SHA polling verification", "priority": "high" },
+      { "id": "MCP-WATCHDOG", "title": "Orchestrator startup health watchdog + self-healing redeploy", "priority": "medium", "manager_instruction": "Planned for next session. Orchestrator pings /healthz every 5min, triggers coolify redeploy if 3 consecutive failures. Also: /status reset coordination lock." }
     ],
     "done": [
-      { "id": "OPERATOR-MCP-TOOLS", "title": "Give Operator real MCP tool access", "closed_note": "✅ b5fc42f — orchestrator passes mcp_servers to Operator API call." },
-      { "id": "TASK-F", "title": "Fix smokeStatus fs.readFileSync", "closed_note": "✅ afa1be1 — GitHub API fetch." },
+      { "id": "MCP-V106", "title": "MCP server v1.0.6 — crash fixes", "closed_note": "✅ 637f8c4 — per-connection Server, pg.Pool, uncaughtException, /status endpoint." },
+      { "id": "T-007-T-010", "title": "T-007 + T-010 deployed", "closed_note": "✅ Live as a815e93." },
       { "id": "TASK-E", "title": "console.error in getActiveProvider catch", "closed_note": "✅ 51505d4." },
-      { "id": "CI-SPAM-FIX", "title": "agent_sync/ commits no longer trigger CI", "closed_note": "✅ be52ee6 — paths-ignore on set-version + typecheck." },
-      { "id": "SMOKE-CONCURRENCY-FIX", "title": "Smoke test no longer cancelled by ci: commits", "closed_note": "✅ 0d7c15e." },
-      { "id": "T-007-T-010-DEPLOYED", "title": "T-007 + T-010 deployed", "closed_note": "✅ a815e93." },
+      { "id": "TASK-F", "title": "smokeStatus GitHub API fetch", "closed_note": "✅ afa1be1." },
+      { "id": "CI-FIXES", "title": "paths-ignore + smoke concurrency fix", "closed_note": "✅ be52ee6 + 0d7c15e." },
+      { "id": "MCP-TOOLS-ALL-AGENTS", "title": "All 3 agents have MCP tools with fallback", "closed_note": "✅ Manager, Operator, Observer all have tools + graceful fallback." },
       { "id": "T-005-T-008", "title": "First Authentik login auto-creates org", "closed_note": "✅ 81c550f." },
-      { "id": "T-004", "title": "Auth provider instant switching via DB", "closed_note": "✅ Live." },
-      { "id": "COOLIFY-AUTO-DEPLOY-OFF", "title": "Coolify auto-deploy disabled", "closed_note": "✅ Owner confirmed." },
-      { "id": "INFRA-001", "title": "Weekly Docker prune cron", "closed_note": "✅ Active." }
+      { "id": "T-004", "title": "Auth provider instant switching via DB", "closed_note": "✅ Live." }
     ]
   },
   "architecture_notes_for_agents": [
-    "Coolify auto-deploy is OFF — only set-version.yml triggers deploys on real src/ commits.",
-    "observer-qa.yml is DELETED — T-001 runs on MCP server via run_command (Hard Rule #13).",
-    "smokeTestRuns and setVersionRuns skipping on ci: commits is CORRECT (Hard Rule #10).",
-    "🚨 getAuthProvider() must return Promise<IAuthProvider> — NEVER alias to getActiveProvider (returns string). This has broken the build 6 times.",
-    "getSession() must return Promise<AuthSession | null> — normalized, not raw Clerk/next-auth types.",
-    "Middleware: Edge runtime — only import from provider-constant.ts.",
+    "MCP server v1.0.6 is stable. Check /status for health: https://mcp.joefuentes.me/status",
+    "T-001 runs via: node scripts/t001-run.js (cwd: /repo-observer). Currently 17/18.",
+    "E2 (smoke badge) clears automatically after next real src/ deploy + passing smoke run.",
+    "smokeTestRuns skipping on ci: commits = CORRECT. Not a bug.",
+    "getAuthProvider() must return Promise<IAuthProvider> — never alias to getActiveProvider.",
     "Coolify SaaS UUID: tuk1rcjj16vlk33jrbx3c9d3. MCP UUID: a1fr37jiwehxbfqp90k4cvsw.",
-    "Operator has MCP tools: run_command, write_file, git_commit_push, coolify_trigger_deploy. Use them.",
-    "agent_sync/ and .md changes do NOT trigger CI — paths-ignore is configured."
+    "Ignore all QA_REPORT and BUILD_LOG entries from before 2026-05-08T00:00Z — they reflect MCP outage confusion."
   ]
 }

@@ -1,6 +1,5 @@
 # CLAUDE_TEAM.md
 > **All agents must read this file before doing any work, every cycle.**
-> The Manager keeps "Current Objectives" up to date. Operator and Observer treat this as ground truth.
 
 ---
 
@@ -19,58 +18,60 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 | Coolify SaaS UUID | `tuk1rcjj16vlk33jrbx3c9d3` |
 | Coolify Auto-Deploy | **OFF** — deploys via `set-version.yml` only |
 | Coolify MCP UUID | `a1fr37jiwehxbfqp90k4cvsw` |
-| Coolify Authentik UUID | `c1x75zw73bd2x23ug012yj0z` (service) |
+
+---
+
+## Current State (as of 2026-05-08T00:20Z)
+
+| Item | Status |
+|---|---|
+| Live SHA | `51505d4` |
+| MCP server | ✅ v1.0.6 — stable, all crash bugs fixed |
+| T-001 | 🟡 17/18 — E2 (smoke badge) clears on next real deploy |
+| Smoke badge | 🔴 Stale — clears on next real `src/` deploy |
+| T-007 + T-010 | ✅ Live |
+| Build | ✅ Healthy at `51505d4` |
+
+**The MCP outage today caused a lot of confusion and stale reports. Ignore any inbox/QA entries from before 2026-05-08T00:00Z — they reflect broken tool state, not real blockers.**
 
 ---
 
 ## Agent Roles
 
 ### 🧠 Manager — commits as "AI Manager for Cutting Edge Chat"
-- Reads all `agent_sync/` files every cycle
-- Updates `Current Objectives` in this file every cycle
-- Updates `agent_sync/TASK_BOARD.json` with prioritized instructions
-- Writes to agent inboxes when direct communication is needed
-- Does **not** write code or run tests
+- Updates `Current Objectives` every cycle
+- Updates `TASK_BOARD.json` and agent inboxes
+- Uses `run_command` to VERIFY before making claims
 
 ### 🔧 Operator — commits as "AI DevOps for Cutting Edge Chat"
-- Reads this file + `agent_sync/OPERATOR_INBOX.md` before every cycle
-- **Has MCP tools available** — use them directly (see Tools section below)
-- Implements code changes, infra config, and deployments
-- Logs all work in `agent_sync/BUILD_LOG.md`
-- T-001 deploy gate is LIFTED — deploys freely unless Manager says otherwise
+- Implements code, manages infra
+- Updates `BUILD_LOG.md` every cycle
+- Has MCP tools — use them directly
 
 ### 🔍 Observer — commits as "AI QA for Cutting Edge Chat"
-- Reads this file + `agent_sync/OBSERVER_INBOX.md` before every cycle
-- Runs tests against the live app every cycle
-- Logs everything in `agent_sync/QA_REPORT.md` — always adds a new timestamped entry
-- Escalates bugs immediately
+- Runs T-001 via `node scripts/t001-run.js` every cycle
+- Updates `QA_REPORT.md` every cycle
+- Has MCP tools — verify before reporting
 
 ---
 
 ## Agent MCP Tools (All Three Agents)
 
-**All agents have MCP tools. Use them to verify state before reporting or acting.**
+All agents have tools. **VERIFY BEFORE CLAIMING.**
 
-| Tool | What it does |
+| Tool | Use |
 |---|---|
-| `run_command` | Run any shell command (git, node, curl, ls, etc.) |
-| `write_file` | Write a file to the repo |
-| `read_file` | Read a file from the repo |
-| `git_commit_push` | Stage all changes, commit, and push to GitHub |
-| `git_pull` | Pull latest from main |
-| `coolify_trigger_deploy` | Trigger a Coolify deployment |
-| `query_postgres` | Run SQL against the connected database |
+| `run_command` | Shell commands, curl, ls, git |
+| `write_file` | Write files to repo |
+| `read_file` | Read files from repo |
+| `git_commit_push` | Commit and push |
+| `git_pull` | Pull latest |
+| `coolify_trigger_deploy` | Trigger Coolify deploy |
+| `query_postgres` | Run SQL |
 
-**Rule: VERIFY BEFORE CLAIMING.** Before writing that something is broken, missing, or blocked — use `run_command` to check it directly.
-- Before "script not found": `ls /repo-observer/scripts/`
-- Before "app is down": `curl -s https://cuttingedgechat.com/api/version`
-- Before "deploy failed": check Coolify deployment logs
+**If MCP tools fail** (auth error, connection error): fall back to plain JSON completion and commit the heartbeat. Do NOT halt the cycle. Do NOT spiral into confusion about whether tools exist — they do, they may just be temporarily unavailable.
 
-**Operator workflow:** Use tools for actual work, return JSON summary with `file_changes: []`
-**Observer workflow:** Use tools to verify test results and fix test scripts, return JSON with `qa_report`
-**Manager workflow:** Use tools to verify infra claims, return JSON with file updates
-
-**Fallback:** If MCP auth fails, all agents degrade gracefully to plain JSON completion.
+**MCP server health:** `https://mcp.joefuentes.me/status` (public, no auth needed)
 
 ---
 
@@ -89,122 +90,93 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 
 ## Owner Decisions (Locked)
 
-| Decision | Answer |
+| Decision | Status |
 |---|---|
-| Authentik first login | Auto-create org. First user gets `role=admin`. |
-| Long-term auth strategy | Keep **both** Clerk and Authentik permanently. Clerk is not legacy. |
-| Provider switcher access | Admin only. T-007 must not ship before T-010. |
-| Test credentials | Google OAuth in CI is blocked by bot detection. Use session injection. |
-| T-001 runtime | MCP server via `run_command` — `scripts/t001-run.js` |
-| observer-qa.yml | **DELETED permanently.** Do not recreate. Hard Rule #13. |
-| Coolify auto-deploy | **OFF** — set-version.yml triggers deploys only |
-| set-version.yml UUID | **Correct as-is** — `tuk1rcjj16vlk33jrbx3c9d3`. Do NOT modify. |
-| TASK-F | **DONE** — smokeStatus reads via GitHub API (afa1be1). Not a blocker. |
-| TASK-E | **DONE** — console.error in getActiveProvider catch (51505d4). |
-| T-007 + T-010 | **LIVE** as `a815e93`. Deploy gate lifted. |
-| Operator MCP tools | **ENABLED** — Operator can call run_command, write_file, git_commit_push, coolify_trigger_deploy directly. "Requires human intervention" is never an excuse for tasks these tools can handle. |
+| Clerk is permanent | Both Clerk and Authentik stay forever |
+| Provider switcher | Admin only — T-007 never before T-010 |
+| Test credentials | Session injection only — Google OAuth blocked in CI |
+| T-001 runtime | `scripts/t001-run.js` via `run_command` on MCP server |
+| observer-qa.yml | **DELETED** — Hard Rule #13 |
+| Coolify auto-deploy | **OFF** |
+| T-007 + T-010 | **LIVE** — deploy gate lifted |
+| MCP server | **v1.0.6** — per-connection Server, pg.Pool, uncaughtException handler |
 
 ---
 
-## 🚨 Hard Rules (All Agents)
+## 🚨 Hard Rules
 
-1. **Clerk is permanent.** Never remove, degrade, or treat Clerk as legacy.
-2. **Edge runtime.** `middleware.ts` — only import from `provider-constant.ts`. No DB or Node.js imports.
-3. **trustHost: true** must remain in next-auth config.
+1. **Clerk is permanent.** Never remove or degrade.
+2. **Edge runtime.** `middleware.ts` — only import from `provider-constant.ts`.
+3. **trustHost: true** stays in next-auth config.
 4. **T-007 never ships before T-010.**
 5. **Cache TTL.** Wait >6s after provider switch before asserting state.
-6. **Deploy gate LIFTED.** T-007 + T-010 are live. T-001 tests are Observer's ongoing work — not a gate on Operator deployments.
-7. **T-003 is high load.** Never run without explicit Manager instruction.
-8. **BUILD_LOG.md required.** Operator updates every cycle — no exceptions.
-9. **Secret names are locked.** Do not rename CI secrets without Manager approval.
-10. **CI run interpretation.** `smokeTestRuns`, `setVersionRuns`, typecheck runs skipping on `ci:` commits is CORRECT. Only `latestObserverQaDetail` is relevant to T-001 status.
-11. **🚨 auth-provider/index.ts — #1 BUILD BREAKER (has broken build 6+ times):**
-    - `getAuthProvider()` MUST be a function returning `Promise<IAuthProvider>` — NEVER alias to `getActiveProvider`
-    - `export const getAuthProvider = getActiveProvider` is **WRONG** — it returns a string, not IAuthProvider
-    - `getSession()` MUST return `Promise<AuthSession | null>` — not raw Clerk/next-auth types
-    - Never gut, replace, or restructure this file — additive changes only
-    - Always use: `authentikAuth()` not `getServerSession`, `@/libs/DB` not `@/libs/db`, `@/models/Schema` not `@/libs/schema`
-12. **Google OAuth permanently blocked in CI.** Session injection only.
-13. **observer-qa.yml is deleted.** Do not recreate. T-001 runs on MCP server.
-14. **Operator has MCP tools.** "Requires human intervention" is only valid for things that require physical access to infrastructure (e.g. Hetzner SSH). Everything else — use the tools.
-15. **set-version.yml UUID is correct** — `tuk1rcjj16vlk33jrbx3c9d3`. Do not modify set-version.yml.
-16. **agent_sync/ and .md commits do NOT trigger CI.** paths-ignore is configured. Only `src/`, `migrations/`, `package.json` changes trigger typecheck → set-version → deploy.
+6. **Deploy gate LIFTED.** T-001 is Observer's work — not a gate on Operator.
+7. **T-003 never without Manager instruction.**
+8. **BUILD_LOG.md required** every Operator cycle.
+9. **Secret names locked.** No renames without Manager approval.
+10. **CI skips are correct.** `smokeTestRuns`/`setVersionRuns` skipping on `ci:` = expected. Only `latestObserverQaDetail` is T-001 signal.
+11. **🚨 auth-provider/index.ts is fragile** — broken 6+ times:
+    - `getAuthProvider()` must return `Promise<IAuthProvider>` — NEVER alias to `getActiveProvider`
+    - `getSession()` must return `Promise<AuthSession | null>`
+    - Use `authentikAuth()` not `getServerSession`
+    - Use `@/libs/DB` not `@/libs/db`, `@/models/Schema` not `@/libs/schema`
+    - Never gut this file
+12. **Google OAuth blocked in CI.** Session injection only.
+13. **observer-qa.yml is deleted.** Do not recreate.
+14. **MCP tools exist.** "Requires human intervention" = Hetzner SSH only.
+15. **set-version.yml UUID is correct.** Do not touch it.
+16. **agent_sync/ and .md changes don't trigger CI.**
 
 ---
 
 ## Architecture Cheatsheet
 
 ```
-src/libs/auth-provider/
-  provider-constant.ts   ← Edge-safe, middleware only
-  index.ts               ← FRAGILE — see Hard Rule #11. getActiveProvider(), getAuthProvider(),
-                            getSession(), setActiveProvider() must all remain exported correctly.
-  clerk.ts / authentik.ts ← Provider implementations
+src/libs/auth-provider/index.ts  ← FRAGILE — see Hard Rule #11
+src/middleware.ts                 ← Edge runtime only
+src/libs/auth-nextauth.ts         ← next-auth v5, trustHost: true
 
-src/middleware.ts         ← Always runs clerkMiddleware(), checks both sessions
-src/libs/auth-nextauth.ts ← next-auth v5, Drizzle adapter, trustHost: true
-```
+Deploy pipeline:
+  src/ commit → typecheck → set-version (writes SHA) → Coolify → smoke test
 
-**Deploy pipeline:**
-```
-real src/ commit
-  → typecheck.yml (passes)
-  → set-version.yml (writes SHA to .env.production, triggers Coolify)
-  → Coolify builds Docker image with SHA baked in
-  → smoke-test.yml polls for new SHA to go live
-  → smoke tests run
-```
-
-**T-001 Test Architecture:**
-```
-MCP server (a1fr37jiwehxbfqp90k4cvsw)
-  scripts/t001-run.js  ← session injection tests, 17/18 passing
-  orchestrator.js      ← fetchLiveData uses GitHub API for smokeStatus ✅ (TASK-F done)
-  Coolify env vars     ← All 5 secrets set ✅
-Observer calls run_command → writes results to agent_sync/QA_REPORT.md
+T-001:
+  Observer runs: node scripts/t001-run.js (in /repo-observer)
+  Results go to: agent_sync/QA_REPORT.md
+  Currently: 17/18 — E2 clears on next smoke pass
 ```
 
 ---
 
 ## Current Objectives
-*Updated by Manager — 2026-05-07T14:45:00Z*
 
-### 🔴 URGENT — MCP Server Not Redeployed After b5fc42f
+### 🟢 STABLE — Resume normal work
 
-The orchestrator fix (b5fc42f) was committed but **the MCP server was never redeployed**. Observer still gets `script not found at /repo-observer/scripts/t001-run.js` because the running container is stale. This is NOT a human task — Operator must call `coolify_trigger_deploy` with UUID `a1fr37jiwehxbfqp90k4cvsw` **this cycle**.
+The MCP outage from 2026-05-07 is resolved. MCP v1.0.6 is running with the per-connection Server fix. All prior "blocked" statuses from today were caused by the tool outage — not real code problems.
 
-### 🔴 URGENT — Smoke Test Failing at 51505d4
+**Operator this cycle:**
+- Ship a real `src/` change (TASK-H tech debt) to trigger a fresh deploy
+- This will update the live SHA, run the smoke test, and clear E2 on T-001
 
-Observer flagged smoke run `25500900931` showing `failing` at SHA `51505d4`. Operator must investigate — check logs, determine if app-level regression or transient. Do not ignore.
+**Observer this cycle:**
+- Run T-001 via `node scripts/t001-run.js`
+- Expected: 17/18. If E2 clears after Operator's deploy, declare 18/18 PASS.
 
-### 🟡 T-001 — Stuck at 17/18 (MCP not redeployed)
-
-Once Operator redeploys MCP UUID, Observer can re-run T-001. Expected: 17/18 minimum, possibly 18/18 if E2 smoke badge has cleared.
-
-### 🟠 Queued (after T-001 18/18)
+**After T-001 18/18:**
 - T-006: Stripe checkout under Authentik
 - T-009: Sign-out redirect on provider switch-back
 - T-002: Smoke test SHA polling verification
 
-### ⚪ Backlog
-- T-003: High load chaos — never without Manager instruction
-
 ---
 
-## Recent Incidents
+## Incident Log
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-07 | Smoke test failing at 51505d4 (run 25500900931) | 🔴 Under investigation |
-| 2026-05-07 | MCP server not redeployed after b5fc42f — Observer blocked 2+ cycles | 🔴 Operator must trigger coolify_trigger_deploy a1fr37jiwehxbfqp90k4cvsw |
-| 2026-05-07 | Operator had no MCP tools in cron context | ✅ Fixed — orchestrator now passes mcp_servers to Operator API call (b5fc42f) |
-| 2026-05-07 | getAuthProvider() alias broke build (6th time) | ✅ Fixed 51505d4. Hard Rule #11 updated. |
-| 2026-05-07 | TASK-F (smokeStatus fs.readFileSync) | ✅ Fixed afa1be1 — GitHub API fetch |
-| 2026-05-07 | TASK-E (console.error in getActiveProvider) | ✅ Live at 51505d4 |
-| 2026-05-07 | Coolify cleanup locked server | ✅ Jitsi/saas-starter stopped. 4.3GB RAM free. |
-| 2026-05-07 | CI spam — chore/fix commits triggering builds | ✅ Fixed be52ee6 — paths-ignore on set-version + typecheck |
-| 2026-05-07 | Smoke test always cancelled by cron ci: commits | ✅ Fixed 0d7c15e — concurrency group scoped to workflow_run ID |
-| 2026-05-07 | T-001 never passing — false baseline (run 25481415030) | ✅ Corrected — was set-version run, not T-001 |
-| 2026-05-07 | Observer-qa paths: filter blocking all push-triggered runs | ✅ Fixed d4fde11 — workflow_dispatch only |
-| 2026-05-07 | Operator double syncToMain wiping file writes | ✅ Fixed orchestrator 8bc2288 |
-| 2026-05-07 | CRITICAL-05: Authentik cross-domain state cookie 401 | ✅ Fixed and validated |
+| 2026-05-08 | MCP server crashed on concurrent connections all day | ✅ Fixed v1.0.6 — per-connection Server factory (createMcpServer) |
+| 2026-05-08 | pg.Client zombie after Postgres drop | ✅ Fixed v1.0.6 — replaced with pg.Pool |
+| 2026-05-08 | Agents confused by stale inboxes during outage | ✅ All team files reset this session |
+| 2026-05-07 | getAuthProvider() alias broke build (6th time) | ✅ Fixed 51505d4, Hard Rule #11 updated |
+| 2026-05-07 | CI spam from chore/fix commits | ✅ Fixed be52ee6 — paths-ignore |
+| 2026-05-07 | Smoke test cancelled by ci: commits | ✅ Fixed 0d7c15e — concurrency group |
+| 2026-05-07 | T-001 never passing — false baseline | ✅ Corrected |
+| 2026-05-07 | TASK-E, TASK-F | ✅ Done |

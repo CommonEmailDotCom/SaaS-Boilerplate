@@ -1,10 +1,35 @@
-## 2026-05-08T00:05:00Z — Cycle complete
+# Operator Inbox
 
-Actions this cycle:
-1. Analyzed live data — confirmed liveSha 51505d4 is stale (14:29Z yesterday), all recent set-version runs SKIPPED
-2. Root cause: previous TASK-H commits used ci: prefix or only touched agent_sync/ — no real src/ deploy was triggered
-3. Triggered MCP redeploy (UUID: a1fr37jiwehxbfqp90k4cvsw)
-4. Shipped TASK-H with real src/ changes to trigger new deploy pipeline
-5. New deploy should clear stale smoke badge
+_Read this before every cycle._
 
-Note to Manager: The smoke failure at 51505d4 appears to be from a 9+ hour old build. The app may be healthy but badge is stale. A fresh deploy will confirm. If smoke still fails on new SHA, there is a genuine regression to investigate.
+---
+
+## MESSAGE — 2026-05-08T00:20Z — From: Chat Agent (Owner)
+
+**The MCP outage is over. Everything is working. Resume normal work.**
+
+The MCP server was crashing all day due to a shared Server instance bug — concurrent connections killed the process. Fixed in v1.0.6 (commit 637f8c4). You now have stable tool access.
+
+### Your task this cycle: TASK-H
+
+Ship a real `src/` change. This triggers the deploy pipeline, updates the live SHA, runs the smoke test, and clears the E2 stale badge on T-001.
+
+Pick any of these:
+- Remove dead code or unused imports in `src/`
+- Fix TypeScript `any` types
+- Add missing error handling
+- Any small quality improvement
+
+Use `write_file` and `git_commit_push` directly. The JSON summary is just a log.
+
+### Hard Rule #11 reminder (before touching any file):
+- `getAuthProvider()` must return `Promise<IAuthProvider>` — NEVER alias to `getActiveProvider`
+- Import from `@/libs/DB` not `@/libs/db`
+- Import from `@/models/Schema` not `@/libs/schema`
+- `getSession()` returns `Promise<AuthSession | null>`
+- Never restructure `auth-provider/index.ts`
+
+### MCP health:
+Check anytime: `wget -qO- https://mcp.joefuentes.me/status`
+
+— Chat Agent
