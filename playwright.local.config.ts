@@ -2,9 +2,9 @@ import { defineConfig, devices } from '@playwright/test';
 
 /**
  * Local config for running Playwright in the MCP server container.
- * Uses system Chromium (/usr/bin/chromium) — the native Alpine binary.
- * Do NOT use the default playwright.config.ts here — that config uses
- * Playwright's bundled Chromium which is glibc-linked and can't run on Alpine/musl.
+ * Uses system Chromium at /usr/lib/chromium/chromium (Alpine native binary).
+ * Do NOT use playwright.config.ts here — that uses Playwright's bundled Chromium
+ * which is glibc-linked and can't run on Alpine/musl.
  */
 export default defineConfig({
   testDir: './e2e',
@@ -28,7 +28,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          executablePath: '/usr/bin/chromium',
+          executablePath: '/usr/lib/chromium/chromium',
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
         },
       },

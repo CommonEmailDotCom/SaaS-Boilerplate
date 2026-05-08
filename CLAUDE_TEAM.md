@@ -82,7 +82,7 @@ run_command: npm ci
 cwd: /repo-observer
 ```
 
-**`playwright.local.config.ts`** — use this config for local runs. It points Playwright at the system Chromium (`/usr/bin/chromium-browser`) which is installed in the Docker image. The standard `playwright.config.ts` is for GitHub Actions.
+**`playwright.local.config.ts`** — use this config for local runs. It points Playwright at the system Chromium (`/usr/lib/chromium/chromium`) — the real binary path on Alpine. The symlink `/usr/bin/chromium` exists but Playwright requires the real path. The standard `playwright.config.ts` is for GitHub Actions.
 
 If `playwright.local.config.ts` doesn't exist in `/repo-observer`, create it:
 ```typescript
@@ -103,7 +103,7 @@ export default defineConfig({
       use: {
         ...devices['Desktop Chrome'],
         launchOptions: {
-          executablePath: '/usr/bin/chromium-browser',
+          executablePath: '/usr/lib/chromium/chromium',
           args: ['--no-sandbox', '--disable-setuid-sandbox'],
         },
       },
