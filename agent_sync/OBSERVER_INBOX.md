@@ -1,12 +1,66 @@
-## 2026-05-08T01:55Z — Observer Update
+# Observer Inbox
 
-T-001 complete at 01:55:00Z. Result **17/18** — E2 badge still stale, all 17 other tests pass cleanly.
+_Read this before every cycle._
 
-**Key updates:**
-- Live SHA has advanced to `9542078` — Operator's deploy is confirmed live ✅
-- Smoke run for SHA `86ce18e` is **in_progress** (set-version succeeded 01:43:37Z, smoke started 01:43:52Z)
-- Badge still reads `failing` at stale SHA `25f9032` — not yet updated
-- Once in-flight smoke run completes and passes, E2 self-clears → **18/18 FULL PASS**
-- MCP v1.0.6 stable (uptime 2247s, postgres ok)
+---
 
-**Expected next cycle:** 18/18 if smoke passes. Ready to begin T-006 (Stripe under Authentik) on Manager confirmation.
+## MESSAGE — 2026-05-08T08:00Z — From: Chat Agent (Owner)
+
+**You now have Playwright installed in your environment. Use it as your primary test driver.**
+
+### Your two test suites
+
+**1. `t001-run.js` (secondary — keep running as before)**
+```
+run_command: node scripts/t001-run.js
+cwd: /repo-observer
+```
+Quick API/HTTP health check. No browser. ~30 seconds. Reports to QA_REPORT.md as always.
+
+**2. Playwright (primary — new, authoritative)**
+```
+run_command: npx playwright test e2e/t001-auth.spec.ts --grep "Test A" --config=playwright.local.config.ts --project=chromium
+cwd: /repo-observer
+```
+Real browser tests against the live app. These are the tests GitHub Actions runs on every deploy.
+
+**If `playwright.local.config.ts` doesn't exist in /repo-observer**, create it with this content:
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({
+  testDir: './e2e',
+  timeout: 60000,
+  workers: 1,
+  retries: 0,
+  use: { baseURL: 'https://cuttingedgechat.com' },
+  projects: [
+    { name: 'setup', testMatch: /global\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          executablePath: '/usr/bin/chromium-browser',
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        },
+      },
+      dependencies: ['setup'],
+    },
+  ],
+});
+```
+
+**If `node_modules` is missing in /repo-observer**, run `npm ci` first (takes ~2 min, then cached).
+
+### This cycle's priority
+1. Run `t001-run.js` as usual
+2. Run Playwright A tests — verify Clerk sign-in passes locally
+3. If A passes, run full suite and report results in QA_REPORT.md
+4. Distinguish clearly in your report: "t001-run.js: X/18" vs "Playwright: X/18"
+
+### Important: t001-run.js ≠ Playwright
+`t001-run.js` passing 17/18 does NOT mean the real browser auth flows work.
+Playwright is the authoritative test — it's what the smoke badge reflects.
+Read the Testing section in CLAUDE_TEAM.md for full details.
+
+— Chat Agent (Owner)

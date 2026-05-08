@@ -1,5 +1,6 @@
 # CLAUDE_TEAM.md
 > **All agents must read this file before doing any work, every cycle.**
+> Last updated: 2026-05-08T08:00Z
 
 ---
 
@@ -21,18 +22,15 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 
 ---
 
-## Current State (as of 2026-05-08T00:20Z)
+## Current State (as of 2026-05-08T08:00Z)
 
 | Item | Status |
 |---|---|
-| Live SHA | `51505d4` |
-| MCP server | ✅ v1.0.6 — stable, all crash bugs fixed |
-| T-001 | 🟡 17/18 — E2 (smoke badge) clears on next real deploy |
-| Smoke badge | 🔴 Stale — clears on next real `src/` deploy |
-| T-007 + T-010 | ✅ Live |
-| Build | ✅ Healthy at `51505d4` |
-
-**The MCP outage today caused a lot of confusion and stale reports. Ignore any inbox/QA entries from before 2026-05-08T00:00Z — they reflect broken tool state, not real blockers.**
+| Live SHA | `7d78642` (approx) |
+| MCP server | ✅ v1.0.6 stable |
+| T-001 (scripts/t001-run.js) | 🟡 17/18 — E2 badge stale |
+| Playwright smoke test | 🔴 Failing — auth flow fixes in progress |
+| Build | ✅ Healthy |
 
 ---
 
@@ -49,85 +47,129 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 - Has MCP tools — use them directly
 
 ### 🔍 Observer — commits as "AI QA for Cutting Edge Chat" — runs at :40 every hour
-- Runs T-001 via `node scripts/t001-run.js` every cycle
+- Runs **BOTH** test suites every cycle (see Testing section below)
 - Updates `QA_REPORT.md` every cycle
 - Has MCP tools — verify before reporting
 
 ---
 
-## Agent MCP Tools (All Three Agents)
+## 🧪 Testing — TWO SEPARATE SUITES (Observer must understand both)
+
+### Suite 1: `scripts/t001-run.js` — Shallow HTTP/API checks
+**What it is:** A Node.js script that makes direct HTTP/API calls. No browser. Runs in ~30 seconds.
+**What it tests:** API endpoints respond correctly, Clerk session tokens can be obtained, Authentik OIDC discovery is healthy, route protection returns correct HTTP codes.
+**What it does NOT test:** Real browser sign-in flows, actual session establishment in the app, UI rendering.
+**How to run:**
+```
+run_command: node scripts/t001-run.js
+cwd: /repo-observer
+```
+**Current status:** 17/18 — E2 (smoke badge) fails when badge shows "failing"
+
+### Suite 2: Playwright e2e tests — Real browser tests
+**What it is:** Full Playwright browser automation against the live app. Runs in ~10 minutes.
+**What it tests:** Real sign-in flows (Clerk + Authentik), dashboard loads, session cookies, route protection with actual authenticated sessions.
+**This is the primary smoke test** — it runs automatically after every deploy via GitHub Actions.
+**How to run locally (Observer's main driver):**
+```
+run_command: npx playwright test e2e/t001-auth.spec.ts --grep "Test A" --config=playwright.local.config.ts --project=chromium
+cwd: /repo-observer
+```
+
+**IMPORTANT:** `node_modules` must be installed in `/repo-observer` for Playwright to work. The orchestrator's `ensureRepo()` handles this automatically — it runs `npm ci` on first use and when `package.json` changes. If `node_modules` is missing, run:
+```
+run_command: npm ci
+cwd: /repo-observer
+```
+
+**`playwright.local.config.ts`** — use this config for local runs. It points Playwright at the system Chromium (`/usr/bin/chromium-browser`) which is installed in the Docker image. The standard `playwright.config.ts` is for GitHub Actions.
+
+If `playwright.local.config.ts` doesn't exist in `/repo-observer`, create it:
+```typescript
+import { defineConfig, devices } from '@playwright/test';
+export default defineConfig({
+  testDir: './e2e',
+  timeout: 60000,
+  workers: 1,
+  retries: 0,
+  use: {
+    baseURL: 'https://cuttingedgechat.com',
+    ignoreHTTPSErrors: false,
+  },
+  projects: [
+    { name: 'setup', testMatch: /global\.setup\.ts/ },
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          executablePath: '/usr/bin/chromium-browser',
+          args: ['--no-sandbox', '--disable-setuid-sandbox'],
+        },
+      },
+      dependencies: ['setup'],
+    },
+  ],
+});
+```
+
+**Required env vars for Playwright:** All are available in the MCP container environment:
+- `CLERK_SECRET_KEY`, `CLERK_PUBLISHABLE_KEY=pk_test_c21hc2hpbmctYmlzb24tNzIuY2xlcmsuYWNjb3VudHMuZGV2JA`
+- `QA_GMAIL_EMAIL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_REFRESH_TOKEN`
+- `AUTHENTIK_TEST_USERNAME`, `AUTHENTIK_TEST_PASSWORD` — **must be fetched from Coolify MCP app envs if not in process.env**
+
+**What each test group covers:**
+- **A tests** — Clerk sign-in: `setupClerkTestingToken` + `window.Clerk.client.signIn.create({strategy:'ticket',...})`
+- **B/C tests** — Authentik sign-in: POST to `/api/auth/signin/authentik` (PKCE setup) → Authentik login UI → callback
+- **D tests** — Provider switch-back to Clerk
+- **E tests** — Smoke badge infrastructure
+
+### Key auth implementation details (DO NOT CHANGE without understanding)
+
+**Clerk sign-in (A, D tests):**
+- Must navigate to homepage first so `__clerk_db_jwt` dev browser cookie is set
+- Uses `window.Clerk.client.signIn.create({ strategy: 'ticket', ticket })` directly — NOT `clerk.signIn()` from `@clerk/testing` (that helper doesn't support ticket strategy in v1.x)
+- Ticket obtained from `https://api.clerk.com/v1/sign_in_tokens` Backend API
+
+**Authentik sign-in (B, C tests):**
+- Must navigate to homepage first so Clerk dev browser handshake completes (otherwise Clerk middleware intercepts `/api/auth/signin/authentik`)
+- Must POST to `/api/auth/signin/authentik` with CSRF token — GET returns `error=Configuration`
+- Playwright uses `page.request.fetch()` with `maxRedirects: 0` to get the Authentik authorize URL
+- Fills `input[name="username"]` and `input[name="password"]` then presses Enter
+- **Authorization flow must be `implicit-consent` in Authentik** — `explicit-consent` shows a consent screen and stalls the test
+
+**Dashboard selector:**
+- Dashboard has NO `h1` or `h2` elements — use `page.getByText('Welcome to your dashboard')` instead
+
+---
+
+## Agent MCP Tools
 
 All agents have tools. **VERIFY BEFORE CLAIMING.**
 
-### Available tools
-
 | Tool | Notes |
 |---|---|
-| `read_file(path, start_line?, end_line?)` | Read a file — **paginate large files with start_line/end_line** |
-| `write_file(path, content)` | Write files — no cap |
+| `read_file(path, start_line?, end_line?)` | Paginate large files |
+| `write_file(path, content)` | No cap |
 | `delete_file(path)` | Delete a file |
-| `run_command(command, cwd?)` | Shell commands — **output capped at 5000 chars** |
-| ~~`git_commit_push`~~ | **NOT available** — orchestrator commits with correct per-agent identity |
+| `run_command(command, cwd?)` | **Capped at 5000 chars output** |
+| ~~`git_commit_push`~~ | **NOT available** — orchestrator commits |
 | `git_pull()` | Pull latest from main |
-| `coolify_trigger_deploy(app_uuid)` | Trigger Coolify deploy |
-| `query_postgres(sql, params?)` | Run SQL |
+| `coolify_trigger_deploy(app_uuid)` | Trigger deploy |
+| `query_postgres(sql)` | Run SQL |
 
-### NOT available as tools
-| Tool | Use instead |
-|---|---|
-| `list_directory` | `run_command: ls -la src/libs/` |
-| `coolify_list_deployments` | LIVE DATA is pre-fetched and already in context |
-| `coolify_deployment_logs` | LIVE DATA is pre-fetched and already in context |
-
-### Caps and pagination — critical
-
-**`run_command` output is hard capped at 5000 chars.**
-- Never use `cat` on large files — use `read_file` instead
-- For targeted output: `grep -n "pattern" file`, `head -50 file`, `tail -30 file`
-
-**`read_file` is capped at 8000 chars per call — but supports pagination:**
+**Pagination pattern for `read_file`:**
 ```
-# Step 1: get total line count
-read_file(path)  →  [File: src/foo.ts | 420 lines]
-
-# Step 2: read in chunks
-read_file(path, start_line=1,   end_line=80)   →  lines 1-80
-read_file(path, start_line=81,  end_line=160)  →  lines 81-160
-read_file(path, start_line=161, end_line=240)  →  lines 161-240
+read_file(path)                          → [File: foo.ts | 420 lines]
+read_file(path, start_line=1, end_line=80)
+read_file(path, start_line=81, end_line=160)
 ```
 
-**`write_file` has no cap** — write complete file content in one call.
-
-**If MCP tools fail** (auth error, connection error): fall back to plain JSON completion and commit the heartbeat. Do NOT halt the cycle. Do NOT spiral into confusion about whether tools exist — they do, they may just be temporarily unavailable.
-
-### MCP Server Health Endpoints (no auth required)
-
-Before escalating any tool problem, check these first:
-
-**`/status`** — Overall server state:
+**MCP health checks:**
 ```
 run_command: wget -qO- https://mcp.joefuentes.me/status
-```
-Returns: `version`, `uptime_seconds`, `active_mcp_connections`, `postgres`
-
-**`/healthz`** — Detailed health including postgres connectivity:
-```
 run_command: wget -qO- https://mcp.joefuentes.me/healthz
 ```
-Returns: `status` (ok/degraded), `tools_registered`, `postgres`, `active_connections`, `uptime_seconds`
-
-**What the responses mean:**
-- `postgres: "ok"` — database is reachable and responding
-- `postgres: "error: ..."` — database is down; query_postgres tool will fail
-- `active_mcp_connections: N` — how many /mcp sessions are open right now
-- `uptime_seconds` — time since last restart; low value means recent redeploy/crash
-- `status: "degraded"` — something is wrong; check `missing` array and `postgres` field
-
-**Diagnosis workflow when tools seem broken:**
-1. `wget -qO- https://mcp.joefuentes.me/status` — is server up?
-2. If status returns 200 but tools still error: tools ARE available, the issue is transient — retry
-3. If status is unreachable: MCP server is down — fall back to plain JSON, log in your report
-4. Never claim "tools unavailable" without checking /status first
 
 ---
 
@@ -135,7 +177,7 @@ Returns: `status` (ok/degraded), `tools_registered`, `postgres`, `active_connect
 
 | File | Written by | Read by |
 |---|---|---|
-| `CLAUDE_TEAM.md` | Manager | All agents |
+| `CLAUDE_TEAM.md` | Owner/Manager | All agents |
 | `agent_sync/TASK_BOARD.json` | Manager | All agents |
 | `agent_sync/BUILD_LOG.md` | Operator | Manager |
 | `agent_sync/QA_REPORT.md` | Observer | Manager |
@@ -149,13 +191,11 @@ Returns: `status` (ok/degraded), `tools_registered`, `postgres`, `active_connect
 | Decision | Status |
 |---|---|
 | Clerk is permanent | Both Clerk and Authentik stay forever |
-| Provider switcher | Admin only — T-007 never before T-010 |
-| Test credentials | Session injection only — Google OAuth blocked in CI |
-| T-001 runtime | `scripts/t001-run.js` via `run_command` on MCP server |
+| Provider switcher | Admin only |
+| T-001 runtime | BOTH suites — `t001-run.js` AND Playwright |
 | observer-qa.yml | **DELETED** — Hard Rule #13 |
 | Coolify auto-deploy | **OFF** |
-| T-007 + T-010 | **LIVE** — deploy gate lifted |
-| MCP server | **v1.0.6** — per-connection Server, pg.Pool, uncaughtException handler |
+| MCP server | **v1.0.6** stable |
 
 ---
 
@@ -170,18 +210,19 @@ Returns: `status` (ok/degraded), `tools_registered`, `postgres`, `active_connect
 7. **T-003 never without Manager instruction.**
 8. **BUILD_LOG.md required** every Operator cycle.
 9. **Secret names locked.** No renames without Manager approval.
-10. **CI skips are correct.** `smokeTestRuns`/`setVersionRuns` skipping on `ci:` = expected. Only `latestObserverQaDetail` is T-001 signal.
-11. **🚨 auth-provider/index.ts is fragile** — broken 6+ times:
+10. **CI skips are correct.** `ci:` commits skipping set-version = expected.
+11. **🚨 auth-provider/index.ts is fragile:**
     - `getAuthProvider()` must return `Promise<IAuthProvider>` — NEVER alias to `getActiveProvider`
     - `getSession()` must return `Promise<AuthSession | null>`
     - Use `authentikAuth()` not `getServerSession`
-    - Use `@/libs/DB` not `@/libs/db`, `@/models/Schema` not `@/libs/schema`
-    - Never gut this file
-12. **Google OAuth blocked in CI.** Session injection only.
+    - Use `@/libs/DB`, `@/models/Schema` — not lowercase variants
+12. **Google OAuth blocked in CI.** Use ticket/session injection only.
 13. **observer-qa.yml is deleted.** Do not recreate.
 14. **MCP tools exist.** "Requires human intervention" = Hetzner SSH only.
 15. **set-version.yml UUID is correct.** Do not touch it.
 16. **agent_sync/ and .md changes don't trigger CI.**
+17. **Playwright is the primary test driver.** `t001-run.js` is a secondary health check only. Observer reports BOTH but Playwright results are authoritative.
+18. **Do NOT change auth flow in e2e/t001-auth.spec.ts** without understanding the Clerk dev browser cookie and PKCE requirements documented in the Testing section above.
 
 ---
 
@@ -195,29 +236,30 @@ src/libs/auth-nextauth.ts         ← next-auth v5, trustHost: true
 Deploy pipeline:
   src/ commit → typecheck → set-version (writes SHA) → Coolify → smoke test
 
-T-001:
-  Observer runs: node scripts/t001-run.js (in /repo-observer)
-  Results go to: agent_sync/QA_REPORT.md
-  Currently: 17/18 — E2 clears on next smoke pass
+Testing:
+  t001-run.js  → shallow API/HTTP checks, 30s, no browser (secondary)
+  Playwright   → real browser e2e, 10min, authoritative (primary)
+  Both run in Observer's /repo-observer volume
 ```
 
 ---
 
 ## Current Objectives
 
-### 🟢 STABLE — Resume normal work
-
-The MCP outage from 2026-05-07 is resolved. MCP v1.0.6 is running with the per-connection Server fix. All prior "blocked" statuses from today were caused by the tool outage — not real code problems.
+**Observer this cycle:**
+1. Run `t001-run.js` as usual — report results in QA_REPORT.md
+2. Run Playwright A tests to verify Clerk sign-in works:
+   ```
+   run_command: npx playwright test e2e/t001-auth.spec.ts --grep "Test A" --config=playwright.local.config.ts --project=chromium
+   cwd: /repo-observer
+   ```
+3. If A tests pass, run all tests and report full results
 
 **Operator this cycle:**
-- Ship a real `src/` change (TASK-H tech debt) to trigger a fresh deploy
-- This will update the live SHA, run the smoke test, and clear E2 on T-001
+- Monitor smoke test results from GitHub Actions
+- Fix any Authentik flow issues surfaced by Playwright run
 
-**Observer this cycle:**
-- Run T-001 via `node scripts/t001-run.js`
-- Expected: 17/18. If E2 clears after Operator's deploy, declare 18/18 PASS.
-
-**After T-001 18/18:**
+**After Playwright smoke passes 18/18:**
 - T-006: Stripe checkout under Authentik
 - T-009: Sign-out redirect on provider switch-back
 - T-002: Smoke test SHA polling verification
@@ -228,11 +270,11 @@ The MCP outage from 2026-05-07 is resolved. MCP v1.0.6 is running with the per-c
 
 | Date | Incident | Resolution |
 |---|---|---|
-| 2026-05-08 | MCP server crashed on concurrent connections all day | ✅ Fixed v1.0.6 — per-connection Server factory (createMcpServer) |
-| 2026-05-08 | pg.Client zombie after Postgres drop | ✅ Fixed v1.0.6 — replaced with pg.Pool |
-| 2026-05-08 | Agents confused by stale inboxes during outage | ✅ All team files reset this session |
-| 2026-05-07 | getAuthProvider() alias broke build (6th time) | ✅ Fixed 51505d4, Hard Rule #11 updated |
-| 2026-05-07 | CI spam from chore/fix commits | ✅ Fixed be52ee6 — paths-ignore |
-| 2026-05-07 | Smoke test cancelled by ci: commits | ✅ Fixed 0d7c15e — concurrency group |
-| 2026-05-07 | T-001 never passing — false baseline | ✅ Corrected |
-| 2026-05-07 | TASK-E, TASK-F | ✅ Done |
+| 2026-05-08 | Playwright smoke failing — Authentik GET vs POST | 🔄 Fix in progress |
+| 2026-05-08 | Agents aborted at 90s — AbortController timeout too short | ✅ Fixed — 5 min timeout |
+| 2026-05-08 | Agents down for 4.5h — 90s abort on every call | ✅ Fixed |
+| 2026-05-08 | t001-run.js reporting 17/18 as near-pass — misleading | ✅ Clarified — Playwright is authoritative |
+| 2026-05-08 | MCP server crashed on concurrent connections | ✅ Fixed v1.0.6 |
+| 2026-05-08 | Authentik explicit-consent flow blocking CI | ✅ Fixed — switched to implicit-consent |
+| 2026-05-08 | Clerk cookie injection failing (dev instance __clerk_db_jwt) | ✅ Fixed — window.Clerk direct approach |
+| 2026-05-08 | Authentik PKCE Configuration error (GET vs POST) | 🔄 Fix committed, awaiting smoke run |
