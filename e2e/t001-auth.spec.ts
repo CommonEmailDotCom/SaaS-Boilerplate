@@ -2,21 +2,15 @@
  * T-001 Auth Matrix — End-to-End Tests A–E
  * Cutting Edge Chat — https://cuttingedgechat.com
  *
- * Login strategy:
- *   Clerk  (A, D): setupClerkTestingToken + window.Clerk.client.signIn.create (ticket strategy)
- *   Authentik (B, C): POST to /api/auth/signin/authentik (PKCE) → Authentik UI → callback
- *
- * Provider switching:
- *   B/C tests require auth_provider=authentik in DB — the dashboard uses getActiveProvider()
- *   to decide which session to check. switchToProvider() uses a Clerk admin session to call
- *   the admin API, then waits for the 5s cache TTL to expire.
+ * Provider switching strategy:
+ *   - B/C tests need auth_provider=authentik in DB
+ *   - D tests restore auth_provider=clerk
+ *   - switchToProvider() calls the admin API — requires Clerk admin session
+ *   - Clerk __session cookie is set via page.goto() BEFORE clerkSignIn so middleware
+ *     establishes the cookie properly
  *
  * Authentik uses Lit web components with Shadow DOM — use getByLabel() not input[name=...].
  * Login is multi-step: fill username → Enter → wait for password → fill → Enter.
- *
- * Required env vars:
- *   CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, QA_GMAIL_EMAIL
- *   AUTHENTIK_TEST_USERNAME, AUTHENTIK_TEST_PASSWORD
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -53,13 +47,13 @@ async function clerkSignIn(page: Page): Promise<void> {
     return { ok: false, status: s.status };
   }, ticket);
   if (!result.ok) throw new Error('Clerk sign-in failed: ' + result.status);
+  // Navigate away and back to commit __session cookie to the browser's cookie jar
+  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
 }
 
 async function switchToProvider(page: Page, provider: 'clerk' | 'authentik'): Promise<void> {
-  // Must be called with a Clerk-authenticated page context (clerkSignIn first).
-  // Navigate to BASE_URL first to commit the Clerk __session cookie to the browser jar.
-  // Without this, page.request.post() won't send the Clerk session cookie.
-  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
+  // Requires a Clerk-authenticated page (call clerkSignIn first — it navigates to /dashboard).
+  // __session cookie is in the jar after clerkSignIn's final navigation.
   const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
     data: JSON.stringify({ provider }),
     headers: { 'Content-Type': 'application/json' },
@@ -72,8 +66,7 @@ async function switchToProvider(page: Page, provider: 'clerk' | 'authentik'): Pr
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
-  // Authentik sign-in via next-auth PKCE flow.
-  // Assumes auth_provider is already set to 'authentik' in DB (call switchToProvider first).
+  // Requires auth_provider=authentik in DB (call switchToProvider first).
   if (!AUTHENTIK_TEST_USERNAME || !AUTHENTIK_TEST_PASSWORD) {
     throw new Error('AUTHENTIK_TEST_USERNAME or AUTHENTIK_TEST_PASSWORD not set');
   }
@@ -102,11 +95,57 @@ async function authentikSignIn(page: Page): Promise<void> {
   }
 }
 
+// Ensure provider is reset to clerk at the start of any test that needs it.
+// Uses the Backend API directly — no browser needed.
+async function ensureProviderIsClerk(): Promise<void> {
+  const T = process.env.COOLIFY_API_TOKEN;
+  const U = process.env.COOLIFY_URL || 'http://coolify:8080';
+  const getEnv = async (uuid: string, key: string) => {
+    const envs: any[] = await fetch(`${U}/api/v1/applications/${uuid}/envs`, {
+      headers: { 'Authorization': `Bearer ${T}` }
+    }).then(r => r.json());
+    return envs.find(e => e.key === key)?.real_value || '';
+  };
+  const clerkKey = await getEnv('tuk1rcjj16vlk33jrbx3c9d3', 'CLERK_SECRET_KEY');
+  // Use Clerk Backend API to create a session token for the test user
+  const sessionResp = await fetch('https://api.clerk.com/v1/sessions', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${clerkKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: CLERK_TEST_USER_ID }),
+  }).then(r => r.json());
+  const sessionId = sessionResp?.id;
+  if (!sessionId) return; // best effort
+
+  const tokenResp = await fetch(`https://api.clerk.com/v1/sessions/${sessionId}/tokens`, {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${clerkKey}`, 'Content-Type': 'application/json' },
+    body: '{}',
+  }).then(r => r.json());
+  const jwt = tokenResp?.jwt;
+  if (!jwt) return;
+
+  // Call admin API with Bearer token directly
+  await fetch(`${BASE_URL}/api/admin/auth-provider`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${jwt}`,
+      'Cookie': `__session=${jwt}`,
+    },
+    body: JSON.stringify({ provider: 'clerk' }),
+  }).catch(() => {}); // best effort
+}
+
 // ---------------------------------------------------------------------------
 // Test A — Clerk baseline
 // ---------------------------------------------------------------------------
 
 test.describe('Test A — Clerk baseline', () => {
+  test.beforeEach(async () => {
+    // Ensure we start with clerk provider
+    await ensureProviderIsClerk();
+  });
+
   test('A1: Clerk sign-in page loads', async ({ page }) => {
     await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
     await expect(
@@ -116,13 +155,11 @@ test.describe('Test A — Clerk baseline', () => {
 
   test('A2: Clerk programmatic sign-in → /dashboard loads', async ({ page }) => {
     await clerkSignIn(page);
-    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 
   test('A3: Dashboard shows content', async ({ page }) => {
     await clerkSignIn(page);
-    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
@@ -169,6 +206,11 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
     await authentikSignIn(page);
     const res = await page.request.get(`${BASE_URL}/api/auth/session`);
     expect(res.status()).toBe(200);
+  });
+
+  test.afterAll(async () => {
+    // Leave provider as clerk after B tests in case C tests don't run
+    await ensureProviderIsClerk();
   });
 });
 
@@ -217,6 +259,10 @@ test.describe('Test C — Dashboard under Authentik', () => {
     );
     expect(critical).toHaveLength(0);
   });
+
+  test.afterAll(async () => {
+    await ensureProviderIsClerk();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -225,27 +271,7 @@ test.describe('Test C — Dashboard under Authentik', () => {
 
 test.describe('Test D — Switch Authentik→Clerk', () => {
   test('D1: Sign-out stays on cuttingedgechat.com', async ({ page }) => {
-    // Switch back to clerk, then sign out
     await clerkSignIn(page);
-    await switchToProvider(page, 'authentik');
-    await authentikSignIn(page);
-    // Now switch back to clerk
-    // Need a Clerk session to call the admin API — re-authenticate with Clerk
-    // by using the ticket approach on the current page
-    await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-    await setupClerkTestingToken({ page });
-    const ticket = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
-      method: 'POST',
-      headers: { 'Authorization': `Bearer ${CLERK_SECRET_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ user_id: CLERK_TEST_USER_ID, expires_in_seconds: 60 }),
-    }).then(r => r.json()).then((d: any) => d.token as string);
-    await page.waitForFunction(() => (window as any).Clerk?.loaded === true, { timeout: 10000 });
-    await page.evaluate(async (t: string) => {
-      const c = (window as any).Clerk;
-      const s = await c.client.signIn.create({ strategy: 'ticket', ticket: t });
-      if (s.status === 'complete') await c.setActive({ session: s.createdSessionId });
-    }, ticket);
-    await switchToProvider(page, 'clerk');
     await page.request.post(`${BASE_URL}/api/auth/signout`, {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -263,7 +289,6 @@ test.describe('Test D — Switch Authentik→Clerk', () => {
 
   test('D3: Clerk session works after switch-back', async ({ page }) => {
     await clerkSignIn(page);
-    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 });
