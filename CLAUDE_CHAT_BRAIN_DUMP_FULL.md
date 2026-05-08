@@ -22,22 +22,191 @@
 
 ## MCP Server Connection
 
-You are connected to the MCP server at https://mcp.joefuentes.me. It gives you tools:
-- `run_command` — shell commands in /repo (SaaS-Boilerplate clone), capped at 5000 chars output
-- `read_file(path, start_line?, end_line?)` — paginated file reads, capped at 8000 chars per slice
-- `write_file(path, content)` — write to repo, no cap
+Connected to MCP server at https://mcp.joefuentes.me. Tools available:
+- `run_command` — shell in /repo (SaaS-Boilerplate clone), 5000 char output cap
+- `read_file(path, start_line?, end_line?)` — paginated, 8000 char cap per slice
+- `write_file(path, content)` — no cap
 - `delete_file(path)`
-- `git_pull()` / `git_commit_push(message)` — operates on /repo clone
-- `coolify_trigger_deploy(app_uuid)` — trigger Coolify build+deploy
-- `coolify_list_deployments(app_uuid)` / `coolify_deployment_logs(deployment_uuid)`
-- `coolify_list_envs(app_uuid)` / `coolify_create_env` / `coolify_update_env`
-- `query_postgres(sql)` — direct DB access
+- `git_pull()` / `git_commit_push(message)` — operates on /repo
+- `coolify_trigger_deploy(app_uuid)` / `coolify_list_deployments` / `coolify_deployment_logs`
+- `coolify_list_envs` / `coolify_create_env` / `coolify_update_env`
+- `query_postgres(sql)`
+
+**ALL MCP TOOLS ARE WRAPPERS AROUND run_command.** Every tool except `run_command` itself
+is a convenience wrapper that could be replaced with a `node -e "fetch(...)"` one-liner.
+See the "MCP Tool Replacement Patterns" section for exact equivalents.
 
 **Health endpoints (no auth):**
-- https://mcp.joefuentes.me/status — version, uptime, active_connections, postgres state
-- https://mcp.joefuentes.me/healthz — detailed health with tool count and postgres check
+- https://mcp.joefuentes.me/status — version, uptime, active_connections, postgres
+- https://mcp.joefuentes.me/healthz — tools count, postgres check
+- https://mcp.joefuentes.me/deploy-status?uuid=X — check if deploy in progress
 
-**MCP server version:** 1.0.6
+---
+
+## 🚨 MCP Tool Replacement Patterns — Minimize API Token Usage
+
+**Every MCP tool call adds tokens to the conversation context permanently.**
+Use `run_command` with inline node scripts instead whenever possible.
+This section documents the exact replacement for every tool.
+
+### read_file → run_command
+```js
+// Single file
+run_command: node -e "console.log(require('fs').readFileSync('/repo/path/to/file','utf8').slice(0,5000))"
+
+// Paginated (lines 80-160)
+run_command: node -e "
+const lines = require('fs').readFileSync('/repo/path','utf8').split('\n');
+console.log(lines.slice(79,160).join('\n'));
+"
+
+// Better for large files — grep for what you need
+run_command: grep -n "pattern" /repo/path/to/file | head -30
+```
+
+### write_file → run_command
+```js
+run_command: node -e "require('fs').writeFileSync('/repo/path',JSON.stringify({...}),'utf8'); console.log('done')"
+
+// For multi-line content, write via a temp file approach or use write_file tool
+// (write_file has no token cap overhead — prefer it for large file writes)
+```
+
+### git_pull / git_commit_push → run_command
+```bash
+run_command: git -C /repo pull --rebase origin main
+
+run_command: git -C /repo add -A && \
+  export GIT_AUTHOR_NAME="AI DevOps (chat) for Cutting Edge Chat" && \
+  export GIT_AUTHOR_EMAIL="ai-devops-chat@users.noreply.github.com" && \
+  export GIT_COMMITTER_NAME="$GIT_AUTHOR_NAME" && \
+  export GIT_COMMITTER_EMAIL="$GIT_AUTHOR_EMAIL" && \
+  git -C /repo commit -m "message" && git -C /repo push origin main
+```
+Note: `&&` chains in MCP shell are unreliable — better to split into multiple run_command calls
+or use node -e with execSync.
+
+### coolify_trigger_deploy → run_command
+```js
+run_command: node -e "
+const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
+fetch(U+'/api/v1/deploy?uuid=UUID&force=false',{method:'GET',headers:{'Authorization':'Bearer '+T}})
+  .then(r=>r.json()).then(d=>console.log(JSON.stringify(d)));
+"
+```
+
+### coolify_list_deployments → run_command
+```js
+run_command: node -e "
+const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
+fetch(U+'/api/v1/deployments/applications/UUID?take=3',{headers:{'Authorization':'Bearer '+T}})
+  .then(r=>r.json()).then(d=>d.deployments?.forEach(dep=>console.log(dep.status,dep.deployment_uuid,dep.created_at?.slice(11,19))));
+"
+```
+
+### coolify_list_envs → run_command
+⚠️ **This tool exposes ALL secrets in the conversation context — including API keys.**
+Always use run_command and filter to only the key you need:
+```js
+run_command: node -e "
+const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
+fetch(U+'/api/v1/applications/UUID/envs',{headers:{'Authorization':'Bearer '+T}})
+  .then(r=>r.json()).then(envs=>{
+    const k = envs.find(e=>e.key==='SPECIFIC_KEY_NAME');
+    console.log(k?.key,'=',k?.real_value?.slice(0,20)+'...');
+  });
+"
+// NEVER print all env vars — rotated secrets visible in context forever
+```
+
+### coolify_deployment_logs → run_command
+```js
+run_command: node -e "
+const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
+fetch(U+'/api/v1/deployments/DEPLOYMENT_UUID',{headers:{'Authorization':'Bearer '+T}})
+  .then(r=>r.json()).then(d=>{
+    const logs = JSON.parse(d.logs||'[]');
+    logs.slice(-20).forEach(l=>console.log(l.output?.slice(0,200)));
+  });
+"
+```
+
+### query_postgres → run_command
+```js
+run_command: node -e "
+const {Pool}=require('pg');
+const pool=new Pool({connectionString:process.env.PG_CONNECTION_STRING});
+pool.query('SELECT * FROM your_table LIMIT 5').then(r=>{console.log(JSON.stringify(r.rows));pool.end()});
+"
+```
+
+### list_directory → run_command
+```bash
+run_command: ls -la /repo/src/libs/
+run_command: find /repo/src -name "*.ts" | head -20
+```
+
+---
+
+## 💰 API Credit Minimization Strategy
+
+### The fundamental cost model
+- **Agent cycles** are Anthropic API calls — each cycle = one API request
+- **Chat sessions** are also API calls — this conversation right now
+- **MCP tool calls in chat** add tokens to conversation context permanently
+- Every `coolify_list_envs` call that prints all secrets = ~3k tokens added forever
+
+### Current agent cycle cost
+~$3-4/day at current schedule (3 agents × hourly = 72 cycles/day × ~$0.05/cycle avg)
+
+### What cannot be eliminated
+The agents ARE Claude API calls. You cannot remove the API cost without removing the agents.
+But you can minimize cost by:
+
+**1. Trigger-based agents instead of time-based**
+Currently: agents run every hour regardless of whether anything happened.
+Better: only trigger when there's work to do.
+- Observer: only run after a new deploy is detected (poll /api/version for SHA change)
+- Operator: only run when Manager creates a task in TASK_BOARD
+- Manager: only run when a deploy completes OR a QA report is filed
+
+**2. Slim context — always**
+The biggest token cost is re-sending context on every cycle. Rules:
+- Team files should be scannable summaries, not prose essays
+- TASK_BOARD.json should have max 3 active tasks — archive done ones
+- QA_REPORT.md and BUILD_LOG.md should only keep last 2 entries — agents should truncate old ones
+- Agents should read ONLY the files relevant to their role, not all team files
+
+**3. Pre-fetch vs MCP tools in agents**
+The orchestrator already pre-fetches some data before the API call (deploy status, live SHA).
+Pre-fetched data costs ZERO tokens (it's part of the prompt, not a tool round-trip).
+MCP tool calls during the agent cycle add a full round-trip to context.
+Expand pre-fetching: deploy status, last QA result, live SHA, recent commits — all should
+be pre-fetched by orchestrator and injected into the prompt as facts, not discovered via tools.
+
+**4. Use GitHub Actions instead of agents for mechanical tasks**
+GitHub Actions is free (or very cheap vs API). Mechanical tasks that don't need intelligence:
+- SHA tracking (already done by set-version.yml)
+- Smoke tests (already done by smoke-test.yml)
+- Lint / typecheck (already done by typecheck.yml)
+Agents should only do things that require actual reasoning.
+
+**5. Chat session hygiene**
+- Long sessions cost more per message (growing context)
+- Start a new session when switching to a new topic
+- Use the brain dump files to resume context cheaply
+- Avoid `coolify_list_envs` in chat — it dumps secrets AND adds 3k tokens
+
+### Work that doesn't need the API at all
+These tasks currently done by agents could run as GitHub Actions or cron scripts:
+- Checking if deploy succeeded (just HTTP poll /api/version)
+- Running t001-run.js (pure Node.js, no AI needed)
+- Writing smoke-status.json (just file write + git commit)
+- Checking for orphan containers or disk usage
+
+**Ideal end state:** Agents only run when a human or automation explicitly dispatches them
+with a specific task. No idle hourly cycles. The orchestrator becomes an event-driven
+dispatcher rather than a time-based cron.
 
 ---
 
@@ -57,269 +226,185 @@ You are connected to the MCP server at https://mcp.joefuentes.me. It gives you t
 
 ## Autonomous Agent System
 
-Three agents run every 15 minutes via the MCP server's `orchestrator.js`:
+Three agents run hourly via `orchestrator.js`:
 
-| Agent | Cron | Git identity email |
+| Agent | Cron | Git identity |
 |---|---|---|
-| Manager | :00/:15/:30/:45 | managercuttingedgechat@commonemail.com |
-| Operator | :05/:20/:35/:50 | Devopscuttingedgechat@commonemail.com |
-| Observer | :10/:25/:40/:55 | testercuttingedgechat@gmail.com |
+| Manager | :00 | managercuttingedgechat@commonemail.com |
+| Operator | :20 | Devopscuttingedgechat@commonemail.com |
+| Observer | :40 | testercuttingedgechat@gmail.com |
 
-Each agent gets its own isolated repo clone: `/repo-manager`, `/repo-operator`, `/repo-observer` (persistent Docker volumes).
+Each gets an isolated repo clone: `/repo-manager`, `/repo-operator`, `/repo-observer` (persistent Docker volumes). `node_modules` auto-installed by `ensureRepo()` on first use, cached by stamp file.
 
 **Communication files in agent_sync/:**
-- `TASK_BOARD.json` — written by Manager, read by all
-- `BUILD_LOG.md` — written by Operator
-- `QA_REPORT.md` — written by Observer
-- `OPERATOR_INBOX.md` / `OBSERVER_INBOX.md` — written by Manager
+- `TASK_BOARD.json` — Manager writes, all read
+- `BUILD_LOG.md` — Operator writes (keep last 2 entries max)
+- `QA_REPORT.md` — Observer writes (keep last 2 entries max)
+- `OPERATOR_INBOX.md` / `OBSERVER_INBOX.md` — Manager writes
 
-**Critical: Never use git_commit_push as a tool from agents.** The orchestrator's `commitAndPush()` handles commits with the correct per-agent git identity. If agents call the tool directly they commit as `CommonEmailDotCom` (MCP server's default git config) causing duplicate commits with wrong author.
+**Critical: Never use git_commit_push as an agent MCP tool.** Orchestrator's `commitAndPush()` handles per-agent git identity. Agent tool use commits as `CommonEmailDotCom`.
 
 ---
 
 ## MCP Server Architecture — Critical Fixes (v1.0.6)
 
-### Fix 1: Per-connection Server factory (THE BIG ONE)
-**Bug:** Single shared `Server` instance. `server.connect(transport)` called on it for every `/mcp` request. MCP SDK throws "Already connected to a transport" on concurrent connections — uncaught, killed the entire Node process including the orchestrator cron. Docker restarted but crashed again immediately on next connection.
-
-**Fix:** `createMcpServer()` factory function — fresh `Server` + transport per `/mcp` request. Each connection fully isolated.
+### Fix 1: Per-connection Server factory
+Single shared `Server` crashed on concurrent connections ("Already connected to transport").
+Fix: `createMcpServer()` factory — fresh `Server` + transport per `/mcp` request.
 
 ### Fix 2: pg.Pool replaces pg.Client
-**Bug:** `pg.Client` has no reconnect logic. After any Postgres connection drop, the client object still exists so `!pgClient` is false — `getDb()` returns the broken object, every query throws.
-
-**Fix:** `pg.Pool` with `max:3, idleTimeoutMillis:30000`. Pool reconnects automatically. `pgPool.on('error')` logs but doesn't crash.
+`pg.Client` has no reconnect. After drop, broken object returned by `getDb()`.
+Fix: `pg.Pool` with `max:3, idleTimeoutMillis:30000`. Auto-reconnects.
 
 ### Fix 3: uncaughtException + unhandledRejection handlers
-Clean `process.exit(1)` instead of zombie process. Docker/Coolify restarts automatically.
+Clean `process.exit(1)` instead of zombie process.
 
-### Fix 4: /healthz with real postgres check
-Previously just counted tools. Now does `pgPool.query('SELECT 1')` and reports `active_connections`, `uptime_seconds`.
+### Fix 4+5: /healthz postgres check + /mcp transport error handling
 
-### Fix 5: /mcp transport error handling
-Try/catch around `server.connect()` and `transport.handleRequest()`. Returns 500 instead of hanging.
+### Orchestrator AbortController timeout
+Set to 5 minutes (300000ms). 90 seconds was too short — MCP tool round-trips during
+Anthropic API calls (fetch schemas + execute tools) easily exceed 90s.
 
 ---
 
-## Orchestrator Architecture — Critical Fixes
+## Playwright / Testing Architecture
 
-### pause_turn handling
-When Claude uses MCP tools mid-response, `stop_reason` is `pause_turn`. Old code treated this as empty response → JSON parse failed → no commit. Fix: extract text from content array regardless of `stop_reason`. If `pause_turn` with no text, return `"{}"` so cycle completes.
+### Two test suites
+1. **`scripts/t001-run.js`** — shallow HTTP/API checks, ~30s, no browser, Observer runs every cycle
+2. **`e2e/t001-auth.spec.ts`** — real browser Playwright tests, ~10min, runs in GitHub Actions after deploy
 
-### T-001 execAsync exit code
-`t001-run.js` exits with code 1 when any test fails — that's correct behaviour. Old `execAsync` threw on non-zero exit and discarded stdout. Fix: `.catch(e => e.stdout ? {stdout:e.stdout, stderr:e.stderr} : throw)`.
+t001-run.js is a health check. Playwright is authoritative.
 
-### Tool format for mcp-client-2025-11-20
-The deprecated `mcp-client-2025-04-04` put `tool_configuration` inside `mcp_servers`. The new `mcp-client-2025-11-20` API uses `default_config` + `configs` inside the `tools` MCPToolset object:
+### Running Playwright locally (MCP container)
+**CRITICAL: run_command throws on any non-zero exit — including test failures.**
+Never run Playwright directly. Always use background job + results file pattern:
+
 ```js
-body.tools = [{
-  type: 'mcp_toolset',
-  mcp_server_name: 'mcp-server',
-  default_config: { enabled: false },
-  configs: {
-    read_file: { enabled: true },
-    write_file: { enabled: true },
-    // ... other allowed tools
-  }
-}]
+// Write to /repo/run-playwright.js, then:
+node /repo/run-playwright.js > /tmp/playwright-run.log 2>&1 &
+// Poll results:
+node -e "const d=JSON.parse(require('fs').readFileSync('/tmp/playwright-result.json','utf8'));console.log('Exit:',d.exitCode,'\n'+d.output.slice(-2000));"
 ```
-Using the wrong format causes a 400 error on every cycle, forcing fallback to plain completion.
 
-### git_commit_push removed from agent tool scope
-Agents calling this tool commit as `CommonEmailDotCom` (MCP server git config). The orchestrator's `commitAndPush()` sets per-agent identity. Removing it from `configs` prevents double commits.
+Full runner script template — see OBSERVER_INBOX.md.
 
-### Token optimization
-The 193k token Operator context came from multi-turn MCP tool use accumulating conversation history — not from context files (which are only ~12k tokens). Each tool call + result appends to the conversation and gets re-sent on every subsequent turn.
+### Playwright environment in MCP container
+- Chromium: `/usr/lib/chromium/chromium` (Alpine native, in Docker image)
+- Config: `playwright.local.config.ts` (committed to repo, in all volumes)
+- `node_modules`: auto-installed by ensureRepo(), cached by stamp file
+- Do NOT use `playwright.config.ts` — that uses glibc Chromium, can't run on Alpine
 
-Real fixes:
-- `run_command` output capped at 5000 chars in `index.js`
-- `read_file` capped at 8000 chars per call with `start_line`/`end_line` pagination
-- Orchestrator pre-fetches `auth-provider/index.ts`, `middleware.ts`, `auth-nextauth.ts` from filesystem before Operator API call — zero MCP credits for reads
-- `list_directory`, `coolify_list_*`, `coolify_deployment_logs` removed from agent tool scope
+### Clerk sign-in (A, D tests)
+- `setupClerkTestingToken({page})` — bypasses bot detection
+- Create ticket via `https://api.clerk.com/v1/sign_in_tokens` Backend API
+- Redeem via `window.Clerk.client.signIn.create({strategy:'ticket', ticket})`
+- `@clerk/testing clerk.signIn()` does NOT support ticket strategy in v1.x
+- Must navigate to `/sign-in` first so `window.Clerk` loads
+
+### Authentik sign-in (B, C tests)
+- Navigate to homepage first — establishes Clerk dev browser cookie so middleware doesn't intercept
+- POST to `/api/auth/signin/authentik` with CSRF token — GET returns `error=Configuration`
+- Use `page.request.fetch()` with `maxRedirects:0` to get the Authentik authorize URL
+- Authentik uses **Lit web components with Shadow DOM** — `input[name="username"]` is a light DOM placeholder
+- Use `page.getByLabel(/username/i)` and `page.getByLabel(/password/i)` — these pierce shadow DOM
+- Login is **multi-step**: fill username → press Enter → wait for password field → fill → press Enter
+- Authentik app must use `implicit-consent` flow (not `explicit-consent`)
+
+### Dashboard selectors
+Dashboard has NO `h1`/`h2` — use `page.getByText('Welcome to your dashboard')`
 
 ---
 
-## CI/CD Pipeline Architecture
+## CI/CD Pipeline
 
 ### Normal flow
-```
-src/ commit pushed
-  → typecheck.yml (tsc --noEmit + bad pattern scan)
-  → set-version.yml (writes SHA to .env.production, triggers Coolify)
-  → Coolify builds Docker image with SHA baked in
-  → smoke-test.yml polls /api/version for the SHA
-  → Playwright tests run
-  → smoke-status.json committed to repo
-  → /badge/smoke on MCP server reads smoke-status.json via GitHub API
-```
+src/ commit → typecheck → set-version (writes SHA to .env.production) → Coolify deploy → smoke-test → smoke-status.json
 
-### set-version.yml — atomic retry loop
-Key design: `git fetch origin main && git reset --hard origin/main` on every retry attempt. This means the retry always works from a clean base rather than trying to rebase. 10 retries. Coolify only triggered `if: steps.deploy.outputs.committed == 'true'` — prevents deploying with stale SHA baked in when push fails.
+### set-version.yml
+- Atomic retry loop (10 retries, `git fetch + reset --hard` each attempt)
+- Polls `/deploy-status` endpoint before triggering — prevents concurrent deploy collisions
+- Only triggers Coolify if `committed == 'true'`
+- CLERK_PUBLISHABLE_KEY hardcoded (public key): `pk_test_c21hc2hpbmctYmlzb24tNzIuY2xlcmsuYWNjb3VudHMuZGV2JA`
 
-### smoke-test.yml — SHA detection
-Reads expected SHA directly from `.env.production`:
-```bash
-SHORT_SHA=$(grep NEXT_PUBLIC_COMMIT_SHA .env.production | cut -d= -f2)
-```
-Previously did complex parent-commit lookup on the `ci:` bump commit. That logic was fragile. `.env.production` IS the source of truth — it's what gets baked into the Docker image.
+### Commit prefixes
+- `fix:`, `feat:` — triggers full pipeline
+- `chore:` — SKIPPED by set-version (no deploy)
+- `ci:` — SKIPPED by set-version (used only by automation)
 
 ### paths-ignore
-Both `set-version.yml` and `typecheck.yml` ignore:
-- `agent_sync/**`, `CLAUDE_TEAM.md`, `smoke-status.json`, `**.md`
-- `.github/**`, `e2e/**`, `tests/**`, `playwright.config.ts`, `scripts/**`
-
-Without `.github/**` and `e2e/**`, changing the smoke test workflow or test spec itself triggers a full deploy — causes multiple unnecessary smoke test runs.
-
-### Common failure mode: race condition
-When multiple commits land in quick succession, set-version's push gets rejected repeatedly. After 10 retries it fails without committing `.env.production`. Coolify may still fire with stale SHA baked in.
-
-**Manual recovery:** Write `.env.production` directly via GitHub API, then trigger Coolify deploy manually. The smoke test reads `.env.production` so it will poll for the correct SHA.
+Both workflows ignore: `agent_sync/**`, `.github/**`, `e2e/**`, `scripts/**`, `*.md`, `smoke-status.json`, `playwright*.config.ts`
 
 ---
 
-## Codebase — Hard Rules (will break build if violated)
+## Codebase Hard Rules
 
-### auth-provider/index.ts — THE FRAGILE FILE (broken 6+ times)
+### auth-provider/index.ts — FRAGILE (broken 6+ times)
 ```typescript
 // CORRECT:
 export async function getAuthProvider(): Promise<IAuthProvider> { ... }
-
-// WRONG — returns string, not IAuthProvider:
-export const getAuthProvider = getActiveProvider;
+// WRONG:
+export const getAuthProvider = getActiveProvider; // returns string not IAuthProvider
 ```
-- `getSession()` must return `Promise<AuthSession | null>` — not raw Clerk/next-auth types
-- Never gut or restructure this file — additive changes only
-- Always: `authentikAuth()` not `getServerSession()`
-- Always: `@/libs/DB` not `@/libs/db`
-- Always: `@/models/Schema` not `@/libs/schema`
-- Always: `organizationMemberSchema` not `organizationMemberTable`
-- Always: `organizationMemberSchema.orgId` not `.organizationId`
-- `organization_member` insert requires `id: crypto.randomUUID()`
+- `getSession()` returns `Promise<AuthSession | null>`
+- `authentikAuth()` not `getServerSession()`
+- `@/libs/DB` not `@/libs/db`
+- `@/models/Schema` not `@/libs/schema`
+- Never restructure this file
 
 ### middleware.ts — Edge runtime
-Only import from `provider-constant.ts`. No DB or Node.js imports. `trustHost: true` must stay in next-auth config.
-
-### auth-provider architecture
-```
-src/libs/auth-provider/
-  provider-constant.ts   ← Edge-safe, middleware only
-  index.ts               ← FRAGILE — getActiveProvider(), getAuthProvider(),
-                            getSession(), setActiveProvider() must all remain
-  clerk.ts / authentik.ts ← Provider implementations
-```
+Only import from `provider-constant.ts`. `trustHost: true` stays in next-auth.
 
 ---
 
-## Auth System Design
+## Auth System
 
-Both Clerk and Authentik are **permanent** — Clerk is not legacy. Provider switching is instant via DB (`app_config` table key `auth_provider`). No redeploy needed.
-
-- **Clerk:** Standard Clerk authentication, `clerkMiddleware()` always runs
-- **Authentik:** next-auth v5 with Drizzle adapter, Google OIDC via refresh token flow
-
-First Authentik login auto-creates org. First user gets `role=admin`. Provider switcher is admin-only (T-007). Last-admin guard on member DELETE (T-010).
-
-5-second cache TTL on provider reads — wait >6s after switch before asserting state in tests.
-
----
-
-## T-001 Test Architecture
-
-Tests run in two places:
-1. **MCP server** (`scripts/t001-run.js` via `run_command`) — Observer runs every cycle, results in `agent_sync/QA_REPORT.md`. Currently 17/18.
-2. **GitHub Actions smoke test** (`e2e/t001-auth.spec.ts` via Playwright) — runs after each real src/ deploy
-
-**T-001 on MCP server vs smoke test are different implementations.** The MCP version uses session injection (no browser). The GitHub Actions version uses Playwright with a real browser.
-
-**Current T-001 status: 17/18.** E2 (smoke badge) fails because badge shows "failing" — clears automatically on next passing smoke run.
-
-### Clerk test authentication (CORRECTED in this session)
-The Clerk testing token flow is two steps:
-1. Call `https://api.clerk.com/v1/testing_tokens` (Backend API) with `CLERK_SECRET_KEY` → get `token`
-2. Call FAPI `/v1/client/sign_ins?__clerk_testing_token={token}` with `strategy: ticket, ticket: {token}`
-
-Previous attempts used wrong approaches:
-- `strategy: ticket` with `identifier` field → Clerk API rejects `identifier` with ticket strategy
-- `strategy: ticket` with no ticket value → Clerk API says "ticket is required"
-
-### Authentik test authentication
-Uses Google refresh token to get `id_token`, then passes `id_token_hint` to Authentik authorize endpoint with `prompt: none`.
-
-**Critical:** `client_id` in the Authentik authorize URL must be the **Authentik application's client ID** (`aPM2wsr2lAtm96N1prfOC7t1XlDVARmA4GRBvlwa`), NOT `GOOGLE_CLIENT_ID`. `GOOGLE_CLIENT_ID` is only for the Google token exchange step.
-
-### GitHub secrets required for smoke test
-All of these must be set in the repo:
-- `GOOGLE_REFRESH_TOKEN`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` — for Authentik Google OIDC
-- `CLERK_SECRET_KEY` — for Clerk testing token
-- `QA_GMAIL_EMAIL` — test account email
-- `AUTHENTIK_CLIENT_ID` — Authentik OIDC app client ID (NOT Google's)
-- `ANTHROPIC_API_KEY`, `COOLIFY_API_TOKEN`, `MCP_BEARER_TOKEN` — for other workflow steps
-
-**Secrets must be pushed programmatically from confirmed working values.** Copy-pasting from terminal output risks truncation. Use `tweetsodium` + GitHub API directly from a context where the values are in `process.env`.
+Both Clerk and Authentik permanent. Provider switching is instant via `app_config` DB table.
+5-second cache TTL — wait >6s after switch before asserting state.
+First Authentik login auto-creates org. Provider switcher is admin-only.
 
 ---
 
 ## Infrastructure
 
 ### Server
-- Hetzner VPS, 8GB RAM, 150GB disk
-- ~2.2GB RAM used, 4.6GB available
-- Services: SaaS app, MCP server, Authentik, 2x Postgres, Coolify stack
-
-### Coolify behaviour
-- Auto-deploy is OFF — only set-version.yml triggers deploys
-- Build pack: Dockerfile for both SaaS app and MCP server
-- `concurrent_builds: 1` — builds queue, don't run in parallel
-- Docker cleanup cron: `0 0 * * *` at 80% threshold
-
-### MCP server Dockerfile
-```dockerfile
-FROM node:20-alpine
-RUN apk add --no-cache git openssh-client
-WORKDIR /mcp
-COPY package*.json ./
-RUN npm install --production
-COPY index.js ./
-COPY orchestrator.js ./
-CMD ["sh", "-c", "node index.js & node orchestrator.js"]
-```
-Env vars injected as Docker ARGs by Coolify at build time.
+Hetzner VPS, 8GB RAM, 150GB disk. ~2.2GB RAM used.
 
 ### Pushing to my-mcp-server repo
-Can't use `write_file` tool (that writes to `/repo` = SaaS-Boilerplate). Must use GitHub API directly:
+`write_file` tool only writes to /repo (SaaS-Boilerplate). For my-mcp-server:
 ```js
-const meta = await fetch('https://api.github.com/repos/CommonEmailDotCom/my-mcp-server/contents/index.js', {headers}).then(r=>r.json());
-await fetch('https://api.github.com/repos/CommonEmailDotCom/my-mcp-server/contents/index.js', {
-  method: 'PUT', headers,
-  body: JSON.stringify({ message, content: Buffer.from(fileContent).toString('base64'), sha: meta.sha, author: AUTHOR, committer: AUTHOR })
+run_command: node -e "
+const t=process.env.GITHUB_TOKEN, headers={...};
+const meta = await fetch('https://api.github.com/repos/CommonEmailDotCom/my-mcp-server/contents/FILE',{headers}).then(r=>r.json());
+await fetch('https://api.github.com/repos/CommonEmailDotCom/my-mcp-server/contents/FILE', {
+  method:'PUT', headers,
+  body: JSON.stringify({message:'...', content: Buffer.from(content).toString('base64'), sha: meta.sha})
 })
+"
 ```
-After pushing, trigger redeploy: `coolify_trigger_deploy('a1fr37jiwehxbfqp90k4cvsw')`.
+
+### Coolify concurrent deploy collision
+Two deploys firing simultaneously causes orphan container errors. Fixed by:
+- `/deploy-status` endpoint on MCP server polls Coolify deployment status
+- `set-version.yml` waits for idle before triggering (polls up to 6 min with 15s waits)
 
 ---
 
-## Planned / In Progress
+## Planned Work
+
+### Token/cost optimizations (priority)
+1. **Event-driven agents** — replace hourly cron with deploy/task-triggered dispatch
+2. **Pre-fetch expansion** — orchestrator injects live SHA, last QA result, deploy status as prompt facts (zero tool round-trips)
+3. **Context trimming** — agents truncate BUILD_LOG.md and QA_REPORT.md to last 2 entries
+4. **GitHub Actions for mechanical work** — move t001-run.js, smoke-status writing to Actions
 
 ### Infisical (not started)
-Self-hosted secrets manager to run as a Coolify service. Plan:
-- Deploy as Docker Compose service in Coolify at `secrets.joefuentes.me`
-- Uses its own Postgres + Redis
-- Critical: `ENCRYPTION_KEY` (16-byte hex) must be stored in password manager — lose it and all secrets are permanently unrecoverable
-- Backup strategy: automated `pg_dump` to Hetzner Object Storage + `ENCRYPTION_KEY` in password manager
-- Purpose: `infra` repo with `restore.js` script that can recreate entire Coolify setup on a fresh server
+Self-hosted secrets at `secrets.joefuentes.me`. `ENCRYPTION_KEY` in password manager — lose it = unrecoverable.
 
 ### infra repo (not started)
-`CommonEmailDotCom/infra` — infrastructure as code:
-- `scripts/export.js` — dumps current Coolify state (apps, services, databases) to JSON
-- `scripts/restore.js` — recreates everything on a fresh server from those JSONs + Infisical secrets
-- Env templates with placeholder values (no real secrets committed)
+`CommonEmailDotCom/infra` — export.js/restore.js for full server recreation.
 
-### Orchestrator planned fixes
-- Self-healing redeploy when MCP auth fails (needs `/status` lock mechanism first)
-- Startup health watchdog (ping `/healthz` every 5min, redeploy on 3 consecutive failures)
-- `/status` reset coordination lock (prevent multiple users stepping on each other during resets)
-
-### After T-001 18/18
-- T-006: Stripe checkout under Authentik session
+### After Playwright smoke 19/19
+- T-006: Stripe checkout under Authentik
 - T-009: Sign-out redirect on provider switch-back
 - T-002: Smoke test SHA polling verification
 
@@ -327,61 +412,40 @@ Self-hosted secrets manager to run as a Coolify service. Plan:
 
 ## Token / Cost Awareness
 
-**Important: Claude has no access to real Anthropic usage or billing data.** No tool exists to query actual token consumption or costs. The estimates below are calculated manually from token counts visible in the MCP server orchestrator logs (look for lines like "-> stop_reason: end_turn, tokens: 193206in / 6210out" in Coolify logs for app a1fr37jiwehxbfqp90k4cvsw). Formula: input_tokens x 3/1M + output_tokens x 15/1M for Sonnet 4. For real numbers go to console.anthropic.com directly.
+Agent token usage visible in Coolify logs (stdout). Check with:
+```js
+node -e "
+const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
+fetch(U+'/api/v1/applications/a1fr37jiwehxbfqp90k4cvsw/logs',{headers:{'Authorization':'Bearer '+T}})
+  .then(r=>r.json()).then(d=>{
+    const lines=(d.logs||'').split('\n').filter(l=>l.includes('tokens:'));
+    lines.slice(-10).forEach(l=>console.log(l.trim()));
+  });
+"
+```
+Format: `tokens: Xin / Yout`. Cost: input × $3/MTok + output × $15/MTok (Sonnet 4).
 
-**To check AGENT token usage (orchestrator cycles):**
-
-The orchestrator logs to stdout, which Coolify captures. Use run_command:
-
-    node -e "
-    const T=process.env.COOLIFY_API_TOKEN, U=process.env.COOLIFY_URL||'http://coolify:8080';
-    fetch(U+'/api/v1/applications/a1fr37jiwehxbfqp90k4cvsw/logs',{headers:{'Authorization':'Bearer '+T}})
-      .then(r=>r.json()).then(d=>{
-        const lines=(d.logs||'').split('\n').filter(l=>l.includes('tokens:'));
-        lines.slice(-20).forEach(l=>console.log(l.trim()));
-      });
-    "
-
-Format: -> stop_reason: end_turn, tokens: Xin / Yout
-Cost formula: input x $3/MTok + output x $15/MTok (Sonnet 4)
-Token lines only appear on successful Claude API calls. If agents are erroring (fetch failed) there will be no token lines.
-Do NOT look for a logs/ directory on disk — the orchestrator only logs to stdout, not files.
-
-**To check CHAT SESSION token usage:**
-Not available programmatically. Estimate manually by counting tokens in files read + tool results + conversation length, or check console.anthropic.com directly.
-
-Anthropic API costs come from two places:
-1. **Agent cycles** — ~$3-4/day at current optimized token counts (~15-25k per Operator cycle)
-2. **Chat sessions** — context grows with every message; long sessions cost more per message than agent cycles
-
-Large tool results (like `coolify_list_envs` returning all 30+ env vars) add thousands of tokens to the conversation context permanently. Be surgical with tool calls in chat.
-
-The `ANTHROPIC_API_KEY` was exposed in plaintext in this session via a `coolify_list_envs` call. Worth rotating it via the Anthropic console and updating the Coolify env var.
+**ANTHROPIC_API_KEY was exposed in this session via coolify_list_envs — rotate it.**
 
 ---
 
-## Key Patterns Learned
+## Key Patterns
 
-**Editing orchestrator.js:** Always use `node -e "..."` not heredoc (heredoc crashes on `${{` GitHub Actions syntax). Single-quoted node scripts with escaped template literals.
+**Editing orchestrator.js:** Use `node -e` not heredoc (heredoc crashes on `${{` syntax).
 
-**Pushing to GitHub without sodium:** Install `tweetsodium` to `/tmp`: `cd /tmp && npm install tweetsodium`. Then use it to encrypt secrets for the GitHub API.
+**Playwright runner script:** See /repo/run-playwright.js — copy this pattern for any background test run.
 
-**When set-version races:** Don't intervene by manually writing `.env.production` mid-race — let the retry loop finish. If it fails, write `.env.production` via GitHub API THEN manually trigger Coolify. The smoke test reads `.env.production` so it will poll for the right SHA.
+**When set-version races:** Let retry loop finish. If it fails, write `.env.production` via GitHub API then trigger Coolify manually.
 
-**MCP server crashes during tool use:** If every MCP tool call immediately crashes the server, the crash itself is being triggered by the Anthropic API connection to fetch tool schemas. The only escape is to push fixes via GitHub API (from `node -e` inside `run_command` using `process.env.GITHUB_TOKEN`) then trigger redeploy.
+**MCP server crashes during tool use:** Push fixes via GitHub API from `node -e` using `process.env.GITHUB_TOKEN`, then redeploy.
 
-**read_file pagination pattern:**
+**read_file pagination:**
 ```
-read_file(path) → [File: src/foo.ts | 420 lines]
+read_file(path) → [File: foo.ts | 420 lines]
 read_file(path, start_line=1, end_line=80)
-read_file(path, start_line=81, end_line=160)
 ```
-Never `cat` large files via `run_command` — same 5000 char cap with less control.
+Or just use `grep -n "pattern" /repo/path | head -30` via run_command.
 
-**Commit message prefixes control whether deploys trigger:**
-- `fix:`, `feat:` — triggers typecheck + set-version + deploy + smoke test
-- `chore:` — SKIPPED by set-version. Use only for non-code changes (docs, team files)
-- `ci:` — SKIPPED by set-version. Used only by the automation itself
-- When making a dummy src/ change to trigger the pipeline, always use `fix:` not `chore:`
+**Commit prefixes:** `fix:`/`feat:` deploys. `chore:` skips. `ci:` skips.
 
-**GitHub Actions workflow changes don't need a deploy.** Changes to `.github/workflows/` are in `paths-ignore`. Committing them won't trigger set-version. This is intentional and correct.
+**GitHub Actions workflow changes** don't need a deploy — in `paths-ignore`.

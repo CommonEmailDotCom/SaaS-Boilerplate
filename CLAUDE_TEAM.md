@@ -165,6 +165,22 @@ All agents have tools. **VERIFY BEFORE CLAIMING.**
 | `coolify_trigger_deploy(app_uuid)` | Trigger deploy |
 | `query_postgres(sql)` | Run SQL |
 
+### 🚨 Minimize MCP tool calls — prefer run_command
+
+Every dedicated MCP tool call adds tokens to conversation context permanently and costs API credits.
+Use run_command with inline node scripts instead wherever possible.
+
+| Avoid | Use instead |
+|---|---|
+| `coolify_list_envs` | `run_command` + `node -e "fetch(COOLIFY_URL+'/api/v1/applications/UUID/envs',...).then(envs=>console.log(envs.find(e=>e.key==='KEYNAME')?.real_value))"` |
+| `coolify_list_deployments` | `run_command` + `node -e "fetch(COOLIFY_URL+'/api/v1/deployments/applications/UUID?take=3',...)"` |
+| `coolify_trigger_deploy` | `run_command` + `node -e "fetch(COOLIFY_URL+'/api/v1/deploy?uuid=UUID&force=false',{method:'GET',...})"` |
+| `query_postgres` | `run_command` + `node -e "const {Pool}=require('pg');new Pool({connectionString:process.env.PG_CONNECTION_STRING}).query('SQL').then(r=>console.log(r.rows))"` |
+| `read_file` on large files | `run_command: grep -n 'pattern' /repo/path | head -30` |
+
+**NEVER use coolify_list_envs** — it dumps ALL secrets into conversation context permanently.
+Filter to the specific key you need with a run_command node script.
+
 **Pagination pattern for `read_file`:**
 ```
 read_file(path)                          → [File: foo.ts | 420 lines]
