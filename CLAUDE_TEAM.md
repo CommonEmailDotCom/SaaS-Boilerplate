@@ -245,7 +245,7 @@ run_command: wget -qO- https://mcp.joefuentes.me/healthz
 15. **set-version.yml UUID is correct.** Do not touch it.
 16. **agent_sync/ and .md changes don't trigger CI.**
 17. **Playwright is the primary test driver.** `t001-run.js` is a secondary health check only. Observer reports BOTH but Playwright results are authoritative.
-18. **Inbox files are Manager-only.** Operator must never write to OPERATOR_INBOX.md. Observer must never write to OBSERVER_INBOX.md. These are written BY Manager FOR the agent. Agents write only to their designated output files (BUILD_LOG.md, QA_REPORT.md).
+18. **Inbox files are two-way.** Manager writes instructions, agents write replies. But agents must NOT overwrite Manager instructions — append replies only.
 19. **Do NOT change auth flow in e2e/t001-auth.spec.ts** without understanding the Clerk dev browser cookie and PKCE requirements documented in the Testing section above.
 
 ---
