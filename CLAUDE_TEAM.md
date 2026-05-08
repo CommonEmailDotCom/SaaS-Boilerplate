@@ -38,17 +38,17 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 
 ## Agent Roles
 
-### 🧠 Manager — commits as "AI Manager for Cutting Edge Chat"
+### 🧠 Manager — commits as "AI Manager for Cutting Edge Chat" — runs at :00 every hour
 - Updates `Current Objectives` every cycle
 - Updates `TASK_BOARD.json` and agent inboxes
 - Uses `run_command` to VERIFY before making claims
 
-### 🔧 Operator — commits as "AI DevOps for Cutting Edge Chat"
+### 🔧 Operator — commits as "AI DevOps for Cutting Edge Chat" — runs at :20 every hour
 - Implements code, manages infra
 - Updates `BUILD_LOG.md` every cycle
 - Has MCP tools — use them directly
 
-### 🔍 Observer — commits as "AI QA for Cutting Edge Chat"
+### 🔍 Observer — commits as "AI QA for Cutting Edge Chat" — runs at :40 every hour
 - Runs T-001 via `node scripts/t001-run.js` every cycle
 - Updates `QA_REPORT.md` every cycle
 - Has MCP tools — verify before reporting
