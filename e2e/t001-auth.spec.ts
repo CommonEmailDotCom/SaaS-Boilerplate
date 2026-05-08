@@ -117,19 +117,31 @@ async function clerkSignIn(page: Page): Promise<void> {
   const token: string | undefined = data?.client?.sessions?.[0]?.last_active_token?.jwt;
   if (!token) throw new Error('Clerk sign-in failed: ' + JSON.stringify(data).substring(0, 300));
 
-  await page.context().addCookies([{
-    name: '__session',
-    value: token,
-    domain: new URL(BASE_URL).hostname,
-    path: '/',
-    httpOnly: true,
-    secure: true,
-    sameSite: 'Lax',
-  }]);
-  // Cookie injected — caller must navigate.
-  // Clerk middleware requires its own JS to have initialised on a prior page load
-  // before it recognises an injected __session cookie.
-  // Pattern that works: goto('/dashboard') once (loads Clerk JS + cookie), then goto again.
+  // Clerk middleware requires both __session (JWT) and __client_uat (client updated_at in seconds)
+  // Without __client_uat the middleware treats the session as invalid and redirects to sign-in
+  const clientUat = Math.floor((data?.client?.updated_at ?? Date.now()) / 1000).toString();
+  const domain = new URL(BASE_URL).hostname;
+
+  await page.context().addCookies([
+    {
+      name: '__session',
+      value: token,
+      domain,
+      path: '/',
+      httpOnly: true,
+      secure: true,
+      sameSite: 'Lax',
+    },
+    {
+      name: '__client_uat',
+      value: clientUat,
+      domain,
+      path: '/',
+      httpOnly: false,
+      secure: true,
+      sameSite: 'Strict',
+    },
+  ]);
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
