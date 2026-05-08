@@ -110,7 +110,9 @@ test.describe('Test A — Clerk baseline', () => {
 
   test('A3: Dashboard shows content', async ({ page }) => {
     await clerkSignIn(page);
+    // Navigate to dashboard, reload once to ensure org context is fully committed
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
+    await page.reload({ waitUntil: 'networkidle' });
     await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
