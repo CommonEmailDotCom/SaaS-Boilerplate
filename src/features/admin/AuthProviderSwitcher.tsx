@@ -2,6 +2,8 @@
 
 import { useState } from 'react';
 
+import { getErrorMessage } from '@/libs/api-error';
+
 type Provider = 'clerk' | 'authentik';
 
 type Props = {
@@ -59,8 +61,8 @@ export function AuthProviderSwitcher({ currentProvider }: Props) {
       } else {
         setResult({ error: data.error ?? 'Something went wrong' });
       }
-    } catch (err: any) {
-      setResult({ error: err.message });
+    } catch (err: unknown) {
+      setResult({ error: getErrorMessage(err) });
     } finally {
       setLoading(false);
     }

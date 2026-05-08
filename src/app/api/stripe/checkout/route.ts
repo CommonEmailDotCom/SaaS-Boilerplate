@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 
 import { getAuthProvider, getSession } from '@/libs/auth-provider';
+import { apiErrorResponse } from '@/libs/api-error';
 import { upsertOrganization, getOrganization } from '@/libs/organization';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
@@ -100,11 +101,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ url: checkoutSession.url });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Stripe checkout error:', error);
-    return NextResponse.json(
-      { error: error.message || 'Internal server error' },
-      { status: 500 },
-    );
+    return apiErrorResponse(error);
   }
 }

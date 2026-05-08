@@ -62,7 +62,7 @@ export async function POST(req: Request) {
           stripeSubscriptionCurrentPeriodEnd: subscription.current_period_end,
         });
 
-        console.log(`✅ checkout.session.completed: org ${orgId} synced`);
+        console.info(`checkout.session.completed: org ${orgId} synced`);
         break;
       }
 
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
           stripeSubscriptionCurrentPeriodEnd: subscription.current_period_end,
         });
 
-        console.log(`✅ ${event.type}: org ${orgId} subscription synced`);
+        console.info(`${event.type}: org ${orgId} subscription synced`);
         break;
       }
 
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
           stripeSubscriptionCurrentPeriodEnd: subscription.current_period_end,
         });
 
-        console.log(`✅ customer.subscription.deleted: org ${orgId} marked canceled`);
+        console.info(`customer.subscription.deleted: org ${orgId} marked canceled`);
         break;
       }
 
@@ -137,7 +137,7 @@ export async function POST(req: Request) {
           stripeSubscriptionCurrentPeriodEnd: subscription.current_period_end,
         });
 
-        console.log(`✅ invoice.paid: org ${orgId} period end updated`);
+        console.info(`invoice.paid: org ${orgId} period end updated`);
         break;
       }
 
@@ -160,12 +160,12 @@ export async function POST(req: Request) {
           stripeSubscriptionStatus: subscription.status, // 'past_due' or 'unpaid'
         });
 
-        console.log(`⚠️ invoice.payment_failed: org ${orgId} status set to ${subscription.status}`);
+        console.warn(`invoice.payment_failed: org ${orgId} status set to ${subscription.status}`);
         break;
       }
 
       default:
-        console.log(`ℹ️ Unhandled Stripe event: ${event.type}`);
+        console.info(`Unhandled Stripe event: ${event.type}`);
     }
   } catch (err) {
     console.error('Webhook handler error:', err);
