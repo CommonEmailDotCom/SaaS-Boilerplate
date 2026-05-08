@@ -374,4 +374,10 @@ read_file(path, start_line=81, end_line=160)
 ```
 Never `cat` large files via `run_command` — same 5000 char cap with less control.
 
+**Commit message prefixes control whether deploys trigger:**
+- `fix:`, `feat:` — triggers typecheck + set-version + deploy + smoke test
+- `chore:` — SKIPPED by set-version. Use only for non-code changes (docs, team files)
+- `ci:` — SKIPPED by set-version. Used only by the automation itself
+- When making a dummy src/ change to trigger the pipeline, always use `fix:` not `chore:`
+
 **GitHub Actions workflow changes don't need a deploy.** Changes to `.github/workflows/` are in `paths-ignore`. Committing them won't trigger set-version. This is intentional and correct.
