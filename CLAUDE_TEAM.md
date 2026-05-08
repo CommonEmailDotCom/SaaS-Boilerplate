@@ -71,10 +71,17 @@ cwd: /repo-observer
 **What it tests:** Real sign-in flows (Clerk + Authentik), dashboard loads, session cookies, route protection with actual authenticated sessions.
 **This is the primary smoke test** — it runs automatically after every deploy via GitHub Actions.
 **How to run locally (Observer's main driver):**
+
+⚠️ **CRITICAL:  throws on non-zero exit (including test failures). Never run Playwright directly.**
+Always use the background job pattern:
 ```
-run_command: npx playwright test e2e/t001-auth.spec.ts --grep "Test A" --config=playwright.local.config.ts --project=chromium
-cwd: /repo-observer
+# Step 1: write runner script to /repo-observer/run-playwright.js (see OBSERVER_INBOX.md)
+# Step 2: fire in background
+run_command: node /repo-observer/run-playwright.js > /tmp/playwright-run.log 2>&1 &
+# Step 3: check results (poll until file exists)
+run_command: node -e "const d=JSON.parse(require('fs').readFileSync('/tmp/playwright-result.json','utf8')); console.log('Exit:',d.exitCode); console.log(d.output.slice(-2000));"
 ```
+Full pattern with env vars and grep options in OBSERVER_INBOX.md.
 
 **IMPORTANT:** `node_modules` must be installed in `/repo-observer` for Playwright to work. The orchestrator's `ensureRepo()` handles this automatically — it runs `npm ci` on first use and when `package.json` changes. If `node_modules` is missing, run:
 ```
