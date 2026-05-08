@@ -91,9 +91,27 @@ export async function getSession(): Promise<import('./types').AuthSession | null
     const { authentikAuth } = await import('@/libs/auth-nextauth');
     const s = await authentikAuth();
     if (!s?.user?.id) return null;
+
+    // Look up orgId from organization_member — Authentik sessions don't carry
+    // org context the way Clerk does, but the org is stored in DB at first login.
+    let orgId: string | null = null;
+    try {
+      const { db } = await import('@/libs/DB');
+      const { organizationMemberSchema } = await import('@/models/Schema');
+      const { eq } = await import('drizzle-orm');
+      const rows = await db
+        .select()
+        .from(organizationMemberSchema)
+        .where(eq(organizationMemberSchema.userId, s.user.id))
+        .limit(1);
+      orgId = rows[0]?.orgId ?? null;
+    } catch {
+      // DB error — orgId stays null, dashboard will handle gracefully
+    }
+
     return {
       userId: s.user.id,
-      orgId: null,
+      orgId,
       email: s.user.email ?? null,
       name: s.user.name ?? null,
     };
