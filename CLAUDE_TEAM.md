@@ -59,31 +59,44 @@ Built on Next.js 14, TypeScript, Drizzle ORM, Postgres, Tailwind, Shadcn.
 
 All agents have tools. **VERIFY BEFORE CLAIMING.**
 
-### Available tools (write/action only)
+### Available tools
 
 | Tool | Notes |
 |---|---|
-| `run_command` | Shell commands, curl, ls, git — **output capped at 5000 chars** |
-| `write_file` | Write files to repo — no cap |
-| `delete_file` | Delete a file |
-| `git_commit_push` | Commit and push |
-| `git_pull` | Pull latest |
-| `coolify_trigger_deploy` | Trigger Coolify deploy |
-| `query_postgres` | Run SQL |
+| `read_file(path, start_line?, end_line?)` | Read a file — **paginate large files with start_line/end_line** |
+| `write_file(path, content)` | Write files — no cap |
+| `delete_file(path)` | Delete a file |
+| `run_command(command, cwd?)` | Shell commands — **output capped at 5000 chars** |
+| `git_commit_push(message)` | Commit and push |
+| `git_pull()` | Pull latest |
+| `coolify_trigger_deploy(app_uuid)` | Trigger Coolify deploy |
+| `query_postgres(sql, params?)` | Run SQL |
 
 ### NOT available as tools
+| Tool | Use instead |
+|---|---|
+| `list_directory` | `run_command: ls -la src/libs/` |
+| `coolify_list_deployments` | LIVE DATA is pre-fetched and already in context |
+| `coolify_deployment_logs` | LIVE DATA is pre-fetched and already in context |
 
-| Tool | Why | What to use instead |
-|---|---|---|
-| `read_file` | Orchestrator pre-fetches all context files | Use the injected text already in your message |
-| `list_directory` | Not needed — use `run_command` with `ls` | `run_command: ls src/libs/` |
-| `coolify_list_deployments` | Deployment state is in LIVE DATA | Check `liveData.setVersionRuns` in your context |
-| `coolify_deployment_logs` | Not in scope | Check build log via Coolify UI if needed |
+### Caps and pagination — critical
 
-### Caps — plan accordingly
-- `run_command` output **hard capped at 5000 chars**. You will see `[...output truncated...]` if hit.
-- Use `head -N`, `tail -N`, `grep` instead of commands that dump entire files.
-- `write_file` has no cap — write complete file content as needed.
+**`run_command` output is hard capped at 5000 chars.**
+- Never use `cat` on large files — use `read_file` instead
+- For targeted output: `grep -n "pattern" file`, `head -50 file`, `tail -30 file`
+
+**`read_file` is capped at 8000 chars per call — but supports pagination:**
+```
+# Step 1: get total line count
+read_file(path)  →  [File: src/foo.ts | 420 lines]
+
+# Step 2: read in chunks
+read_file(path, start_line=1,   end_line=80)   →  lines 1-80
+read_file(path, start_line=81,  end_line=160)  →  lines 81-160
+read_file(path, start_line=161, end_line=240)  →  lines 161-240
+```
+
+**`write_file` has no cap** — write complete file content in one call.
 
 **If MCP tools fail** (auth error, connection error): fall back to plain JSON completion and commit the heartbeat. Do NOT halt the cycle. Do NOT spiral into confusion about whether tools exist — they do, they may just be temporarily unavailable.
 
