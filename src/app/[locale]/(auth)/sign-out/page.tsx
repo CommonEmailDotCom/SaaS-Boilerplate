@@ -9,20 +9,19 @@ function SignOutInner() {
 
   useEffect(() => {
     async function doSignOut() {
-      // Try next-auth signout first (Authentik), then Clerk
+      // Sign out of next-auth (Authentik)
       try {
         await fetch('/api/auth/signout', { method: 'POST' });
       } catch {
         // ignore
       }
-      // Also try Clerk signout if available
+      // Sign out of Clerk if session is active
       try {
-        const { default: Clerk } = await import('@clerk/nextjs/client' as any);
         if ((window as any).Clerk?.signOut) {
           await (window as any).Clerk.signOut();
         }
       } catch {
-        // ignore — Clerk may not be loaded under Authentik
+        // ignore
       }
       window.location.href = redirectUrl;
     }
