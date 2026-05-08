@@ -6,20 +6,17 @@
  *   Clerk  (A, D): setupClerkTestingToken + window.Clerk.client.signIn.create (ticket strategy)
  *   Authentik (B, C): POST to /api/auth/signin/authentik (PKCE) → Authentik UI → callback
  *
- * Authentik uses Lit web components with Shadow DOM. Standard CSS selectors like
- * input[name="username"] hit light DOM placeholders and do nothing. Use getByLabel()
- * which Playwright resolves through shadow roots automatically.
+ * Provider switching:
+ *   B/C tests require auth_provider=authentik in DB — the dashboard uses getActiveProvider()
+ *   to decide which session to check. switchToProvider() uses a Clerk admin session to call
+ *   the admin API, then waits for the 5s cache TTL to expire.
  *
- * Authentik login flow is multi-step: username submitted first, then password
- * appears on the same or a subsequent page depending on the flow config.
+ * Authentik uses Lit web components with Shadow DOM — use getByLabel() not input[name=...].
+ * Login is multi-step: fill username → Enter → wait for password → fill → Enter.
  *
  * Required env vars:
  *   CLERK_SECRET_KEY, CLERK_PUBLISHABLE_KEY, QA_GMAIL_EMAIL
  *   AUTHENTIK_TEST_USERNAME, AUTHENTIK_TEST_PASSWORD
- *
- * Authentik config requirements:
- *   Authorization flow must be "default-provider-authorization-implicit-consent"
- *   (NOT explicit-consent — that stalls on a consent screen)
  */
 
 import { test, expect, type Page } from '@playwright/test';
@@ -34,60 +31,51 @@ const AUTHENTIK_TEST_USERNAME = process.env.AUTHENTIK_TEST_USERNAME ?? '';
 const AUTHENTIK_TEST_PASSWORD = process.env.AUTHENTIK_TEST_PASSWORD ?? '';
 
 // ---------------------------------------------------------------------------
-// Login helpers
+// Helpers
 // ---------------------------------------------------------------------------
 
 async function clerkSignIn(page: Page): Promise<void> {
-  // 1. Navigate to /sign-in — loads Clerk JS + establishes __clerk_db_jwt dev browser cookie
-  // 2. setupClerkTestingToken injects __clerk_testing_token to bypass bot detection
-  // 3. Create sign-in ticket via Backend API, redeem via window.Clerk directly
-  // Note: @clerk/testing clerk.signIn() does not support strategy:'ticket' in v1.x
   await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
   await setupClerkTestingToken({ page });
-
   const ticket = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
     method: 'POST',
     headers: { 'Authorization': `Bearer ${CLERK_SECRET_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: CLERK_TEST_USER_ID, expires_in_seconds: 60 }),
   }).then(r => r.json()).then((d: any) => {
-    if (!d.token) throw new Error('Sign-in ticket creation failed: ' + JSON.stringify(d).substring(0, 200));
+    if (!d.token) throw new Error('Sign-in ticket failed: ' + JSON.stringify(d).slice(0, 200));
     return d.token as string;
   });
-
   await page.waitForFunction(() => (window as any).Clerk?.loaded === true, { timeout: 10000 });
   const result = await page.evaluate(async (t: string) => {
     const clerk = (window as any).Clerk;
-    const signIn = await clerk.client.signIn.create({ strategy: 'ticket', ticket: t });
-    if (signIn.status === 'complete') {
-      await clerk.setActive({ session: signIn.createdSessionId });
-      return { ok: true };
-    }
-    return { ok: false, status: signIn.status };
+    const s = await clerk.client.signIn.create({ strategy: 'ticket', ticket: t });
+    if (s.status === 'complete') { await clerk.setActive({ session: s.createdSessionId }); return { ok: true }; }
+    return { ok: false, status: s.status };
   }, ticket);
+  if (!result.ok) throw new Error('Clerk sign-in failed: ' + result.status);
+}
 
-  if (!result.ok) throw new Error('Clerk sign-in failed with status: ' + result.status);
+async function switchToProvider(page: Page, provider: 'clerk' | 'authentik'): Promise<void> {
+  // Must be called with a Clerk-authenticated page context (clerkSignIn first).
+  // Switches the DB auth_provider and waits for the 5s cache TTL.
+  const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
+    data: JSON.stringify({ provider }),
+    headers: { 'Content-Type': 'application/json' },
+  });
+  if (resp.status() !== 200) {
+    const body = await resp.text();
+    throw new Error(`switchToProvider(${provider}) failed ${resp.status()}: ${body.slice(0, 200)}`);
+  }
+  await page.waitForTimeout(6000); // wait for 5s cache TTL
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
-  // Full next-auth OAuth flow with PKCE:
-  // 1. Homepage visit — completes Clerk dev browser handshake so middleware
-  //    doesn't intercept /api/auth/signin/authentik
-  // 2. POST to /api/auth/signin/authentik with CSRF token — MUST be POST,
-  //    GET returns error=Configuration. Sets __Secure-authjs.pkce.code_verifier cookie.
-  // 3. Navigate to the Authentik authorize URL returned by step 2
-  // 4. Fill login form using getByLabel — Authentik uses Lit web components with
-  //    Shadow DOM. input[name="username"] hits a light DOM placeholder and does nothing.
-  //    getByLabel() resolves through shadow roots automatically.
-  // 5. Authentik flow is multi-step: fill username → submit → fill password → submit
-
+  // Authentik sign-in via next-auth PKCE flow.
+  // Assumes auth_provider is already set to 'authentik' in DB (call switchToProvider first).
   if (!AUTHENTIK_TEST_USERNAME || !AUTHENTIK_TEST_PASSWORD) {
     throw new Error('AUTHENTIK_TEST_USERNAME or AUTHENTIK_TEST_PASSWORD not set');
   }
-
-  // Step 1: establish Clerk dev browser cookie
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });
-
-  // Step 2: POST to get PKCE authorize URL
   const { csrfToken } = await page.request.fetch(`${BASE_URL}/api/auth/csrf`).then(r => r.json());
   const signinResp = await page.request.fetch(`${BASE_URL}/api/auth/signin/authentik`, {
     method: 'POST',
@@ -95,50 +83,21 @@ async function authentikSignIn(page: Page): Promise<void> {
     data: new URLSearchParams({ csrfToken, callbackUrl: `${BASE_URL}/dashboard` }).toString(),
     maxRedirects: 0,
   }).catch((e: any) => e.response);
-
   const authentikUrl = signinResp?.headers()?.['location'] || signinResp?.url();
   if (!authentikUrl?.includes('auth.joefuentes.me')) {
-    throw new Error('Signin did not redirect to Authentik: ' + authentikUrl);
+    throw new Error('Did not redirect to Authentik: ' + authentikUrl);
   }
-
-  // Step 3: navigate to Authentik — PKCE cookie is already in browser context
   await page.goto(authentikUrl, { waitUntil: 'networkidle' });
-
-  // Step 4: fill username and submit — Authentik may show username only first,
-  // then password on the same or next page depending on flow config
   await page.getByLabel(/username/i).fill(AUTHENTIK_TEST_USERNAME);
   await page.getByLabel(/username/i).press('Enter');
-
-  // Step 5: wait for password field and fill it
-  // (may already be visible if both fields on one page, or loads after username submit)
   await page.getByLabel(/password/i).waitFor({ timeout: 10000 });
   await page.getByLabel(/password/i).fill(AUTHENTIK_TEST_PASSWORD);
   await page.getByLabel(/password/i).press('Enter');
-
-  // Step 6: wait for next-auth callback to complete
-  await page.waitForURL(
-    (url) => url.toString().includes(BASE_URL),
-    { timeout: 30000 }
-  );
-
+  await page.waitForURL((url) => url.toString().includes(BASE_URL), { timeout: 30000 });
   const finalUrl = page.url();
   if (finalUrl.includes('error=')) {
-    const errorParam = new URL(finalUrl).searchParams.get('error') || 'unknown';
-    throw new Error(`Authentik OAuth error: ${errorParam}`);
+    throw new Error(`Authentik OAuth error: ${new URL(finalUrl).searchParams.get('error')}`);
   }
-
-  // Switch the active provider to 'authentik' in the DB so the app recognises
-  // the Authentik session. getSession() checks getActiveProvider() — if the DB
-  // still says 'clerk', the dashboard returns null for Authentik sessions.
-  const switchResp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
-    data: JSON.stringify({ provider: 'authentik' }),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (switchResp.status() !== 200) {
-    throw new Error(`Failed to switch provider to authentik: ${switchResp.status()}`);
-  }
-  // Wait for 5s cache TTL to expire
-  await page.waitForTimeout(6000);
 }
 
 // ---------------------------------------------------------------------------
@@ -185,11 +144,15 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
   });
 
   test('B2: Authentik programmatic sign-in → /dashboard', async ({ page }) => {
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 
   test('B3: next-auth session cookie present after Authentik login', async ({ page, context }) => {
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     const cookies = await context.cookies(BASE_URL);
     const sessionCookie = cookies.find(
@@ -199,6 +162,8 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
   });
 
   test('B4: No CRITICAL-05 — /api/auth/session returns 200', async ({ page }) => {
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     const res = await page.request.get(`${BASE_URL}/api/auth/session`);
     expect(res.status()).toBe(200);
@@ -211,6 +176,8 @@ test.describe('Test B — Switch Clerk→Authentik', () => {
 
 test.describe('Test C — Dashboard under Authentik', () => {
   test('C1: /dashboard loads without 401/500', async ({ page }) => {
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     const res = await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
@@ -218,12 +185,16 @@ test.describe('Test C — Dashboard under Authentik', () => {
   });
 
   test('C2: Org context visible on dashboard', async ({ page }) => {
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
   test('C3: Billing page loads without 401/500 under Authentik', async ({ page }) => {
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     const res = await page.goto(`${BASE_URL}/dashboard/billing`, { waitUntil: 'networkidle' });
     expect(res?.status()).not.toBe(401);
@@ -235,6 +206,8 @@ test.describe('Test C — Dashboard under Authentik', () => {
     page.on('console', (msg) => {
       if (msg.type() === 'error') errors.push(msg.text());
     });
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     const critical = errors.filter(
@@ -250,14 +223,27 @@ test.describe('Test C — Dashboard under Authentik', () => {
 
 test.describe('Test D — Switch Authentik→Clerk', () => {
   test('D1: Sign-out stays on cuttingedgechat.com', async ({ page }) => {
-    // Switch provider back to clerk — sign in as Authentik first to get auth context
+    // Switch back to clerk, then sign out
+    await clerkSignIn(page);
+    await switchToProvider(page, 'authentik');
     await authentikSignIn(page);
-    // authentikSignIn already switched to 'authentik' — now switch back to 'clerk'
-    await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
-      data: JSON.stringify({ provider: 'clerk' }),
-      headers: { 'Content-Type': 'application/json' },
-    });
-    await page.waitForTimeout(6000); // wait for cache TTL
+    // Now switch back to clerk
+    // Need a Clerk session to call the admin API — re-authenticate with Clerk
+    // by using the ticket approach on the current page
+    await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
+    await setupClerkTestingToken({ page });
+    const ticket = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${CLERK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ user_id: CLERK_TEST_USER_ID, expires_in_seconds: 60 }),
+    }).then(r => r.json()).then((d: any) => d.token as string);
+    await page.waitForFunction(() => (window as any).Clerk?.loaded === true, { timeout: 10000 });
+    await page.evaluate(async (t: string) => {
+      const c = (window as any).Clerk;
+      const s = await c.client.signIn.create({ strategy: 'ticket', ticket: t });
+      if (s.status === 'complete') await c.setActive({ session: s.createdSessionId });
+    }, ticket);
+    await switchToProvider(page, 'clerk');
     await page.request.post(`${BASE_URL}/api/auth/signout`, {
       headers: { 'Content-Type': 'application/json' },
     });
@@ -296,18 +282,16 @@ test.describe('Test E — Smoke badge', () => {
     const statusBody = await statusRes.json() as { status?: string; sha?: string };
     const storedStatus = (statusBody.status ?? 'unknown').toLowerCase();
     console.log(`Previous smoke status: ${storedStatus} (SHA: ${statusBody.sha})`);
-
     const badgeRes = await request.get(`${MCP_URL}/badge/smoke`);
     expect(badgeRes.status()).toBe(200);
     const badgeSvg = await badgeRes.text();
     const badgeShowsPassing = badgeSvg.includes('>passing<');
     const badgeShowsFailing = badgeSvg.includes('>failing<');
     expect(badgeShowsPassing || badgeShowsFailing).toBe(true);
-
     const storedIsPassing = storedStatus === 'passing';
     expect(
       badgeShowsPassing,
-      `Badge/status mismatch: smoke-status.json says "${storedStatus}" but badge shows ${badgeShowsPassing ? 'passing' : 'failing'}`
+      `Badge mismatch: stored="${storedStatus}" badge=${badgeShowsPassing ? 'passing' : 'failing'}`
     ).toBe(storedIsPassing);
   });
 
