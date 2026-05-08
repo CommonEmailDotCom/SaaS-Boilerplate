@@ -57,7 +57,9 @@ async function clerkSignIn(page: Page): Promise<void> {
 
 async function switchToProvider(page: Page, provider: 'clerk' | 'authentik'): Promise<void> {
   // Must be called with a Clerk-authenticated page context (clerkSignIn first).
-  // Switches the DB auth_provider and waits for the 5s cache TTL.
+  // Navigate to BASE_URL first to commit the Clerk __session cookie to the browser jar.
+  // Without this, page.request.post() won't send the Clerk session cookie.
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
   const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
     data: JSON.stringify({ provider }),
     headers: { 'Content-Type': 'application/json' },
