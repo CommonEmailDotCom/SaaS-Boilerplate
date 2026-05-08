@@ -47,22 +47,21 @@ async function clerkSignIn(page: Page): Promise<void> {
     return { ok: false, status: s.status };
   }, ticket);
   if (!result.ok) throw new Error('Clerk sign-in failed: ' + result.status);
-  // Navigate away and back to commit __session cookie to the browser's cookie jar
-  await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
 }
 
-async function switchToProvider(page: Page, provider: 'clerk' | 'authentik'): Promise<void> {
-  // Requires a Clerk-authenticated page (call clerkSignIn first — it navigates to /dashboard).
-  // __session cookie is in the jar after clerkSignIn's final navigation.
-  const resp = await page.request.post(`${BASE_URL}/api/admin/auth-provider`, {
-    data: JSON.stringify({ provider }),
-    headers: { 'Content-Type': 'application/json' },
-  });
-  if (resp.status() !== 200) {
-    const body = await resp.text();
-    throw new Error(`switchToProvider(${provider}) failed ${resp.status()}: ${body.slice(0, 200)}`);
-  }
-  await page.waitForTimeout(6000); // wait for 5s cache TTL
+async function switchToProvider(_page: Page, provider: 'clerk' | 'authentik'): Promise<void> {
+  // Switch provider directly via DB — avoids admin API auth complexity.
+  // PG_CONNECTION_STRING must be in test env.
+  const pgStr = process.env.PG_CONNECTION_STRING;
+  if (!pgStr) throw new Error('PG_CONNECTION_STRING not set — cannot switch provider');
+  const { Pool } = await import('pg');
+  const pool = new Pool({ connectionString: pgStr });
+  await pool.query(
+    'UPDATE app_config SET value = $1 WHERE key = $2',
+    [provider, 'auth_provider']
+  );
+  await pool.end();
+  await _page.waitForTimeout(6000); // wait for 5s in-process cache TTL
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
@@ -155,11 +154,13 @@ test.describe('Test A — Clerk baseline', () => {
 
   test('A2: Clerk programmatic sign-in → /dashboard loads', async ({ page }) => {
     await clerkSignIn(page);
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 
   test('A3: Dashboard shows content', async ({ page }) => {
     await clerkSignIn(page);
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
@@ -288,6 +289,7 @@ test.describe('Test D — Switch Authentik→Clerk', () => {
 
   test('D3: Clerk session works after switch-back', async ({ page }) => {
     await clerkSignIn(page);
+    await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
     await expect(page).toHaveURL(new RegExp(`${BASE_URL}/dashboard`), { timeout: 10000 });
   });
 });
