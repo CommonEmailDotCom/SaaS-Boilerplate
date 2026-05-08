@@ -22,11 +22,13 @@
  */
 
 import { test, expect, type Page } from '@playwright/test';
-import { clerk, setupClerkTestingToken } from '@clerk/testing/playwright';
+import { setupClerkTestingToken } from '@clerk/testing/playwright';
 
 const BASE_URL = process.env.TEST_BASE_URL ?? 'https://cuttingedgechat.com';
 const MCP_URL = 'https://mcp.joefuentes.me';
 const GOOGLE_EMAIL = process.env.QA_GMAIL_EMAIL ?? '';
+const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY ?? '';
+const CLERK_TEST_USER_ID = process.env.CLERK_TEST_USER_ID ?? 'user_3DOZ3c5b31biCKPnDDSRsUqFwvp';
 const AUTHENTIK_TEST_USERNAME = process.env.AUTHENTIK_TEST_USERNAME ?? '';
 const AUTHENTIK_TEST_PASSWORD = process.env.AUTHENTIK_TEST_PASSWORD ?? '';
 
@@ -35,21 +37,41 @@ const AUTHENTIK_TEST_PASSWORD = process.env.AUTHENTIK_TEST_PASSWORD ?? '';
 // ---------------------------------------------------------------------------
 
 async function clerkSignIn(page: Page): Promise<void> {
-  // Uses @clerk/testing/playwright which correctly handles Clerk dev instance
-  // requirements including the __clerk_db_jwt dev browser cookie.
+  // Clerk sign-in for CI using ticket strategy:
+  // 1. Navigate to /sign-in — loads Clerk JS and establishes __clerk_db_jwt (dev browser cookie)
+  // 2. setupClerkTestingToken() intercepts FAPI requests and injects __clerk_testing_token
+  //    so Clerk's bot detection is bypassed for this page context
+  // 3. Create a sign-in ticket for the test user via Clerk Backend API
+  // 4. Use window.Clerk directly in the browser to complete sign-in with the ticket
   //
-  // Flow:
-  // 1. setupClerkTestingToken() injects __clerk_testing_token into the page
-  //    so Clerk's bot detection is bypassed
-  // 2. Navigate to /sign-in so Clerk JS loads and window.Clerk is available
-  // 3. clerk.signIn() with emailAddress uses Backend API to find user,
-  //    create a sign-in ticket, and authenticate via ticket strategy
-  await setupClerkTestingToken({ page });
+  // Note: @clerk/testing's clerk.signIn() helper does not support strategy:'ticket'
+  // (only supports password/phone_code/email_code). We call window.Clerk directly.
   await page.goto(`${BASE_URL}/sign-in`, { waitUntil: 'networkidle' });
-  await clerk.signIn({
-    page,
-    emailAddress: GOOGLE_EMAIL,
+  await setupClerkTestingToken({ page });
+
+  const ticket = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${CLERK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: CLERK_TEST_USER_ID, expires_in_seconds: 60 }),
+  }).then(r => r.json()).then((d: any) => {
+    if (!d.token) throw new Error('Sign-in ticket creation failed: ' + JSON.stringify(d).substring(0, 200));
+    return d.token as string;
   });
+
+  // Sign in using window.Clerk directly — ticket strategy is supported by Clerk JS SDK
+  // even though @clerk/testing's signIn helper doesn't expose it
+  await page.waitForFunction(() => (window as any).Clerk?.loaded === true, { timeout: 10000 });
+  const result = await page.evaluate(async (t: string) => {
+    const clerk = (window as any).Clerk;
+    const signIn = await clerk.client.signIn.create({ strategy: 'ticket', ticket: t });
+    if (signIn.status === 'complete') {
+      await clerk.setActive({ session: signIn.createdSessionId });
+      return { ok: true };
+    }
+    return { ok: false, status: signIn.status };
+  }, ticket);
+
+  if (!result.ok) throw new Error('Clerk sign-in failed with status: ' + result.status);
 }
 
 async function authentikSignIn(page: Page): Promise<void> {
@@ -75,19 +97,37 @@ async function authentikSignIn(page: Page): Promise<void> {
     throw new Error('AUTHENTIK_TEST_USERNAME or AUTHENTIK_TEST_PASSWORD not set');
   }
 
-  // Step 1: Navigate via next-auth signin — establishes PKCE code_verifier cookie
-  // Use commit waitUntil so we follow the redirect to Authentik without waiting for full load
-  await page.goto(`${BASE_URL}/api/auth/signin/authentik`, { waitUntil: 'commit' });
+  // Step 1: Navigate to homepage to complete Clerk dev browser handshake
+  await page.goto(BASE_URL, { waitUntil: 'networkidle' });
 
-  // Wait for Authentik login form — we should be on auth.joefuentes.me now
-  await page.waitForURL((url) => url.toString().includes('auth.joefuentes.me'), { timeout: 15000 });
-  await page.waitForLoadState('networkidle');
+  // Step 2: POST to next-auth signin endpoint via fetch to get the PKCE authorize URL.
+  // MUST be POST — a GET returns error=Configuration immediately.
+  // next-auth sets __Secure-authjs.pkce.code_verifier cookie on this response.
+  const csrfResp = await page.request.fetch(`${BASE_URL}/api/auth/csrf`);
+  const { csrfToken } = await csrfResp.json();
 
-  // Step 2: Fill Authentik login form
-  await page.fill('input[name="uidField"]', AUTHENTIK_TEST_USERNAME, { timeout: 10000 });
-  await page.click('[type="submit"]');
-  await page.fill('input[name="password"]', AUTHENTIK_TEST_PASSWORD, { timeout: 10000 });
-  await page.click('[type="submit"]');
+  const signinResp = await page.request.fetch(`${BASE_URL}/api/auth/signin/authentik`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Origin': BASE_URL },
+    data: new URLSearchParams({ csrfToken, callbackUrl: `${BASE_URL}/dashboard` }).toString(),
+    maxRedirects: 0,
+  }).catch((e: any) => e.response);
+  
+  // Extract the Authentik authorize URL from the redirect
+  const authentikUrl = signinResp?.headers()?.['location'] || signinResp?.url();
+  if (!authentikUrl?.includes('auth.joefuentes.me')) {
+    throw new Error('Signin did not redirect to Authentik: ' + authentikUrl);
+  }
+
+  // Step 3: Navigate to the Authentik URL — browser context has PKCE cookie set by Step 2
+  await page.goto(authentikUrl, { waitUntil: 'networkidle' });
+
+  // Fill Authentik login form
+  // username/password are on the same page — Authentik uses a GET form with JS interception
+  // Press Enter on password field to trigger Authentik's native submit handler
+  await page.fill('input[name="username"]', AUTHENTIK_TEST_USERNAME, { timeout: 10000 });
+  await page.fill('input[name="password"]', AUTHENTIK_TEST_PASSWORD, { timeout: 5000 });
+  await page.locator('input[name="password"]').press('Enter');
 
   // Step 3: Wait for redirect back to cuttingedgechat.com
   // next-auth callback handles the code exchange + PKCE verification
@@ -128,7 +168,8 @@ test.describe('Test A — Clerk baseline', () => {
   test('A3: Dashboard shows content', async ({ page }) => {
     await clerkSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10000 });
+    // Dashboard uses divs not headings — check for known dashboard text content
+    await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
   test('A4: Billing page loads without 401/500', async ({ page }) => {
@@ -186,7 +227,7 @@ test.describe('Test C — Dashboard under Authentik', () => {
   test('C2: Org context visible on dashboard', async ({ page }) => {
     await authentikSignIn(page);
     await page.goto(`${BASE_URL}/dashboard`, { waitUntil: 'networkidle' });
-    await expect(page.locator('h1, h2').first()).toBeVisible({ timeout: 10000 });
+    await expect(page.getByText('Welcome to your dashboard')).toBeVisible({ timeout: 10000 });
   });
 
   test('C3: Billing page loads without 401/500 under Authentik', async ({ page }) => {
