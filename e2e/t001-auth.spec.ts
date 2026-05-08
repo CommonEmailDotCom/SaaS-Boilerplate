@@ -37,6 +37,8 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET ?? '';
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY ?? '';
 const CLERK_FAPI = 'https://smashing-bison-72.clerk.accounts.dev';
 const AUTHENTIK_CLIENT_ID = process.env.AUTHENTIK_CLIENT_ID ?? 'aPM2wsr2lAtm96N1prfOC7t1XlDVARmA4GRBvlwa';
+// Clerk test user (testercuttingedgechat@gmail.com) — created via Google OAuth, ID stable
+const CLERK_TEST_USER_ID = process.env.CLERK_TEST_USER_ID ?? 'user_3DOZ3c5b31biCKPnDDSRsUqFwvp';
 
 // ---------------------------------------------------------------------------
 // Programmatic login helpers — API-based, no browser OAuth UI
@@ -79,26 +81,33 @@ function getGoogleIdToken(): Promise<string> {
 }
 
 async function clerkSignIn(page: Page): Promise<void> {
-  // Step 1: Get a Testing Token from Clerk Backend API
-  const tokenResp = await fetch('https://api.clerk.com/v1/testing_tokens', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
-      'Content-Type': 'application/json',
-    },
-  });
-  const tokenData = await tokenResp.json() as any;
-  const testingToken: string | undefined = tokenData?.token;
-  if (!testingToken) throw new Error('Clerk testing token fetch failed: ' + JSON.stringify(tokenData).substring(0, 300));
+  // Clerk sign-in for CI — 3 steps:
+  // 1. Get a Testing Token (bypasses Clerk bot detection on FAPI requests)
+  // 2. Create a sign-in ticket for the test user via Backend API (user was created via Google OAuth)
+  // 3. Redeem the ticket via FAPI with the testing token — returns a real JWT session
+  // This tests that a valid Clerk session works in the app, without needing a live Google OAuth flow.
 
-  // Step 2: Use the testing token in the FAPI sign-in request
+  const testingToken = await fetch('https://api.clerk.com/v1/testing_tokens', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${CLERK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+  }).then(r => r.json()).then((d: any) => {
+    if (!d.token) throw new Error('Testing token fetch failed: ' + JSON.stringify(d).substring(0, 200));
+    return d.token as string;
+  });
+
+  const ticket = await fetch('https://api.clerk.com/v1/sign_in_tokens', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${CLERK_SECRET_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ user_id: CLERK_TEST_USER_ID, expires_in_seconds: 60 }),
+  }).then(r => r.json()).then((d: any) => {
+    if (!d.token) throw new Error('Sign-in ticket creation failed: ' + JSON.stringify(d).substring(0, 200));
+    return d.token as string;
+  });
+
   const resp = await fetch(`${CLERK_FAPI}/v1/client/sign_ins?__clerk_testing_token=${testingToken}`, {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': `Bearer ${CLERK_SECRET_KEY}`,
-    },
-    body: new URLSearchParams({ strategy: 'ticket', ticket: testingToken }).toString(),
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ strategy: 'ticket', ticket }).toString(),
   });
   const data = await resp.json() as any;
   const token: string | undefined = data?.client?.sessions?.[0]?.last_active_token?.jwt;
